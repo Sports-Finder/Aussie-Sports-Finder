@@ -92,7 +92,7 @@ export default function DiscoverScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 116 }]}>
         <View style={styles.topRow}>
           <View>
-            <Text style={[styles.kicker, { color: colors.primary }]}>Sports Connect</Text>
+            <Text style={[styles.kicker, { color: colors.primary }]}>Aussie Sports Club Finder</Text>
             <Text style={[styles.title, { color: colors.foreground }]}>Find your next club or player</Text>
           </View>
           <IconButton icon="bell" label="Notifications" onPress={toggleNotifications} />
