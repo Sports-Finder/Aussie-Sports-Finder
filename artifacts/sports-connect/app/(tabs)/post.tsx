@@ -27,7 +27,7 @@ export default function PostScreen() {
   const { createAdvert, adverts, activeProfile, setActiveProfile, clubProfile, playerProfile } = useSportsConnect();
   const [type, setType] = useState<"player-looking" | "players-wanted">("player-looking");
   const [title, setTitle] = useState("");
-  const [sport, setSport] = useState("Football");
+  const [sport, setSport] = useState("Soccer");
   const [location, setLocation] = useState(playerProfile.location);
   const [level, setLevel] = useState("Competitive amateur");
   const [availability, setAvailability] = useState("Evenings and weekends");
@@ -73,8 +73,8 @@ export default function PostScreen() {
             <Pill label="Player looking" active={type === "player-looking"} onPress={() => setType("player-looking")} />
             <Pill label="Players wanted" active={type === "players-wanted"} onPress={() => setType("players-wanted")} />
           </View>
-          <Field label="Advert title" value={title} onChangeText={setTitle} placeholder="e.g. Striker wanted for Sunday league" />
-          <Field label="Sport" value={sport} onChangeText={setSport} placeholder="Football, rugby, netball" />
+          <Field label="Advert title" value={title} onChangeText={setTitle} placeholder="e.g. Striker wanted for local Saturday comp" />
+          <Field label="Sport" value={sport} onChangeText={setSport} placeholder="Soccer, AFL, cricket, netball" />
           <Field label="Location" value={location} onChangeText={setLocation} placeholder="Town or area" />
           <Field label="Level" value={level} onChangeText={setLevel} placeholder="Beginner, amateur, semi-pro" />
           <Field label="Availability" value={availability} onChangeText={setAvailability} placeholder="Training and match availability" />

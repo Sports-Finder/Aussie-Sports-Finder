@@ -16,8 +16,8 @@
     "ios": {
       "supportsTablet": false,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Sports Connect uses your location to alert you when nearby clubs or players post adverts.",
-        "NSPhotoLibraryUsageDescription": "Sports Connect lets you submit profile images for admin moderation."
+        "NSLocationWhenInUseUsageDescription": "Aussie Sports Club Finder uses your location to alert you when nearby Australian clubs or players post adverts.",
+        "NSPhotoLibraryUsageDescription": "Aussie Sports Club Finder lets you submit profile images for admin moderation."
       }
     },
     "android": {

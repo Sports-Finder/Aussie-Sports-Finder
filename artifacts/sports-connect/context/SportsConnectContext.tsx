@@ -96,7 +96,7 @@ type SportsConnectState = {
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
 };
 
-const storageKey = "sports-connect-state-v1";
+const storageKey = "sports-connect-state-v2-australia";
 
 const now = () => new Date().toISOString();
 const makeId = () => Date.now().toString() + Math.random().toString(36).slice(2, 9);
@@ -105,28 +105,28 @@ const seedAdverts: Advert[] = [
   {
     id: "ad-1",
     type: "players-wanted",
-    title: "Saturday league club needs a box-to-box midfielder",
-    sport: "Football",
-    location: "Bristol",
+    title: "Melbourne footy club needs a box-to-box midfielder",
+    sport: "Soccer",
+    location: "Melbourne VIC",
     distanceKm: 4,
-    postedBy: "Easton Athletic FC",
+    postedBy: "Yarra United SC",
     postedByType: "club",
-    level: "Competitive amateur",
-    availability: "Training Wednesday, matches Saturday",
+    level: "State league reserves",
+    availability: "Training Tuesday and Thursday, matches Saturday",
     needs: "Central midfielder, age 18+, reliable weekly availability",
-    description: "A community club pushing for promotion needs a committed midfielder who enjoys high-tempo football and positive dressing rooms.",
+    description: "A community club in Melbourne's inner north is looking for a committed midfielder who enjoys high-tempo football and a positive team culture.",
     createdAt: now(),
   },
   {
     id: "ad-2",
     type: "player-looking",
-    title: "Goalkeeper relocating and looking for a new club",
-    sport: "Football",
-    location: "Bath",
+    title: "Goalkeeper moving to Brisbane and looking for a club",
+    sport: "Soccer",
+    location: "Brisbane QLD",
     distanceKm: 18,
     postedBy: "Jordan Miles",
     postedByType: "player",
-    level: "County league",
+    level: "NPL youth / metro senior",
     availability: "Evenings and weekends",
     needs: "Senior team with regular training and match minutes",
     description: "Experienced goalkeeper, vocal organiser, strong distribution, available immediately after moving for work.",
@@ -137,9 +137,9 @@ const seedAdverts: Advert[] = [
     type: "players-wanted",
     title: "Netball squad trialling new defenders",
     sport: "Netball",
-    location: "Cardiff",
+    location: "Sydney NSW",
     distanceKm: 31,
-    postedBy: "Harbour Netball Club",
+    postedBy: "Bondi Harbour Netball Club",
     postedByType: "club",
     level: "Intermediate",
     availability: "Monday training, Sunday fixtures",
@@ -150,16 +150,16 @@ const seedAdverts: Advert[] = [
   {
     id: "ad-4",
     type: "player-looking",
-    title: "Fast winger seeking rugby union club",
-    sport: "Rugby",
-    location: "Gloucester",
+    title: "Fast outside back seeking rugby league club",
+    sport: "Rugby League",
+    location: "Gold Coast QLD",
     distanceKm: 27,
     postedBy: "Ava Roberts",
     postedByType: "player",
-    level: "University first team",
+    level: "A-grade local competition",
     availability: "Weeknight training and weekend fixtures",
     needs: "Women’s club with performance pathway",
-    description: "Wing/full-back with pace and kicking range, looking for coaching, structure and a welcoming team culture.",
+    description: "Wing/full-back with pace and kicking range, looking for coaching, structure and a welcoming Australian club culture.",
     createdAt: now(),
   },
 ];
@@ -167,12 +167,12 @@ const seedAdverts: Advert[] = [
 const seedConversation: Conversation = {
   id: "conv-1",
   advertId: "ad-1",
-  clubName: "Easton Athletic FC",
+  clubName: "Yarra United SC",
   playerName: "You",
   status: "connected",
   messages: [
-    { id: "m1", sender: "them", body: "Thanks for connecting. Are you free to come down to training this Wednesday?", createdAt: now() },
-    { id: "m2", sender: "me", body: "Yes, I can make Wednesday. Please send the arrival time and kit colour.", createdAt: now() },
+    { id: "m1", sender: "them", body: "Thanks for connecting. Are you free to come down to training this Thursday?", createdAt: now() },
+    { id: "m2", sender: "me", body: "Yes, I can make Thursday. Please send the arrival time and kit colour.", createdAt: now() },
   ],
 };
 
@@ -181,21 +181,21 @@ const defaultState = {
   conversations: [seedConversation],
   profileImages: [] as ProfileImage[],
   clubProfile: {
-    name: "Easton Athletic FC",
-    sport: "Football",
-    location: "Bristol",
-    bio: "A community club with senior, academy and development teams. We recruit players who are reliable, coachable and good teammates.",
+    name: "Yarra United SC",
+    sport: "Soccer",
+    location: "Melbourne VIC",
+    bio: "A community club with senior, academy and development teams. We recruit players who are reliable, coachable and good teammates across Melbourne.",
   },
   playerProfile: {
     name: "You",
-    sports: "Football, Futsal",
-    location: "Bristol",
-    bio: "Midfielder available for competitive amateur football. Strong fitness, positive attitude and regular availability.",
+    sports: "Soccer, Futsal",
+    location: "Melbourne VIC",
+    bio: "Midfielder available for competitive local soccer. Strong fitness, positive attitude and regular availability.",
   },
   notificationSettings: {
     enabled: false,
     radiusKm: 25,
-    locationLabel: "Bristol area",
+    locationLabel: "Melbourne area",
   },
   activeProfile: "player" as ProfileType,
 };
