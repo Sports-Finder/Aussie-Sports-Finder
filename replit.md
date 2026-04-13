@@ -4,7 +4,7 @@
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
-Aussie Sports Club Finder is an Australian-focused Expo mobile app artifact for players and sports clubs to post adverts, connect, message privately, manage profiles, submit profile images for admin moderation, and enable nearby advert alerts. The first build stores marketplace data locally with AsyncStorage.
+Aussie Sports Club Finder is an Australian-focused Expo mobile app artifact for players and sports clubs to post adverts, connect, message privately, manage profiles, submit profile images for admin moderation, enable nearby advert alerts, and open club locations in Apple Maps or Google Maps. The first build stores marketplace data locally with AsyncStorage.
 
 ## Stack
 

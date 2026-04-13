@@ -17,7 +17,10 @@
       "supportsTablet": false,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Aussie Sports Club Finder uses your location to alert you when nearby Australian clubs or players post adverts.",
-        "NSPhotoLibraryUsageDescription": "Aussie Sports Club Finder lets you submit profile images for admin moderation."
+        "NSPhotoLibraryUsageDescription": "Aussie Sports Club Finder lets you submit profile images for admin moderation.",
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps"
+        ]
       }
     },
     "android": {

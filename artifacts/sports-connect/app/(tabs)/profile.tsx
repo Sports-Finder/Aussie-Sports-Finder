@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Field, Pill, PrimaryButton, ProfileAvatar, ScreenShell, SectionTitle } from "@/components/SportsUI";
 import { useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
+import { openMapApp } from "@/utils/mapLinks";
 
 const fallbackImage = require("@/assets/images/player-placeholder.png");
 
@@ -18,6 +19,7 @@ export default function ProfileScreen() {
   const pendingImages = profileImages.filter((image) => image.status === "pending");
   const playerImage = getImageUri(playerProfile.imageId, true);
   const clubImage = getImageUri(clubProfile.imageId, true);
+  const clubMapQuery = `${club.name} ${club.mapAddress || club.location}`;
 
   const save = () => {
     updatePlayerProfile(player);
@@ -63,8 +65,19 @@ export default function ProfileScreen() {
           </View>
           <Field label="Club name" value={club.name} onChangeText={(name) => setClub((current) => ({ ...current, name }))} />
           <Field label="Sport" value={club.sport} onChangeText={(sport) => setClub((current) => ({ ...current, sport }))} />
-          <Field label="Location" value={club.location} onChangeText={(location) => setClub((current) => ({ ...current, location }))} />
+          <Field label="Suburb, city and state" value={club.location} onChangeText={(location) => setClub((current) => ({ ...current, location }))} />
+          <Field label="Club ground or street address" value={club.mapAddress ?? ""} onChangeText={(mapAddress) => setClub((current) => ({ ...current, mapAddress }))} placeholder="e.g. Princes Park, Carlton North VIC" />
           <Field label="Club bio" value={club.bio} onChangeText={(bio) => setClub((current) => ({ ...current, bio }))} multiline />
+          <View style={styles.mapButtons}>
+            <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapButton, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
+              <Feather name="map" color="#FFFFFF" size={17} />
+              <Text style={styles.mapButtonText}>Apple Maps</Text>
+            </Pressable>
+            <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapButton, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
+              <Feather name="navigation" color="#FFFFFF" size={17} />
+              <Text style={styles.mapButtonText}>Google Maps</Text>
+            </Pressable>
+          </View>
           <PrimaryButton label="Submit club image" icon="shield" onPress={() => pickProfileImage("club")} />
         </View>
 
@@ -114,6 +127,9 @@ const styles = StyleSheet.create({
   profileCopy: { flex: 1 },
   cardTitle: { fontWeight: "700", fontSize: 19 },
   cardText: { fontWeight: "500", fontSize: 14, lineHeight: 20, marginTop: 3 },
+  mapButtons: { flexDirection: "row", gap: 10, marginBottom: 12 },
+  mapButton: { flex: 1, minHeight: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
+  mapButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
   adminCard: { borderWidth: 1, borderRadius: 28, padding: 18, gap: 14 },
   adminHeader: { flexDirection: "row", gap: 12, alignItems: "center" },
   adminIcon: { width: 42, height: 42, borderRadius: 15, alignItems: "center", justifyContent: "center" },

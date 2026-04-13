@@ -53,6 +53,7 @@ type ClubProfile = {
   name: string;
   sport: string;
   location: string;
+  mapAddress?: string;
   bio: string;
   imageId?: string;
 };
@@ -96,7 +97,7 @@ type SportsConnectState = {
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
 };
 
-const storageKey = "sports-connect-state-v2-australia";
+const storageKey = "sports-connect-state-v3-club-maps";
 
 const now = () => new Date().toISOString();
 const makeId = () => Date.now().toString() + Math.random().toString(36).slice(2, 9);
@@ -184,6 +185,7 @@ const defaultState = {
     name: "Yarra United SC",
     sport: "Soccer",
     location: "Melbourne VIC",
+    mapAddress: "Princes Park, Carlton North VIC",
     bio: "A community club with senior, academy and development teams. We recruit players who are reliable, coachable and good teammates across Melbourne.",
   },
   playerProfile: {

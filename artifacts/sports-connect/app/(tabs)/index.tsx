@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Advert, useSportsConnect } from "@/context/SportsConnectContext";
 import { IconButton, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
 import { useColors } from "@/hooks/useColors";
+import { openMapApp } from "@/utils/mapLinks";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
@@ -38,6 +39,7 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
 function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void }) {
   const colors = useColors();
   const { connectOnAdvert } = useSportsConnect();
+  const mapQuery = `${advert.postedBy} ${advert.location} Australia`;
   const connect = () => {
     const conversationId = connectOnAdvert(advert);
     onClose();
@@ -68,6 +70,18 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
           <Text style={[styles.detailCopy, { color: colors.foreground }]}>{advert.needs}</Text>
           <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>About</Text>
           <Text style={[styles.detailParagraph, { color: colors.foreground }]}>{advert.description}</Text>
+          {advert.postedByType === "club" ? (
+            <View style={styles.mapActions}>
+              <Pressable onPress={() => openMapApp("apple", mapQuery)} style={({ pressed }) => [styles.mapAction, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
+                <Feather name="map" color="#FFFFFF" size={17} />
+                <Text style={styles.mapActionText}>Apple Maps</Text>
+              </Pressable>
+              <Pressable onPress={() => openMapApp("google", mapQuery)} style={({ pressed }) => [styles.mapAction, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
+                <Feather name="navigation" color="#FFFFFF" size={17} />
+                <Text style={styles.mapActionText}>Google Maps</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <PrimaryButton label="Agree to connect privately" icon="message-circle" onPress={connect} />
         </View>
       </View>
@@ -188,4 +202,7 @@ const styles = StyleSheet.create({
   detailLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7, marginTop: 4 },
   detailCopy: { fontWeight: "600", fontSize: 15, lineHeight: 21 },
   detailParagraph: { fontWeight: "500", fontSize: 15, lineHeight: 22, marginBottom: 8 },
+  mapActions: { flexDirection: "row", gap: 10, marginBottom: 4 },
+  mapAction: { flex: 1, minHeight: 46, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
+  mapActionText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
 });
