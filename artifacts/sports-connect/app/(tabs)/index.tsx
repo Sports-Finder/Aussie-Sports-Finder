@@ -12,6 +12,9 @@ const heroImage = require("@/assets/images/training-hero.png");
 
 type Filter = "all" | "players-wanted" | "player-looking" | "near";
 
+const australianStates = ["All", "NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"] as const;
+type AustralianStateFilter = (typeof australianStates)[number];
+
 function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }) {
   const colors = useColors();
   const icon = advert.type === "players-wanted" ? "shield" : "user";
@@ -77,13 +80,16 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const { adverts, notificationSettings, toggleNotifications, setNotificationRadius } = useSportsConnect();
   const [filter, setFilter] = useState<Filter>("all");
+  const [stateFilter, setStateFilter] = useState<AustralianStateFilter>("All");
   const [selected, setSelected] = useState<Advert | null>(null);
 
   const filtered = useMemo(() => adverts.filter((advert) => {
+    const matchesState = stateFilter === "All" || advert.location.includes(stateFilter);
+    if (!matchesState) return false;
     if (filter === "all") return true;
     if (filter === "near") return advert.distanceKm <= notificationSettings.radiusKm;
     return advert.type === filter;
-  }), [adverts, filter, notificationSettings.radiusKm]);
+  }), [adverts, filter, notificationSettings.radiusKm, stateFilter]);
 
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
 
@@ -126,6 +132,15 @@ export default function DiscoverScreen() {
           <Pill label="Near me" active={filter === "near"} onPress={() => setFilter("near")} />
         </View>
 
+        <View style={styles.stateBlock}>
+          <Text style={[styles.stateLabel, { color: colors.mutedForeground }]}>Australian state</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stateScroll}>
+            {australianStates.map((state) => (
+              <Pill key={state} label={state} active={stateFilter === state} onPress={() => setStateFilter(state)} />
+            ))}
+          </ScrollView>
+        </View>
+
         <FlatList data={filtered} scrollEnabled={false} keyExtractor={(item) => item.id} renderItem={({ item }) => <AdvertCard advert={item} onPress={() => setSelected(item)} />} />
       </ScrollView>
       {selected ? <AdvertDetail advert={selected} onClose={() => setSelected(null)} /> : null}
@@ -150,6 +165,9 @@ const styles = StyleSheet.create({
   alertText: { color: "#BFD4CD", fontWeight: "500", fontSize: 13, lineHeight: 19, marginTop: 4 },
   radiusRow: { flexDirection: "row" },
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  stateBlock: { gap: 8 },
+  stateLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7 },
+  stateScroll: { paddingRight: 20 },
   adCard: { borderWidth: 1, borderRadius: 26, padding: 14, marginBottom: 12, flexDirection: "row", gap: 13 },
   adIcon: { width: 48, height: 48, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   adBody: { flex: 1 },
