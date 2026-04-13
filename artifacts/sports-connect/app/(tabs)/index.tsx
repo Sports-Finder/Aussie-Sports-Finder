@@ -1,0 +1,173 @@
+import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useMemo, useState } from "react";
+import { FlatList, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { Advert, useSportsConnect } from "@/context/SportsConnectContext";
+import { IconButton, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
+import { useColors } from "@/hooks/useColors";
+
+const heroImage = require("@/assets/images/training-hero.png");
+
+type Filter = "all" | "players-wanted" | "player-looking" | "near";
+
+function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }) {
+  const colors = useColors();
+  const icon = advert.type === "players-wanted" ? "shield" : "user";
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.adCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
+      <View style={[styles.adIcon, { backgroundColor: colors.pitchSoft }]}>
+        <Feather name={icon} color={colors.primary} size={20} />
+      </View>
+      <View style={styles.adBody}>
+        <View style={styles.adMetaRow}>
+          <Text style={[styles.adMeta, { color: colors.primary }]}>{advert.sport}</Text>
+          <Text style={[styles.adDistance, { color: colors.mutedForeground }]}>{advert.distanceKm} km</Text>
+        </View>
+        <Text style={[styles.adTitle, { color: colors.foreground }]}>{advert.title}</Text>
+        <Text style={[styles.adText, { color: colors.mutedForeground }]}>{advert.postedBy} · {advert.location}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void }) {
+  const colors = useColors();
+  const { connectOnAdvert } = useSportsConnect();
+  const connect = () => {
+    const conversationId = connectOnAdvert(advert);
+    onClose();
+    router.push("/messages");
+  };
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalScrim}>
+        <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
+          <View style={styles.modalTop}>
+            <View style={[styles.modalIcon, { backgroundColor: colors.pitchSoft }]}>
+              <Feather name={advert.postedByType === "club" ? "shield" : "user"} color={colors.primary} size={24} />
+            </View>
+            <IconButton icon="x" label="Close" onPress={onClose} />
+          </View>
+          <Text style={[styles.detailType, { color: colors.primary }]}>{advert.type === "players-wanted" ? "Players wanted" : "Player looking for club"}</Text>
+          <Text style={[styles.detailTitle, { color: colors.foreground }]}>{advert.title}</Text>
+          <View style={styles.detailGrid}>
+            <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.sport}</Text></View>
+            <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View>
+            <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}><Text style={[styles.detailChipText, { color: colors.accentForeground }]}>{advert.distanceKm} km away</Text></View>
+          </View>
+          <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Posted by</Text>
+          <Text style={[styles.detailCopy, { color: colors.foreground }]}>{advert.postedBy} in {advert.location}</Text>
+          <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Availability</Text>
+          <Text style={[styles.detailCopy, { color: colors.foreground }]}>{advert.availability}</Text>
+          <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Needs</Text>
+          <Text style={[styles.detailCopy, { color: colors.foreground }]}>{advert.needs}</Text>
+          <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>About</Text>
+          <Text style={[styles.detailParagraph, { color: colors.foreground }]}>{advert.description}</Text>
+          <PrimaryButton label="Agree to connect privately" icon="message-circle" onPress={connect} />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+export default function DiscoverScreen() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { adverts, notificationSettings, toggleNotifications, setNotificationRadius } = useSportsConnect();
+  const [filter, setFilter] = useState<Filter>("all");
+  const [selected, setSelected] = useState<Advert | null>(null);
+
+  const filtered = useMemo(() => adverts.filter((advert) => {
+    if (filter === "all") return true;
+    if (filter === "near") return advert.distanceKm <= notificationSettings.radiusKm;
+    return advert.type === filter;
+  }), [adverts, filter, notificationSettings.radiusKm]);
+
+  const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
+
+  return (
+    <ScreenShell>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 116 }]}>
+        <View style={styles.topRow}>
+          <View>
+            <Text style={[styles.kicker, { color: colors.primary }]}>Sports Connect</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>Find your next club or player</Text>
+          </View>
+          <IconButton icon="bell" label="Notifications" onPress={toggleNotifications} />
+        </View>
+
+        <ImageBackground source={heroImage} imageStyle={styles.heroImage} style={styles.hero} resizeMode="cover">
+          <View style={styles.heroOverlay} />
+          <View style={styles.heroContent}>
+            <Text style={styles.heroTitle}>Local sport moves fast</Text>
+            <Text style={styles.heroText}>Connect with clubs and players nearby, then keep the conversation private once both sides agree.</Text>
+          </View>
+        </ImageBackground>
+
+        <View style={[styles.alertCard, { backgroundColor: colors.navy }]}>
+          <View style={styles.alertTextWrap}>
+            <Text style={styles.alertTitle}>{notificationSettings.enabled ? "Nearby advert alerts are on" : "Turn on nearby advert alerts"}</Text>
+            <Text style={styles.alertText}>{nearCount} adverts are within {notificationSettings.radiusKm} km of {notificationSettings.locationLabel}.</Text>
+          </View>
+          <Switch value={notificationSettings.enabled} onValueChange={toggleNotifications} trackColor={{ false: "#3E554E", true: colors.primary }} thumbColor={notificationSettings.enabled ? colors.accent : "#FFFFFF"} />
+        </View>
+
+        <View style={styles.radiusRow}>
+          {[10, 25, 50].map((radius) => <Pill key={radius} label={`${radius} km`} active={notificationSettings.radiusKm === radius} onPress={() => setNotificationRadius(radius)} />)}
+        </View>
+
+        <SectionTitle title="Advert marketplace" action={`${filtered.length} live`} />
+        <View style={styles.filterRow}>
+          <Pill label="All" active={filter === "all"} onPress={() => setFilter("all")} />
+          <Pill label="Players wanted" active={filter === "players-wanted"} onPress={() => setFilter("players-wanted")} />
+          <Pill label="Players looking" active={filter === "player-looking"} onPress={() => setFilter("player-looking")} />
+          <Pill label="Near me" active={filter === "near"} onPress={() => setFilter("near")} />
+        </View>
+
+        <FlatList data={filtered} scrollEnabled={false} keyExtractor={(item) => item.id} renderItem={({ item }) => <AdvertCard advert={item} onPress={() => setSelected(item)} />} />
+      </ScrollView>
+      {selected ? <AdvertDetail advert={selected} onClose={() => setSelected(null)} /> : null}
+    </ScreenShell>
+  );
+}
+
+const styles = StyleSheet.create({
+  content: { paddingHorizontal: 20, gap: 18 },
+  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 14 },
+  kicker: { fontWeight: "700", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 },
+  title: { fontWeight: "700", fontSize: 34, lineHeight: 38, letterSpacing: -1, maxWidth: 290, marginTop: 4 },
+  hero: { height: 178, borderRadius: 30, overflow: "hidden", justifyContent: "flex-end" },
+  heroImage: { borderRadius: 30 },
+  heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(5,24,22,0.45)" },
+  heroContent: { padding: 20 },
+  heroTitle: { color: "#FFFFFF", fontWeight: "700", fontSize: 24, letterSpacing: -0.3 },
+  heroText: { color: "#E7F4EF", fontWeight: "500", fontSize: 14, lineHeight: 20, marginTop: 6, maxWidth: 300 },
+  alertCard: { borderRadius: 26, padding: 18, flexDirection: "row", alignItems: "center", gap: 14 },
+  alertTextWrap: { flex: 1 },
+  alertTitle: { color: "#FFFFFF", fontWeight: "700", fontSize: 17 },
+  alertText: { color: "#BFD4CD", fontWeight: "500", fontSize: 13, lineHeight: 19, marginTop: 4 },
+  radiusRow: { flexDirection: "row" },
+  filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  adCard: { borderWidth: 1, borderRadius: 26, padding: 14, marginBottom: 12, flexDirection: "row", gap: 13 },
+  adIcon: { width: 48, height: 48, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  adBody: { flex: 1 },
+  adMetaRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
+  adMeta: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.6 },
+  adDistance: { fontWeight: "700", fontSize: 12 },
+  adTitle: { fontWeight: "700", fontSize: 17, lineHeight: 22 },
+  adText: { fontWeight: "500", fontSize: 14, marginTop: 6 },
+  modalScrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  modalCard: { borderTopLeftRadius: 34, borderTopRightRadius: 34, padding: 22, gap: 10, maxHeight: "88%" },
+  modalTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  modalIcon: { width: 54, height: 54, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  detailType: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 8 },
+  detailTitle: { fontWeight: "700", fontSize: 27, lineHeight: 32, letterSpacing: -0.6 },
+  detailGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 6 },
+  detailChip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  detailChipText: { fontWeight: "700", fontSize: 12 },
+  detailLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7, marginTop: 4 },
+  detailCopy: { fontWeight: "600", fontSize: 15, lineHeight: 21 },
+  detailParagraph: { fontWeight: "500", fontSize: 15, lineHeight: 22, marginBottom: 8 },
+});

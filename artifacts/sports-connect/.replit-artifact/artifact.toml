@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/sports-connect/"
+title = "Sports Connect"
+version = "1.0.0"
+id = "artifacts/sports-connect"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/sports-connect/" ]
+localPort = 24576
+
+[services.development]
+run = "pnpm --filter @workspace/sports-connect run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sports-connect", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/sports-connect", "run", "serve" ]
+
+[services.env]
+PORT = "24576"
+BASE_PATH = "/sports-connect/"

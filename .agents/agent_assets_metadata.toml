@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "oFRs1UJShLJk3nUBDjB_j"
+uri = "file://artifacts/sports-connect/assets/images/icon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ENl-HXn6B8Alw3yTcdezf"
+uri = "file://artifacts/sports-connect/assets/images/training-hero.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "i6CVoOk66YsxK1rcVE5qq"
+uri = "file://artifacts/sports-connect/assets/images/player-placeholder.png"
+type = "image"
+title = "generated_image"
