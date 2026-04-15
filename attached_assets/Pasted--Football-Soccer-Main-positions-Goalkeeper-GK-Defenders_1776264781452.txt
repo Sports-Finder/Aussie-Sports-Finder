@@ -1,0 +1,143 @@
+⚽ Football (Soccer)
+
+Main positions:
+
+Goalkeeper (GK)
+
+Defenders:
+
+Centre Back (CB)
+Full Back (Left Back / Right Back – LB/RB)
+Wing Back (LWB/RWB)
+Sweeper (rare/old role)
+
+Midfielders:
+
+Defensive Midfielder (CDM)
+Central Midfielder (CM)
+Attacking Midfielder (CAM)
+Wide Midfielder (LM/RM)
+Winger (LW/RW)
+Box-to-Box Midfielder
+
+Forwards:
+
+Striker (ST)
+Centre Forward (CF)
+Second Striker (SS)
+False 9
+⚽ Futsal (Indoor Soccer)
+Goalkeeper
+Defender (Fixo)
+Winger (Ala – left/right)
+Pivot (attacker/target player)
+🏉 Aussie Rules Football
+Full Forward
+Forward Pocket
+Centre Half Forward
+Half Forward Flank
+Wing (Left/Right)
+Centre
+Half Back Flank
+Centre Half Back
+Full Back
+Back Pocket
+Ruck
+Ruck Rover
+Rover
+
+(Also: Interchange / Bench)
+
+🏉 Rugby League
+Fullback
+Wingers (Left/Right)
+Centres (Left/Right)
+Five-Eighth (Stand-off)
+Halfback
+
+Forwards:
+
+Props (Front Row)
+Hooker
+Second Rowers
+Lock Forward
+🏉 Rugby Union
+Fullback
+Wings
+Centres (Inside & Outside)
+Fly-half
+Scrum-half
+
+Forwards:
+
+Props (Loosehead & Tighthead)
+Hooker
+Locks (Second Row)
+Flankers (Blindside & Openside)
+Number 8
+🏉 Touch Rugby (Touch Football)
+Middle (or Link/Middle)
+Link (Left/Right)
+Wing (Left/Right)
+
+(Simple structure; players rotate roles frequently)
+
+🏏 Cricket
+
+Batting roles:
+
+Opening Batter
+Top Order Batter
+Middle Order Batter
+Lower Order / Tailender
+
+Specialists:
+
+Wicketkeeper
+All-rounder
+Bowler:
+Fast Bowler
+Medium Bowler
+Spin Bowler (Off-spin / Leg-spin)
+
+Fielding positions:
+
+Slip, Gully, Point, Cover, Mid-off, Mid-on, Square Leg, Fine Leg, etc.
+🏏 Indoor Cricket
+
+(Similar but structured zones)
+
+Wicketkeeper
+Bowler
+Batters (2 at a time)
+
+Fielding zones:
+
+Zone A (front court)
+Zone B
+Zone C
+Zone D (back court)
+
+(Players rotate through zones)
+
+🏀 Basketball
+Point Guard (PG)
+Shooting Guard (SG)
+Small Forward (SF)
+Power Forward (PF)
+Centre (C)
+🏐 Netball
+Goal Shooter (GS)
+Goal Attack (GA)
+Wing Attack (WA)
+Centre (C)
+Wing Defence (WD)
+Goal Defence (GD)
+Goal Keeper (GK)
+🏐 Volleyball
+Setter
+Outside Hitter (Left-side)
+Opposite Hitter (Right-side)
+Middle Blocker
+Libero
+Defensive Specialist (sometimes separate from libero)
