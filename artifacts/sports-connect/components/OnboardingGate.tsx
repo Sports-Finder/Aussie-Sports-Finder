@@ -289,6 +289,10 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
         {step === "type" ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Create an account</Text>
+            <Pressable onPress={() => { setStep("auth"); setRole("player"); }} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.75 : 1 }]}>
+              <Feather name="arrow-left" size={16} color={colors.primary} />
+              <Text style={[styles.backBtnText, { color: colors.primary }]}>Back to create an account</Text>
+            </Pressable>
             {(Object.keys(roleCopy) as AccountRole[]).map((item) => (
               <Pressable key={item} onPress={() => { setRole(item); setStep("details"); }} style={({ pressed }) => [styles.roleCard, { backgroundColor: colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
                 <Text style={[styles.roleTitle, { color: colors.secondaryForeground }]}>{roleCopy[item].title}</Text>
