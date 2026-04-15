@@ -18,7 +18,7 @@ const roleCopy: Record<AccountRole, { title: string; subtitle: string }> = {
   player: { title: "I am a Player (18+ only) looking for a Club.", subtitle: "Create a player profile for clubs to review after connection." },
   guardian: { title: "I am a Parent/Guardian of an underage Player (17 years and under) looking for a Club.", subtitle: "Create a player profile managed on behalf of a parent or guardian." },
   coach: { title: "I am a Coach looking for a Club.", subtitle: "Create a coach profile for clubs to review after connection." },
-  club: { title: "I am a Club looking for Players.", subtitle: "Create a club profile, address and contact details." },
+  club: { title: "I am a Club looking for Players or Coaches.", subtitle: "Create a club profile, address and contact details." },
 };
 
 function calculateAge(dateOfBirth: string) {
