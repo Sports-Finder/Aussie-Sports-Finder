@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
-import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
@@ -240,17 +240,16 @@ function MyAdvertDetail({
   advert,
   onClose,
   onEdit,
-  onDelete,
 }: {
   advert: Advert;
   onClose: () => void;
   onEdit: () => void;
-  onDelete: () => void;
 }) {
   const colors = useColors();
-  const { approvedSports } = useSportsConnect();
+  const { approvedSports, deleteAdvert } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert.createdAt);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const trainingSchedule = (() => {
     if (!advert.trainingDays?.length && !advert.trainingTbd) return null;
@@ -275,15 +274,10 @@ function MyAdvertDetail({
     return advert.feesNegotiable ? `${base} (or near offer)` : base;
   })();
 
-  const handleDelete = () => {
-    Alert.alert(
-      "Delete advert",
-      "Are you sure you want to delete this advert? This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => { onClose(); onDelete(); } },
-      ]
-    );
+  const confirmDelete = () => {
+    const id = advert.id;
+    deleteAdvert(id);
+    onClose();
   };
 
   return (
@@ -368,10 +362,25 @@ function MyAdvertDetail({
               <Text style={localStyles.editButtonText}>Edit Advert</Text>
             </Pressable>
 
-            <Pressable onPress={handleDelete} style={({ pressed }) => [localStyles.deleteButton, { borderColor: "#D9534F", opacity: pressed ? 0.8 : 1 }]}>
-              <Feather name="trash-2" color="#D9534F" size={16} />
-              <Text style={[localStyles.deleteButtonText, { color: "#D9534F" }]}>Delete Advert</Text>
-            </Pressable>
+            {confirmingDelete ? (
+              <View style={[localStyles.deleteConfirmBox, { backgroundColor: "#FEF2F2", borderColor: "#D9534F" }]}>
+                <Text style={localStyles.deleteConfirmText}>This cannot be undone. Permanently delete this advert?</Text>
+                <View style={localStyles.deleteConfirmRow}>
+                  <Pressable onPress={() => setConfirmingDelete(false)} style={({ pressed }) => [localStyles.deleteConfirmCancel, { backgroundColor: colors.secondary, opacity: pressed ? 0.7 : 1 }]}>
+                    <Text style={[localStyles.deleteConfirmCancelText, { color: colors.secondaryForeground }]}>Cancel</Text>
+                  </Pressable>
+                  <Pressable onPress={confirmDelete} style={({ pressed }) => [localStyles.deleteConfirmYes, { opacity: pressed ? 0.8 : 1 }]}>
+                    <Feather name="trash-2" color="#FFFFFF" size={15} />
+                    <Text style={localStyles.deleteConfirmYesText}>Yes, Delete</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable onPress={() => setConfirmingDelete(true)} style={({ pressed }) => [localStyles.deleteButton, { borderColor: "#D9534F", opacity: pressed ? 0.8 : 1 }]}>
+                <Feather name="trash-2" color="#D9534F" size={16} />
+                <Text style={[localStyles.deleteButtonText, { color: "#D9534F" }]}>Delete Advert</Text>
+              </Pressable>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -383,7 +392,7 @@ export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const { createAdvert, updateAdvert, deleteAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
+  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
 
   const allowedSports = activeProfile === "club"
     ? [currentAccount?.defaultSport || clubProfile.sport].filter(Boolean)
@@ -764,7 +773,6 @@ export default function PostScreen() {
           advert={selectedMyAdvert}
           onClose={() => setSelectedMyAdvert(null)}
           onEdit={() => loadAdvertForEdit(selectedMyAdvert)}
-          onDelete={() => deleteAdvert(selectedMyAdvert.id)}
         />
       ) : null}
     </ScreenShell>
@@ -845,6 +853,13 @@ const localStyles = StyleSheet.create({
   editButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
   deleteButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 18, borderWidth: 1.5, marginTop: 10 },
   deleteButtonText: { fontWeight: "700", fontSize: 16 },
+  deleteConfirmBox: { borderWidth: 1.5, borderRadius: 18, padding: 16, marginTop: 10, gap: 12 },
+  deleteConfirmText: { fontWeight: "600", fontSize: 14, color: "#7F1D1D", lineHeight: 20 },
+  deleteConfirmRow: { flexDirection: "row", gap: 10 },
+  deleteConfirmCancel: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 46, borderRadius: 14 },
+  deleteConfirmCancelText: { fontWeight: "700", fontSize: 14 },
+  deleteConfirmYes: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 46, borderRadius: 14, backgroundColor: "#D9534F" },
+  deleteConfirmYesText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },
   emptyMini: { borderRadius: 20, padding: 18 },
   emptyMiniText: { fontWeight: "600", textAlign: "center" },
 });
