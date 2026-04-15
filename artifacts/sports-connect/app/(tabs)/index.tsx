@@ -98,6 +98,7 @@ export default function DiscoverScreen() {
   const [stateFilter, setStateFilter] = useState<AustralianStateFilter>("All");
   const [selected, setSelected] = useState<Advert | null>(null);
   const [sportRequest, setSportRequest] = useState("");
+  const [page, setPage] = useState(1);
   const activeTheme = selectedSport === allSportsFilterName ? null : getSportTheme(selectedSport, approvedSports);
 
   const filtered = useMemo(() => adverts.filter((advert) => {
@@ -111,10 +112,15 @@ export default function DiscoverScreen() {
   }), [adverts, filter, notificationSettings.radiusKm, selectedSport, stateFilter]);
 
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const submitSportRequest = () => {
     requestSport(sportRequest);
     setSportRequest("");
   };
+
+  if (page > totalPages) setPage(totalPages);
 
   return (
     <ScreenShell>
@@ -176,6 +182,13 @@ export default function DiscoverScreen() {
         </View>
 
         <SectionTitle title={`${selectedSport === allSportsFilterName ? "All sports" : selectedSport} adverts`} action={`${filtered.length} live`} />
+        <View style={styles.pageRow}>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map((item) => (
+            <Pressable key={item} onPress={() => setPage(item)} style={({ pressed }) => [styles.pageChip, { backgroundColor: page === item ? colors.primary : colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
+              <Text style={[styles.pageChipText, { color: page === item ? colors.primaryForeground : colors.secondaryForeground }]}>{item}</Text>
+            </Pressable>
+          ))}
+        </View>
         <View style={styles.filterRow}>
           <Pill label="All" active={filter === "all"} onPress={() => setFilter("all")} />
           <Pill label="Players wanted" active={filter === "players-wanted"} onPress={() => setFilter("players-wanted")} />
@@ -192,8 +205,15 @@ export default function DiscoverScreen() {
           </ScrollView>
         </View>
 
-        <FlatList data={filtered} scrollEnabled={false} keyExtractor={(item) => item.id} renderItem={({ item }) => <AdvertCard advert={item} onPress={() => setSelected(item)} />} />
-        {filtered.length === 0 ? (
+        <FlatList data={paged} scrollEnabled={false} keyExtractor={(item) => item.id} renderItem={({ item }) => <AdvertCard advert={item} onPress={() => setSelected(item)} />} />
+        <View style={styles.pageRow}>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map((item) => (
+            <Pressable key={item} onPress={() => setPage(item)} style={({ pressed }) => [styles.pageChip, { backgroundColor: page === item ? colors.primary : colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
+              <Text style={[styles.pageChipText, { color: page === item ? colors.primaryForeground : colors.secondaryForeground }]}>{item}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {paged.length === 0 ? (
           <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Feather name="search" color={activeTheme?.primary ?? colors.primary} size={24} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No adverts in this sport yet</Text>
@@ -235,6 +255,9 @@ const styles = StyleSheet.create({
   alertText: { color: "#BFD4CD", fontWeight: "500", fontSize: 13, lineHeight: 19, marginTop: 4 },
   radiusRow: { flexDirection: "row" },
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  pageRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4, marginBottom: 2 },
+  pageChip: { minWidth: 40, alignItems: "center", justifyContent: "center", paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999 },
+  pageChipText: { fontWeight: "800", fontSize: 13 },
   stateBlock: { gap: 8 },
   stateLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7 },
   stateScroll: { paddingRight: 20 },
