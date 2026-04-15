@@ -7,7 +7,7 @@ import { Alert, Platform } from "react-native";
 
 import { SportTheme, createCustomSportTheme, defaultSportThemes } from "@/constants/sports";
 
-type AdvertType = "player-looking" | "players-wanted";
+type AdvertType = "player-looking" | "coach-looking" | "players-wanted" | "club-trials" | "coach-wanted";
 type ProfileType = "player" | "club";
 type ImageStatus = "pending" | "approved" | "rejected";
 export type AccountRole = "player" | "guardian" | "coach" | "club";
