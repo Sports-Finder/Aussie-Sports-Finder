@@ -33,6 +33,15 @@ function formatDate(date: Date) {
   return `${day}-${month}-${date.getFullYear()}`;
 }
 
+function formatDobInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  const parts = [];
+  if (digits.length > 0) parts.push(digits.slice(0, 2));
+  if (digits.length > 2) parts.push(digits.slice(2, 4));
+  if (digits.length > 4) parts.push(digits.slice(4, 8));
+  return parts.join("-");
+}
+
 const SOCIAL_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Instagram: "instagram",
   Facebook: "facebook",
@@ -412,9 +421,10 @@ export default function ProfileScreen() {
                   <Text style={[styles.cardTitle, { color: colors.foreground }]}>Choose date of birth</Text>
                   <TextInput
                     value={draftDob}
-                    onChangeText={setDraftDob}
+                    onChangeText={(value) => setDraftDob(formatDobInput(value))}
                     placeholder="DD-MM-YYYY"
                     placeholderTextColor={colors.mutedForeground}
+                    keyboardType="number-pad"
                     style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
                   />
                   <View style={styles.modalActions}>

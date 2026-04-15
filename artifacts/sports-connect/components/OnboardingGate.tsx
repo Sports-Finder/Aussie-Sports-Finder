@@ -32,11 +32,22 @@ function calculateAge(dateOfBirth: string) {
 }
 
 function parseDob(dateOfBirth: string) {
-  const parts = dateOfBirth.split("-");
-  if (parts.length !== 3) return new Date("");
-  const [day, month, year] = parts.map((value) => Number(value));
+  const digits = dateOfBirth.replace(/\D/g, "");
+  if (digits.length !== 8) return new Date("");
+  const day = Number(digits.slice(0, 2));
+  const month = Number(digits.slice(2, 4));
+  const year = Number(digits.slice(4, 8));
   if (!day || !month || !year) return new Date("");
   return new Date(year, month - 1, day);
+}
+
+function formatDobInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  const parts = [];
+  if (digits.length > 0) parts.push(digits.slice(0, 2));
+  if (digits.length > 2) parts.push(digits.slice(2, 4));
+  if (digits.length > 4) parts.push(digits.slice(4, 8));
+  return parts.join("-");
 }
 
 function formatDob(date: Date) {
@@ -364,7 +375,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
                     <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                       <Text style={[styles.cardTitle, { color: colors.foreground }]}>Choose date of birth</Text>
                       <View style={styles.dateRow}>
-                        <TextInput value={draftDob} onChangeText={setDraftDob} placeholder="DD-MM-YYYY" placeholderTextColor={colors.mutedForeground} style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]} />
+                        <TextInput value={draftDob} onChangeText={(value) => setDraftDob(formatDobInput(value))} placeholder="DD-MM-YYYY" placeholderTextColor={colors.mutedForeground} keyboardType="number-pad" style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]} />
                       </View>
                       <View style={styles.modalActions}>
                         <Pressable onPress={() => setShowDobPicker(false)} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>
