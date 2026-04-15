@@ -134,8 +134,8 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   messageTabIconWrap: {
-    width: 56,
-    height: 56,
+    width: 60,
+    height: 60,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -152,27 +152,27 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   orangeBadgeDot: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: "#F59E0B",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
   },
   redBadgeDot: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: "#EF4444",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
   },
   badgeText: {
     color: "#000000",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "800",
-    lineHeight: 12,
+    lineHeight: 13,
   },
 });
