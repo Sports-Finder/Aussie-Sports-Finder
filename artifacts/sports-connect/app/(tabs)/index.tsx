@@ -29,10 +29,11 @@ function getExpiryInfo(createdAt: string) {
 
 function typeLabel(type: Advert["type"]) {
   return type === "players-wanted" ? "Players Wanted for Team"
-    : type === "club-trials"      ? "Club Trials Info"
-    : type === "coach-wanted"     ? "Coach Wanted for Team"
-    : type === "coach-looking"    ? "Coach looking for Club"
-    :                               "Player looking for Club";
+    : type === "player-looking" ? "Player Looking for Club"
+    : type === "coach-looking" ? "Coach Looking for Team/Club"
+    : type === "coach-wanted" ? "Coach Wanted for Team"
+    : type === "club-trials" ? "Club Trials Info"
+    : "";
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
