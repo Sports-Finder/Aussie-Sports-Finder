@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
@@ -48,9 +48,12 @@ export default function ProfileScreen() {
     isAdmin,
     adminSignOut,
     changeAdminPasscode,
+    updateAccount,
   } = useSportsConnect();
 
   const [mode, setMode] = useState<Mode>("view");
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  const [draftDob, setDraftDob] = useState("");
   const [showChangePasscode, setShowChangePasscode] = useState(false);
   const [currentPasscodeInput, setCurrentPasscodeInput] = useState("");
   const [newPasscodeInput, setNewPasscodeInput] = useState("");
@@ -78,10 +81,45 @@ export default function ProfileScreen() {
   const roleLabel = isClub ? "Club account" : isGuardian ? `Parent/Guardian · Managing ${currentAccount?.playerName ?? "player"}` : isCoach ? "Coach account" : "Player account";
 
   const save = () => {
-    updatePlayerProfile(player);
-    updateClubProfile(club);
+    if (isClub) {
+      updateAccount({
+        clubName: club.name,
+        clubAddress: club.mapAddress,
+        clubWebsite: "",
+        location: club.location,
+        defaultSport: club.sport,
+      });
+      updateClubProfile(club);
+    } else {
+      updateAccount({
+        fullName: player.name,
+        playerName: player.name,
+        location: player.location,
+        sports: player.sports.split(",").map((item) => item.trim()).filter(Boolean),
+      });
+      updatePlayerProfile(player);
+    }
     setMode("view");
     Alert.alert("Profile saved", "Your changes are now visible in the app.");
+  };
+
+  const openEdit = () => {
+    if (isClub) {
+      setClub(clubProfile);
+    } else {
+      setPlayer(playerProfile);
+    }
+    setMode("edit");
+  };
+
+  const setDob = (date: Date) => {
+    const day = `${date.getDate()}`.padStart(2, "0");
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const year = date.getFullYear();
+    const next = `${day}-${month}-${year}`;
+    updateAccount({ dateOfBirth: next });
+    setMode("edit");
+    setShowDobPicker(false);
   };
 
   const infoRows = useMemo(() => {
@@ -89,7 +127,6 @@ export default function ProfileScreen() {
     if (isClub) {
       return [
         ["Club name", currentAccount.clubName ?? ""],
-        ["Sport", currentAccount.defaultSport],
         ["Address", currentAccount.clubAddress ?? currentAccount.location ?? ""],
         ["Contact email", currentAccount.clubContactEmail ?? ""],
         ["Contact mobile", currentAccount.clubContactMobile ?? ""],
@@ -103,7 +140,6 @@ export default function ProfileScreen() {
       ["Location", currentAccount.location ?? ""],
       ["Mobile", currentAccount.mobile ?? ""],
       ["Sports", currentAccount.sports.join(", ")],
-      ["Default sport", currentAccount.defaultSport],
     ].filter(([, value]) => value);
   }, [currentAccount, isClub, isGuardian]);
 
@@ -128,7 +164,7 @@ export default function ProfileScreen() {
               </View>
             </View>
             <PrimaryButton label="Sign out" icon="log-out" onPress={signOut} />
-            <PrimaryButton label="Edit Profile" icon="edit-3" onPress={() => setMode("edit")} />
+            <PrimaryButton label="Edit Profile" icon="edit-3" onPress={openEdit} />
           </View>
         ) : null}
 
@@ -181,6 +217,9 @@ export default function ProfileScreen() {
             <Field label="Suburb, city and state" value={club.location} onChangeText={(v) => setClub((c) => ({ ...c, location: v }))} />
             <Field label="Club ground or street address" value={club.mapAddress ?? ""} onChangeText={(v) => setClub((c) => ({ ...c, mapAddress: v }))} placeholder="e.g. Princes Park, Carlton North VIC" />
             <Field label="Club bio" value={club.bio} onChangeText={(v) => setClub((c) => ({ ...c, bio: v }))} multiline />
+            <Field label="Club contact email" value={currentAccount?.clubContactEmail ?? ""} onChangeText={(v) => updateAccount({ clubContactEmail: v })} keyboardType="email-address" />
+            <Field label="Club contact mobile" value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
+            <Field label="Club website" value={currentAccount?.clubWebsite ?? ""} onChangeText={(v) => updateAccount({ clubWebsite: v })} />
             <View style={styles.mapRow}>
               <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
                 <Feather name="map" color="#FFF" size={16} />
@@ -203,7 +242,52 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Field label={isGuardian ? "Player name" : "Full name"} value={player.name} onChangeText={(v) => setPlayer((p) => ({ ...p, name: v }))} />
-            <Field label={isCoach ? "Sports coached" : "Sports played"} value={player.sports} onChangeText={(v) => setPlayer((p) => ({ ...p, sports: v }))} />
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>{role === "guardian" ? "Player gender (required)" : "Gender (required)"}</Text>
+            <View style={styles.wrapRow}>
+              {["Male", "Female", "Pref Not to Say"].map((gender) => (
+                <Choice key={gender} label={gender} active={currentAccount?.gender === gender} onPress={() => updateAccount({ gender })} />
+              ))}
+            </View>
+            <Pressable onPress={() => { setDraftDob(currentAccount?.dateOfBirth ?? ""); setShowDobPicker(true); }} style={({ pressed }) => [styles.dobButton, { backgroundColor: colors.background, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>{`${role === "guardian" ? "Player " : ""}Date of Birth (required)`}</Text>
+              <Text style={[styles.dobValue, { color: currentAccount?.dateOfBirth ? colors.foreground : colors.mutedForeground }]}>{currentAccount?.dateOfBirth ? `${currentAccount.dateOfBirth}${age ? ` · Age ${age}` : ""}` : "Tap to choose a date"}</Text>
+            </Pressable>
+            <Modal transparent visible={showDobPicker} animationType="fade" onRequestClose={() => setShowDobPicker(false)}>
+              <View style={styles.modalScrim}>
+                <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Text style={[styles.cardTitle, { color: colors.foreground }]}>Choose date of birth</Text>
+                  <View style={styles.dateRow}>
+                    <TextInput value={draftDob} onChangeText={setDraftDob} placeholder="DD-MM-YYYY" placeholderTextColor={colors.mutedForeground} style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]} />
+                  </View>
+                  <View style={styles.modalActions}>
+                    <Pressable onPress={() => setShowDobPicker(false)} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>
+                      <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>Cancel</Text>
+                    </Pressable>
+                    <Pressable onPress={() => { const parts = draftDob.split("-"); if (parts.length !== 3) return; const [day, month, year] = parts.map(Number); if (!day || !month || !year) return; setDob(new Date(year, month - 1, day)); }} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
+                      <Text style={[styles.modalButtonText, { color: colors.primaryForeground }]}>Set date</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+            <Field label="Suburb/City & State (Australia only) (required)" value={currentAccount?.location ?? ""} onChangeText={(v) => updateAccount({ location: v })} />
+            <Field label={role === "guardian" ? "Parent/Guardian Email Address (required)" : "Email Address (required)"} value={currentAccount?.email ?? ""} onChangeText={(v) => updateAccount({ email: v })} keyboardType="email-address" />
+            <Field label={role === "guardian" ? "Parent/Guardian Mobile Number (required)" : "Mobile Number (required)"} value={currentAccount?.mobile ?? ""} onChangeText={(v) => updateAccount({ mobile: v })} keyboardType="phone-pad" />
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>{role === "guardian" ? "Player sports played (required)" : role === "coach" ? "Sports coached (required)" : "Sports played (required)"}</Text>
+            <View style={styles.wrapRow}>
+              {approvedSports.map((sport) => (
+                <Choice key={sport.name} label={sport.name} active={(currentAccount?.sports ?? []).includes(sport.name)} onPress={() => {
+                  const next = currentAccount?.sports ?? [];
+                  updateAccount({ sports: next.includes(sport.name) ? next.filter((item) => item !== sport.name) : [...next, sport.name] });
+                }} />
+              ))}
+            </View>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>Default Sport (required)</Text>
+            <View style={styles.wrapRow}>
+              {approvedSports.map((sport) => (
+                <Choice key={sport.name} label={sport.name} active={currentAccount?.defaultSport === sport.name} onPress={() => updateAccount({ defaultSport: sport.name })} />
+              ))}
+            </View>
             <Field label="Location" value={player.location} onChangeText={(v) => setPlayer((p) => ({ ...p, location: v }))} />
             <Field label={isCoach ? "Coaching bio" : "Player bio"} value={player.bio} onChangeText={(v) => setPlayer((p) => ({ ...p, bio: v }))} multiline />
             <PrimaryButton label={isCoach ? "Submit coach image" : "Submit player image"} icon="image" onPress={() => pickProfileImage("player")} />

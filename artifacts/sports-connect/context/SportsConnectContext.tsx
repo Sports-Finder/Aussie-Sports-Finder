@@ -160,6 +160,7 @@ type SportsConnectState = {
   setNotificationRadius: (radiusKm: number) => void;
   updateClubProfile: (profile: ClubProfile) => void;
   updatePlayerProfile: (profile: PlayerProfile) => void;
+  updateAccount: (profile: Partial<UserAccount>) => void;
   pickProfileImage: (owner: "club" | "player") => Promise<void>;
   pickAccountImage: (owner: string) => Promise<string | undefined>;
   moderateImage: (imageId: string, status: ImageStatus) => void;
@@ -435,6 +436,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
+  const updateAccount = (profile: Partial<UserAccount>) => {
+    setCurrentAccount((current) => (current ? { ...current, ...profile } : current));
+  };
+
   const adminLogin = (passcode: string): boolean => {
     if (passcode.trim() === adminPasscode) {
       setIsAdmin(true);
@@ -609,6 +614,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setNotificationRadius,
     updateClubProfile: setClubProfile,
     updatePlayerProfile: setPlayerProfile,
+    updateAccount,
     pickProfileImage,
     pickAccountImage,
     moderateImage,
