@@ -48,7 +48,7 @@ function formatDob(date: Date) {
 
 function isAustralianLocation(value: string) {
   const upper = value.toUpperCase();
-  return states.some((state) => upper.includes(state));
+  return states.some((state) => upper.includes(state)) || value.trim().length > 3;
 }
 
 function isValidSocialLink(platform: keyof SocialLinks, value: string) {
@@ -115,7 +115,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   ), [form.facebook, form.instagram, form.tiktok, form.x]);
 
   const requiredDetailsValid = useMemo(() => {
-    if (!humanChecked || !form.agreed || !primaryEmail.includes("@")) return false;
+    if (!humanChecked || !primaryEmail.includes("@")) return false;
     if (isClub) {
       return Boolean(form.clubName.trim() && defaultSport && isAustralianLocation(form.clubAddress) && form.clubContactEmail.includes("@") && form.clubContactMobile.trim());
     }
@@ -321,7 +321,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
             {!isClub ? <Input label="Highlights Reel link (optional, admin approved)" value={form.highlightReelUrl} onChangeText={(value) => update("highlightReelUrl", value)} /> : null}
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Profile Pics and links are admin approved. Any inappropriate pics or links shared will result in the account being removed and banned from the application.</Text>
             <CheckRow active={Boolean(form.agreed)} label={isClub ? "All the Club information I have provided is true and accurate. If a club account is found to be false or misleading, it will be shut down immediately." : role === "guardian" ? "All the player information I have provided is true and accurate. If a Parent/Guardian's Player account is found to be false or misleading, it will be shut down immediately." : "All the player information I have provided is true and accurate. If a player account is found to be false or misleading, it will be shut down immediately."} onPress={() => update("agreed", !form.agreed)} />
-            <PrimaryButton label="Create account" icon="user-check" onPress={submit} disabled={!requiredDetailsValid || !socialLinksValid} />
+    <PrimaryButton label="Create account" icon="user-check" onPress={submit} disabled={!requiredDetailsValid || !socialLinksValid} />
           </View>
         ) : null}
       </ScrollView>
