@@ -204,10 +204,11 @@ function getExpiryInfo(createdAt: string) {
 
 function advertTypeLabel(type: Advert["type"]) {
   return type === "players-wanted" ? "Players Wanted for Team"
-    : type === "club-trials" ? "Club Trials Info"
+    : type === "player-looking" ? "Player Looking for Club"
+    : type === "coach-looking" ? "Coach Looking for Team/Club"
     : type === "coach-wanted" ? "Coach Wanted for Team"
-    : type === "coach-looking" ? "Coach looking for Club"
-    : "Player looking for Club";
+    : type === "club-trials" ? "Club Trials Info"
+    : "Players Wanted for Team";
 }
 
 function MyAdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }) {
