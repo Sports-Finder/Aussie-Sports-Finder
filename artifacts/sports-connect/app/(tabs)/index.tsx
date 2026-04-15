@@ -8,18 +8,48 @@ import { Advert, useSportsConnect } from "@/context/SportsConnectContext";
 import { IconButton, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
 import { allSportsFilterName, getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
-import { openMapApp } from "@/utils/mapLinks";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
 type Filter = "all" | "players-wanted" | "player-looking" | "near";
-
 const australianStates = ["All", "NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"] as const;
 type AustralianStateFilter = (typeof australianStates)[number];
 
+const ADVERT_LIFESPAN_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getExpiryInfo(createdAt: string) {
+  const expiresAt = new Date(createdAt).getTime() + ADVERT_LIFESPAN_MS;
+  const remaining = expiresAt - Date.now();
+  if (remaining <= 0) return { expired: true, label: "Expired", days: 0, hours: 0, mins: 0 };
+  const days = Math.floor(remaining / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+  return { expired: false, label: `${days}d ${hours}h ${mins}m remaining`, days, hours, mins };
+}
+
+function typeLabel(type: Advert["type"]) {
+  return type === "players-wanted" ? "Players Wanted for Team"
+    : type === "club-trials"      ? "Club Trials Info"
+    : type === "coach-wanted"     ? "Coach Wanted for Team"
+    : type === "coach-looking"    ? "Coach looking for Club"
+    :                               "Player looking for Club";
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  const colors = useColors();
+  if (!value) return null;
+  return (
+    <View style={styles.detailRow}>
+      <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      <Text style={[styles.detailCopy, { color: colors.foreground }]}>{value}</Text>
+    </View>
+  );
+}
+
 function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }) {
   const colors = useColors();
-  const icon = advert.type === "players-wanted" ? "shield" : "user";
+  const expiry = getExpiryInfo(advert.createdAt);
+  const icon = advert.postedByType === "club" ? "shield" : "user";
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.adCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
       <View style={[styles.adIcon, { backgroundColor: colors.pitchSoft }]}>
@@ -31,7 +61,8 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
           <Text style={[styles.adDistance, { color: colors.mutedForeground }]}>{advert.distanceKm} km</Text>
         </View>
         <Text style={[styles.adTitle, { color: colors.foreground }]}>{advert.title}</Text>
-        <Text style={[styles.adText, { color: colors.mutedForeground }]}>{advert.postedBy} · {advert.location}</Text>
+        {advert.ageGroup ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.ageGroup}</Text> : null}
+        <Text style={[styles.adExpiry, { color: expiry.expired ? "#D9534F" : colors.mutedForeground }]}>{expiry.label}</Text>
       </View>
     </Pressable>
   );
@@ -39,51 +70,159 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
 
 function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void }) {
   const colors = useColors();
-  const { connectOnAdvert } = useSportsConnect();
-  const mapQuery = `${advert.postedBy} ${advert.location} Australia`;
+  const { connectOnAdvert, conversations, approvedSports } = useSportsConnect();
+  const theme = getSportTheme(advert.sport, approvedSports);
+  const expiry = getExpiryInfo(advert.createdAt);
+  const isConnected = conversations.some((c) => c.advertId === advert.id);
+
+  const posterLabel = isConnected
+    ? advert.postedBy
+    : advert.postedByType === "club" ? "A Club" : advert.postedByType === "player" ? "A Player" : "A Coach";
+
   const connect = () => {
-    const conversationId = connectOnAdvert(advert);
+    connectOnAdvert(advert);
     onClose();
     router.push("/messages");
   };
+
+  const trainingSchedule = (() => {
+    if (!advert.trainingDays && !advert.trainingTbd) return null;
+    if (advert.trainingTbd) return "TBD";
+    const days = (advert.trainingDays ?? []).join(", ");
+    const times = [advert.trainingTimeFrom, advert.trainingTimeTo].filter(Boolean).join(" – ");
+    return [days, times].filter(Boolean).join("  |  ");
+  })();
+
+  const gameSchedule = (() => {
+    if (!advert.gameDays && !advert.gameTbd) return null;
+    if (advert.gameTbd) return "TBD";
+    const days = (advert.gameDays ?? []).join(", ");
+    const times = [advert.gameTimeFrom, advert.gameTimeTo].filter(Boolean).join(" – ");
+    return [days, times].filter(Boolean).join("  |  ");
+  })();
+
+  const feesLabel = (() => {
+    if (advert.feesFree) return "Free / Scholarship";
+    if (!advert.seasonFees) return null;
+    const base = `AUD $${advert.seasonFees.toFixed(2)}`;
+    return advert.feesNegotiable ? `${base} (or near offer)` : base;
+  })();
+
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalScrim}>
         <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
-          <View style={styles.modalTop}>
-            <View style={[styles.modalIcon, { backgroundColor: colors.pitchSoft }]}>
-              <Feather name={advert.postedByType === "club" ? "shield" : "user"} color={colors.primary} size={24} />
-            </View>
-            <IconButton icon="x" label="Close" onPress={onClose} />
+          {/* ── Expiry bar ── */}
+          <View style={[styles.expiryBar, { backgroundColor: expiry.expired ? "#FDECEA" : colors.pitchSoft }]}>
+            <Feather name="clock" color={expiry.expired ? "#D9534F" : colors.primary} size={14} />
+            <Text style={[styles.expiryBarText, { color: expiry.expired ? "#D9534F" : colors.primary }]}>
+              {expiry.expired ? "This advert has expired" : `Advert expires in ${expiry.label}`}
+            </Text>
           </View>
-          <Text style={[styles.detailType, { color: colors.primary }]}>{advert.type === "players-wanted" ? "Players wanted" : "Player looking for club"}</Text>
-          <Text style={[styles.detailTitle, { color: colors.foreground }]}>{advert.title}</Text>
-          <View style={styles.detailGrid}>
-            <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.sport}</Text></View>
-            <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View>
-            <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}><Text style={[styles.detailChipText, { color: colors.accentForeground }]}>{advert.distanceKm} km away</Text></View>
-          </View>
-          <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Posted by</Text>
-          <Text style={[styles.detailCopy, { color: colors.foreground }]}>{advert.postedBy} in {advert.location}</Text>
-          <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Availability</Text>
-          <Text style={[styles.detailCopy, { color: colors.foreground }]}>{advert.availability}</Text>
-          <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Needs</Text>
-          <Text style={[styles.detailCopy, { color: colors.foreground }]}>{advert.needs}</Text>
-          <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>About</Text>
-          <Text style={[styles.detailParagraph, { color: colors.foreground }]}>{advert.description}</Text>
-          {advert.postedByType === "club" ? (
-            <View style={styles.mapActions}>
-              <Pressable onPress={() => openMapApp("apple", mapQuery)} style={({ pressed }) => [styles.mapAction, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
-                <Feather name="map" color="#FFFFFF" size={17} />
-                <Text style={styles.mapActionText}>Apple Maps</Text>
-              </Pressable>
-              <Pressable onPress={() => openMapApp("google", mapQuery)} style={({ pressed }) => [styles.mapAction, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
-                <Feather name="navigation" color="#FFFFFF" size={17} />
-                <Text style={styles.mapActionText}>Google Maps</Text>
-              </Pressable>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+            <View style={styles.modalTop}>
+              <View style={[styles.modalIcon, { backgroundColor: theme.soft }]}>
+                <Feather name={advert.postedByType === "club" ? "shield" : "user"} color={theme.primary} size={24} />
+              </View>
+              <IconButton icon="x" label="Close" onPress={onClose} />
             </View>
-          ) : null}
-          <PrimaryButton label="Agree to connect privately" icon="message-circle" onPress={connect} />
+
+            <Text style={[styles.detailType, { color: theme.primary }]}>{typeLabel(advert.type)}</Text>
+            <Text style={[styles.detailTitle, { color: colors.foreground }]}>{advert.title}</Text>
+
+            {/* ── Chips ── */}
+            <View style={styles.detailGrid}>
+              <View style={[styles.detailChip, { backgroundColor: theme.soft }]}>
+                <Text style={[styles.detailChipText, { color: theme.primary }]}>{advert.sport}</Text>
+              </View>
+              {advert.level ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View> : null}
+              <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}>
+                <Text style={[styles.detailChipText, { color: colors.accentForeground }]}>{advert.distanceKm} km away</Text>
+              </View>
+              {advert.ageGroup ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.ageGroup}</Text></View> : null}
+              {advert.preferredAge ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>Age {advert.preferredAge}</Text></View> : null}
+              {advert.trialRequired ? <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}><Text style={[styles.detailChipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
+              {feesLabel ? <View style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}><Text style={[styles.detailChipText, { color: colors.primary }]}>{feesLabel}</Text></View> : null}
+            </View>
+
+            {/* ── Positions ── */}
+            {advert.positions && advert.positions.length > 0 ? (
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Position(s)</Text>
+                <View style={styles.tagRow}>
+                  {advert.positions.map((p) => (
+                    <View key={p} style={[styles.tag, { backgroundColor: theme.soft }]}>
+                      <Text style={[styles.tagText, { color: theme.primary }]}>{p}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {/* ── Posted by (hidden until connected) ── */}
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Posted by</Text>
+              {isConnected ? (
+                <Text style={[styles.detailCopy, { color: colors.foreground }]}>{posterLabel} · {advert.location}</Text>
+              ) : (
+                <View style={styles.hiddenRow}>
+                  <Text style={[styles.detailCopy, { color: colors.foreground }]}>{posterLabel} · {advert.location}</Text>
+                  <View style={[styles.hiddenBadge, { backgroundColor: colors.amberSoft }]}>
+                    <Feather name="lock" size={11} color={colors.accentForeground} />
+                    <Text style={[styles.hiddenBadgeText, { color: colors.accentForeground }]}>Connect to see profile</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* ── Player / club description ── */}
+            {advert.playerDescription ? (
+              <DetailRow
+                label={advert.postedByType === "club" ? "Looking for" : "About the player"}
+                value={advert.playerDescription}
+              />
+            ) : null}
+
+            {/* ── Training days ── */}
+            {trainingSchedule ? (
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>
+                  {advert.postedByType === "club" ? "Training days" : "Available training days"}
+                </Text>
+                <Text style={[styles.detailCopy, { color: colors.foreground }]}>{trainingSchedule}</Text>
+              </View>
+            ) : null}
+
+            {/* ── Game days ── */}
+            {gameSchedule ? (
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>
+                  {advert.postedByType === "club" ? "Game days" : "Available game days"}
+                </Text>
+                <Text style={[styles.detailCopy, { color: colors.foreground }]}>{gameSchedule}</Text>
+              </View>
+            ) : null}
+
+            {/* ── Standard fields ── */}
+            <DetailRow label="Level" value={advert.level} />
+            {advert.availability && advert.availability !== "TBD | TBD" && !trainingSchedule && !gameSchedule
+              ? <DetailRow label="Availability" value={advert.availability} />
+              : null}
+            <DetailRow label="Additional details" value={advert.description} />
+
+            <View style={{ height: 16 }} />
+
+            {/* ── Connect button ── */}
+            {isConnected ? (
+              <View style={[styles.connectedBadge, { backgroundColor: colors.pitchSoft }]}>
+                <Feather name="check-circle" color={colors.primary} size={18} />
+                <Text style={[styles.connectedText, { color: colors.primary }]}>You are connected — message in the Messages tab</Text>
+              </View>
+            ) : (
+              <PrimaryButton label="Agree to connect privately" icon="message-circle" onPress={connect} />
+            )}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -111,6 +250,7 @@ export default function DiscoverScreen() {
   }), [adverts, filter, notificationSettings.radiusKm, selectedSport, stateFilter]);
 
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
+
   const submitSportRequest = () => {
     requestSport(sportRequest);
     setSportRequest("");
@@ -245,22 +385,31 @@ const styles = StyleSheet.create({
   adMeta: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.6 },
   adDistance: { fontWeight: "700", fontSize: 12 },
   adTitle: { fontWeight: "700", fontSize: 17, lineHeight: 22 },
-  adText: { fontWeight: "500", fontSize: 14, marginTop: 6 },
+  adText: { fontWeight: "500", fontSize: 13 },
+  adExpiry: { fontWeight: "600", fontSize: 11, marginTop: 5 },
   modalScrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  modalCard: { borderTopLeftRadius: 34, borderTopRightRadius: 34, padding: 22, gap: 10, maxHeight: "88%" },
-  modalTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  modalCard: { borderTopLeftRadius: 34, borderTopRightRadius: 34, maxHeight: "92%", overflow: "hidden" },
+  expiryBar: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
+  expiryBarText: { fontWeight: "700", fontSize: 13 },
+  modalScroll: { paddingHorizontal: 22, paddingBottom: 34, gap: 4 },
+  modalTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: 16 },
   modalIcon: { width: 54, height: 54, borderRadius: 19, alignItems: "center", justifyContent: "center" },
   detailType: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 8 },
   detailTitle: { fontWeight: "700", fontSize: 27, lineHeight: 32, letterSpacing: -0.6 },
-  detailGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 6 },
+  detailGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 8 },
   detailChip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
   detailChipText: { fontWeight: "700", fontSize: 12 },
-  detailLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7, marginTop: 4 },
+  detailRow: { gap: 4, marginTop: 10 },
+  detailLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7 },
   detailCopy: { fontWeight: "600", fontSize: 15, lineHeight: 21 },
-  detailParagraph: { fontWeight: "500", fontSize: 15, lineHeight: 22, marginBottom: 8 },
-  mapActions: { flexDirection: "row", gap: 10, marginBottom: 4 },
-  mapAction: { flex: 1, minHeight: 46, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
-  mapActionText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
+  hiddenRow: { gap: 6 },
+  hiddenBadge: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  hiddenBadgeText: { fontWeight: "600", fontSize: 11 },
+  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  tagText: { fontWeight: "600", fontSize: 12 },
+  connectedBadge: { flexDirection: "row", alignItems: "center", gap: 10, padding: 16, borderRadius: 18 },
+  connectedText: { fontWeight: "600", fontSize: 14, flex: 1 },
   emptyState: { borderWidth: 1, borderRadius: 24, padding: 22, alignItems: "center", gap: 8 },
   emptyTitle: { fontWeight: "800", fontSize: 17 },
   emptyText: { fontWeight: "500", fontSize: 14, lineHeight: 20, textAlign: "center" },

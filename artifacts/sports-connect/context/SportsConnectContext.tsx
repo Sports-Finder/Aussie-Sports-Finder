@@ -76,9 +76,9 @@ export type Advert = {
   description: string;
   needs: string;
   createdAt: string;
-  ageGroup: string;
+  ageGroup?: string;
   preferredAge?: number;
-  positions: string[];
+  positions?: string[];
   playerDescription?: string;
   trainingDays?: string[];
   trainingTimeFrom?: string;
@@ -171,6 +171,8 @@ type SportsConnectState = {
   adminSignOut: () => void;
   changeAdminPasscode: (current: string, next: string) => boolean;
   createAdvert: (draft: DraftAdvert) => void;
+  updateAdvert: (id: string, patch: Partial<DraftAdvert>) => void;
+  deleteAdvert: (id: string) => void;
   connectOnAdvert: (advert: Advert) => string;
   sendMessage: (conversationId: string, body: string) => void;
   toggleNotifications: () => Promise<void>;
@@ -501,6 +503,27 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
+  const updateAdvert = (id: string, patch: Partial<DraftAdvert>) => {
+    setAdverts((current) => current.map((a) => a.id === id ? { ...a, ...patch } : a));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const deleteAdvert = (id: string) => {
+    setAdverts((current) => current.filter((a) => a.id !== id));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  useEffect(() => {
+    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+    const check = () => {
+      const cutoff = new Date(Date.now() - SEVEN_DAYS).toISOString();
+      setAdverts((current) => current.filter((a) => a.createdAt > cutoff));
+    };
+    check();
+    const interval = setInterval(check, 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const connectOnAdvert = (advert: Advert) => {
     const existing = conversations.find((conversation) => conversation.advertId === advert.id);
     if (existing) return existing.id;
@@ -633,6 +656,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     adminSignOut,
     changeAdminPasscode,
     createAdvert,
+    updateAdvert,
+    deleteAdvert,
     connectOnAdvert,
     sendMessage,
     toggleNotifications,

@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
@@ -188,32 +188,209 @@ function TimeRow({ label, from, to, onFromChange, onToChange, disabled }: { labe
   );
 }
 
-function MyAdvertCard({ advert }: { advert: Advert }) {
+const ADVERT_LIFESPAN_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getExpiryInfo(createdAt: string) {
+  const expiresAt = new Date(createdAt).getTime() + ADVERT_LIFESPAN_MS;
+  const remaining = expiresAt - Date.now();
+  if (remaining <= 0) return { expired: true, label: "Expired", days: 0, hours: 0, mins: 0 };
+  const days = Math.floor(remaining / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+  return { expired: false, label: `${days}d ${hours}h ${mins}m remaining`, days, hours, mins };
+}
+
+function advertTypeLabel(type: Advert["type"]) {
+  return type === "players-wanted" ? "Players Wanted for Team"
+    : type === "club-trials" ? "Club Trials Info"
+    : type === "coach-wanted" ? "Coach Wanted for Team"
+    : type === "coach-looking" ? "Coach looking for Club"
+    : "Player looking for Club";
+}
+
+function MyAdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }) {
   const colors = useColors();
   const { approvedSports } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
-  const typeLabel = advert.type === "players-wanted" ? "Players Wanted for Team" : advert.type === "club-trials" ? "Club Trials Info" : advert.type === "coach-wanted" ? "Coach Wanted for Team" : advert.type === "coach-looking" ? "Coach looking for Club" : "Player looking for Club";
+  const expiry = getExpiryInfo(advert.createdAt);
   return (
-    <View style={[localStyles.myCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [localStyles.myCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
+      <View style={[localStyles.expiryRow, { backgroundColor: expiry.expired ? "#FDECEA" : colors.pitchSoft }]}>
+        <Feather name="clock" size={12} color={expiry.expired ? "#D9534F" : colors.primary} />
+        <Text style={[localStyles.expiryText, { color: expiry.expired ? "#D9534F" : colors.primary }]}>
+          {expiry.expired ? "Expired" : expiry.label}
+        </Text>
+      </View>
       <View style={localStyles.cardTop}>
-        <Text style={[localStyles.cardType, { color: theme.primary }]}>{typeLabel}</Text>
+        <Text style={[localStyles.cardType, { color: theme.primary }]}>{advertTypeLabel(advert.type)}</Text>
         <Text style={[localStyles.cardDistance, { color: colors.mutedForeground }]}>{advert.distanceKm} km</Text>
       </View>
       <Text style={[localStyles.cardTitle, { color: colors.foreground }]}>{advert.title}</Text>
       <Text style={[localStyles.cardText, { color: colors.mutedForeground }]}>{advert.sport} · {advert.location}</Text>
       {advert.ageGroup ? <Text style={[localStyles.cardText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.ageGroup}</Text> : null}
-    </View>
+      <View style={localStyles.cardFooter}>
+        <Feather name="eye" size={13} color={colors.mutedForeground} />
+        <Text style={[localStyles.cardFooterText, { color: colors.mutedForeground }]}>Tap to view, edit or delete</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function MyAdvertDetail({
+  advert,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  advert: Advert;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const colors = useColors();
+  const { approvedSports } = useSportsConnect();
+  const theme = getSportTheme(advert.sport, approvedSports);
+  const expiry = getExpiryInfo(advert.createdAt);
+
+  const trainingSchedule = (() => {
+    if (!advert.trainingDays?.length && !advert.trainingTbd) return null;
+    if (advert.trainingTbd) return "TBD";
+    const days = (advert.trainingDays ?? []).join(", ");
+    const times = [advert.trainingTimeFrom, advert.trainingTimeTo].filter(Boolean).join(" – ");
+    return [days, times].filter(Boolean).join("  |  ");
+  })();
+
+  const gameSchedule = (() => {
+    if (!advert.gameDays?.length && !advert.gameTbd) return null;
+    if (advert.gameTbd) return "TBD";
+    const days = (advert.gameDays ?? []).join(", ");
+    const times = [advert.gameTimeFrom, advert.gameTimeTo].filter(Boolean).join(" – ");
+    return [days, times].filter(Boolean).join("  |  ");
+  })();
+
+  const feesLabel = (() => {
+    if (advert.feesFree) return "Free / Scholarship";
+    if (!advert.seasonFees) return null;
+    const base = `AUD $${advert.seasonFees.toFixed(2)}`;
+    return advert.feesNegotiable ? `${base} (or near offer)` : base;
+  })();
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete advert",
+      "Are you sure you want to delete this advert? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => { onClose(); onDelete(); } },
+      ]
+    );
+  };
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <View style={localStyles.modalScrim}>
+        <View style={[localStyles.modalCard, { backgroundColor: colors.background }]}>
+          <View style={[localStyles.detailExpiryBar, { backgroundColor: expiry.expired ? "#FDECEA" : colors.pitchSoft }]}>
+            <Feather name="clock" color={expiry.expired ? "#D9534F" : colors.primary} size={14} />
+            <Text style={[localStyles.detailExpiryText, { color: expiry.expired ? "#D9534F" : colors.primary }]}>
+              {expiry.expired ? "This advert has expired" : `Expires in ${expiry.label}`}
+            </Text>
+            <Pressable onPress={onClose} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, marginLeft: "auto" })}>
+              <Feather name="x" color={colors.mutedForeground} size={20} />
+            </Pressable>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={localStyles.detailScroll}>
+            <Text style={[localStyles.detailTypeLabel, { color: theme.primary }]}>{advertTypeLabel(advert.type)}</Text>
+            <Text style={[localStyles.detailTitle, { color: colors.foreground }]}>{advert.title}</Text>
+
+            <View style={localStyles.detailChips}>
+              <View style={[localStyles.chip, { backgroundColor: theme.soft }]}><Text style={[localStyles.chipText, { color: theme.primary }]}>{advert.sport}</Text></View>
+              {advert.level ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View> : null}
+              {advert.ageGroup ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.ageGroup}</Text></View> : null}
+              {advert.preferredAge ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>Age {advert.preferredAge}</Text></View> : null}
+              {advert.trialRequired ? <View style={[localStyles.chip, { backgroundColor: colors.amberSoft }]}><Text style={[localStyles.chipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
+              {feesLabel ? <View style={[localStyles.chip, { backgroundColor: colors.pitchSoft }]}><Text style={[localStyles.chipText, { color: colors.primary }]}>{feesLabel}</Text></View> : null}
+            </View>
+
+            {advert.positions && advert.positions.length > 0 ? (
+              <View style={localStyles.detailSection}>
+                <Text style={[localStyles.detailLabel, { color: colors.mutedForeground }]}>Position(s)</Text>
+                <View style={localStyles.tagRow}>
+                  {advert.positions.map((p) => (
+                    <View key={p} style={[localStyles.tag, { backgroundColor: theme.soft }]}>
+                      <Text style={[localStyles.tagText, { color: theme.primary }]}>{p}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            <View style={localStyles.detailSection}>
+              <Text style={[localStyles.detailLabel, { color: colors.mutedForeground }]}>Location</Text>
+              <Text style={[localStyles.detailValue, { color: colors.foreground }]}>{advert.location}</Text>
+            </View>
+
+            {advert.playerDescription ? (
+              <View style={localStyles.detailSection}>
+                <Text style={[localStyles.detailLabel, { color: colors.mutedForeground }]}>
+                  {advert.postedByType === "club" ? "Looking for" : "About the player"}
+                </Text>
+                <Text style={[localStyles.detailValue, { color: colors.foreground }]}>{advert.playerDescription}</Text>
+              </View>
+            ) : null}
+
+            {trainingSchedule ? (
+              <View style={localStyles.detailSection}>
+                <Text style={[localStyles.detailLabel, { color: colors.mutedForeground }]}>Training</Text>
+                <Text style={[localStyles.detailValue, { color: colors.foreground }]}>{trainingSchedule}</Text>
+              </View>
+            ) : null}
+
+            {gameSchedule ? (
+              <View style={localStyles.detailSection}>
+                <Text style={[localStyles.detailLabel, { color: colors.mutedForeground }]}>Games</Text>
+                <Text style={[localStyles.detailValue, { color: colors.foreground }]}>{gameSchedule}</Text>
+              </View>
+            ) : null}
+
+            {advert.description ? (
+              <View style={localStyles.detailSection}>
+                <Text style={[localStyles.detailLabel, { color: colors.mutedForeground }]}>Additional details</Text>
+                <Text style={[localStyles.detailValue, { color: colors.foreground }]}>{advert.description}</Text>
+              </View>
+            ) : null}
+
+            <View style={{ height: 20 }} />
+
+            <Pressable onPress={onEdit} style={({ pressed }) => [localStyles.editButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
+              <Feather name="edit-2" color="#FFFFFF" size={16} />
+              <Text style={localStyles.editButtonText}>Edit Advert</Text>
+            </Pressable>
+
+            <Pressable onPress={handleDelete} style={({ pressed }) => [localStyles.deleteButton, { borderColor: "#D9534F", opacity: pressed ? 0.8 : 1 }]}>
+              <Feather name="trash-2" color="#D9534F" size={16} />
+              <Text style={[localStyles.deleteButtonText, { color: "#D9534F" }]}>Delete Advert</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
 export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { createAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
+  const scrollRef = useRef<ScrollView>(null);
+  const { createAdvert, updateAdvert, deleteAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
 
   const allowedSports = activeProfile === "club"
     ? [currentAccount?.defaultSport || clubProfile.sport].filter(Boolean)
     : (currentAccount?.sports?.length ? currentAccount.sports : [playerProfile.sports.split(", ")[0] || selectedSport]).filter(Boolean);
+
+  const [selectedMyAdvert, setSelectedMyAdvert] = useState<Advert | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [type, setType] = useState<Advert["type"]>(advertTypesByRole[activeProfile][0].value);
   const [sport, setSport] = useState(allowedSports[0] || selectedSport);
@@ -264,6 +441,59 @@ export default function PostScreen() {
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
   }, [sport, type, ageGroup, positions, level, suburb, state]);
 
+  const loadAdvertForEdit = (advert: Advert) => {
+    setEditingId(advert.id);
+    setType(advert.type);
+    setSport(advert.sport);
+    const parts = advert.location.split(", ");
+    setSuburb(parts.slice(0, -1).join(", ") || advert.location);
+    setState(parts[parts.length - 1] || "");
+    setLevel(advert.level || "Competitive amateur");
+    setDescription(advert.description || "");
+    setPlayerDescription(advert.playerDescription || "");
+    const foundGroup = AGE_GROUPS.find((g) => g.label === advert.ageGroup) ?? null;
+    setAgeGroup(foundGroup);
+    setPreferredAge(advert.preferredAge ?? null);
+    setPositions(advert.positions ?? []);
+    setTrainingDays(advert.trainingDays ?? []);
+    setTrainingFrom(advert.trainingTimeFrom ?? "");
+    setTrainingTo(advert.trainingTimeTo ?? "");
+    setTrainingTbd(advert.trainingTbd ?? false);
+    setGameDays(advert.gameDays ?? []);
+    setGameFrom(advert.gameTimeFrom ?? "");
+    setGameTo(advert.gameTimeTo ?? "");
+    setGameTbd(advert.gameTbd ?? false);
+    setFeesFree(advert.feesFree ?? false);
+    setFeesNegotiable(advert.feesNegotiable ?? false);
+    setSeasonFeesText(advert.seasonFees ? String(advert.seasonFees) : "");
+    setTrialRequired(advert.trialRequired ?? false);
+    setSubmitted(false);
+    setSelectedMyAdvert(null);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setDescription("");
+    setPlayerDescription("");
+    setAgeGroup(null);
+    setPreferredAge(null);
+    setPositions([]);
+    setTrainingDays([]);
+    setTrainingFrom("");
+    setTrainingTo("");
+    setTrainingTbd(false);
+    setGameDays([]);
+    setGameFrom("");
+    setGameTo("");
+    setGameTbd(false);
+    setFeesFree(false);
+    setFeesNegotiable(false);
+    setSeasonFeesText("");
+    setTrialRequired(false);
+    setSubmitted(false);
+  };
+
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
   const myAdverts = adverts.filter((a) => a.postedBy === ownerName);
   const activeTheme = getSportTheme(sport, approvedSports);
@@ -297,7 +527,7 @@ export default function PostScreen() {
     if (!canSubmit || !ageGroup) return;
     if (allowedSports.length && !allowedSports.includes(sport)) return;
     const seasonFees = !feesFree && seasonFeesText.trim() ? parseFloat(seasonFeesText.replace(/[^0-9.]/g, "")) : undefined;
-    createAdvert({
+    const draft = {
       type,
       title,
       sport,
@@ -322,8 +552,14 @@ export default function PostScreen() {
       feesNegotiable,
       feesFree,
       trialRequired,
-    });
-    setSelectedSport(sport);
+    };
+    if (editingId) {
+      updateAdvert(editingId, draft);
+      setEditingId(null);
+    } else {
+      createAdvert(draft);
+      setSelectedSport(sport);
+    }
     setDescription("");
     setPlayerDescription("");
     setAgeGroup(null);
@@ -346,7 +582,7 @@ export default function PostScreen() {
 
   return (
     <ScreenShell>
-      <ScrollView contentContainerStyle={[localStyles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 116 }]} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={[localStyles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 116 }]} keyboardShouldPersistTaps="handled">
         <View style={localStyles.headerRow}>
           <View>
             <Text style={[localStyles.kicker, { color: colors.primary }]}>Post advert</Text>
@@ -362,6 +598,16 @@ export default function PostScreen() {
           <Text style={[localStyles.sportHeaderKicker, { color: activeTheme.primary }]}>Posting under</Text>
           <Text style={[localStyles.sportHeaderTitle, { color: activeTheme.text }]}>{sport}</Text>
         </View>
+
+        {editingId ? (
+          <View style={[localStyles.editingBanner, { backgroundColor: colors.amberSoft }]}>
+            <Feather name="edit-2" size={16} color={colors.accentForeground} />
+            <Text style={[localStyles.editingBannerText, { color: colors.accentForeground }]}>Editing your advert — make changes below and save</Text>
+            <Pressable onPress={cancelEdit} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+              <Feather name="x" size={18} color={colors.accentForeground} />
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={[localStyles.formCard, { backgroundColor: colors.card, borderColor: activeTheme.soft }]}> 
           <Text style={[localStyles.formTitle, { color: colors.foreground }]}>Advert type</Text>
@@ -485,23 +731,42 @@ export default function PostScreen() {
           )}
 
           <View style={{ marginTop: 12 }}>
-            {submitted ? <Text style={[localStyles.success, { color: colors.primary }]}>Advert posted and visible in Discover.</Text> : null}
+            {submitted ? <Text style={[localStyles.success, { color: colors.primary }]}>{editingId ? "Advert updated." : "Advert posted and visible in Discover."}</Text> : null}
             {!ageGroup && <Text style={[localStyles.formHint, { color: "#D9534F", marginBottom: 6 }]}>* Age Group is required</Text>}
             {showSchedule && !trainingDaysOk && <Text style={[localStyles.formHint, { color: "#D9534F", marginBottom: 6 }]}>* Select training days or mark as TBD</Text>}
             {showSchedule && !gameDaysOk && <Text style={[localStyles.formHint, { color: "#D9534F", marginBottom: 6 }]}>* Select game days or mark as TBD</Text>}
-            <PrimaryButton label="Publish advert" icon="send" onPress={submit} disabled={!canSubmit} />
+            <PrimaryButton label={editingId ? "Save changes" : "Publish advert"} icon={editingId ? "check" : "send"} onPress={submit} disabled={!canSubmit} />
+            {editingId ? (
+              <Pressable onPress={cancelEdit} style={({ pressed }) => [localStyles.cancelEditBtn, { opacity: pressed ? 0.7 : 1 }]}>
+                <Text style={[localStyles.cancelEditText, { color: colors.mutedForeground }]}>Cancel edit</Text>
+              </Pressable>
+            ) : null}
           </View>
         </View>
 
         <SectionTitle title="Your active adverts" />
         {myAdverts.length ? (
-          <FlatList data={myAdverts} scrollEnabled={false} keyExtractor={(item) => item.id} renderItem={({ item }) => <MyAdvertCard advert={item} />} />
+          <FlatList
+            data={myAdverts}
+            scrollEnabled={false}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <MyAdvertCard advert={item} onPress={() => setSelectedMyAdvert(item)} />}
+          />
         ) : (
           <View style={[localStyles.emptyMini, { backgroundColor: colors.secondary }]}>
             <Text style={[localStyles.emptyMiniText, { color: colors.secondaryForeground }]}>Your posted adverts will appear here.</Text>
           </View>
         )}
       </ScrollView>
+
+      {selectedMyAdvert ? (
+        <MyAdvertDetail
+          advert={selectedMyAdvert}
+          onClose={() => setSelectedMyAdvert(null)}
+          onEdit={() => loadAdvertForEdit(selectedMyAdvert)}
+          onDelete={() => deleteAdvert(selectedMyAdvert.id)}
+        />
+      ) : null}
     </ScreenShell>
   );
 }
@@ -546,12 +811,40 @@ const localStyles = StyleSheet.create({
   nearOfferBadge: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12 },
   nearOfferText: { fontWeight: "600", fontSize: 12 },
   success: { fontWeight: "700", fontSize: 13, marginBottom: 8 },
-  myCard: { borderWidth: 1, borderRadius: 22, padding: 16, marginBottom: 10 },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  myCard: { borderWidth: 1, borderRadius: 22, overflow: "hidden", marginBottom: 10 },
+  expiryRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
+  expiryText: { fontWeight: "700", fontSize: 12 },
+  cardTop: { flexDirection: "row", justifyContent: "space-between", marginTop: 12, marginBottom: 4, paddingHorizontal: 16 },
   cardType: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.6 },
   cardDistance: { fontWeight: "600", fontSize: 12 },
-  cardTitle: { fontWeight: "700", fontSize: 17, marginBottom: 5 },
-  cardText: { fontWeight: "500", fontSize: 14 },
+  cardTitle: { fontWeight: "700", fontSize: 17, marginBottom: 4, paddingHorizontal: 16 },
+  cardText: { fontWeight: "500", fontSize: 14, paddingHorizontal: 16 },
+  cardFooter: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 16, paddingVertical: 10, marginTop: 4 },
+  cardFooterText: { fontWeight: "500", fontSize: 12 },
+  editingBanner: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 18 },
+  editingBannerText: { fontWeight: "600", fontSize: 13, flex: 1 },
+  cancelEditBtn: { marginTop: 10, alignItems: "center", padding: 10 },
+  cancelEditText: { fontWeight: "600", fontSize: 14 },
+  modalScrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  modalCard: { borderTopLeftRadius: 34, borderTopRightRadius: 34, maxHeight: "92%", overflow: "hidden" },
+  detailExpiryBar: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
+  detailExpiryText: { fontWeight: "700", fontSize: 13, flex: 1 },
+  detailScroll: { paddingHorizontal: 22, paddingBottom: 40, gap: 4 },
+  detailTypeLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 16 },
+  detailTitle: { fontWeight: "700", fontSize: 26, lineHeight: 31, letterSpacing: -0.5, marginTop: 4 },
+  detailChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 10 },
+  chip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  chipText: { fontWeight: "700", fontSize: 12 },
+  detailSection: { gap: 4, marginTop: 10 },
+  detailLabel: { fontWeight: "700", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6 },
+  detailValue: { fontWeight: "600", fontSize: 15, lineHeight: 21 },
+  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  tagText: { fontWeight: "600", fontSize: 12 },
+  editButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 18, marginTop: 12 },
+  editButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
+  deleteButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 18, borderWidth: 1.5, marginTop: 10 },
+  deleteButtonText: { fontWeight: "700", fontSize: 16 },
   emptyMini: { borderRadius: 20, padding: 18 },
   emptyMiniText: { fontWeight: "600", textAlign: "center" },
 });
