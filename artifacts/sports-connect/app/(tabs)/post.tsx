@@ -220,7 +220,6 @@ export default function PostScreen() {
   const [location, setLocation] = useState(playerProfile.location);
   const [level, setLevel] = useState("Competitive amateur");
   const [description, setDescription] = useState("");
-  const [needs, setNeeds] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [ageGroup, setAgeGroup] = useState<AgeGroup | null>(null);
   const [preferredAge, setPreferredAge] = useState<number | null>(null);
@@ -274,8 +273,6 @@ export default function PostScreen() {
     setPositions((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
   }
 
-  const needsPlaceholder = isPlayersWanted ? "Positions or roles you are seeking" : isClubTrials ? "Trial details & what you're looking for" : isCoachWanted ? "Experience level and coaching style required" : isCoachLooking ? "Coaching background and what you offer" : "What you are looking for in a club";
-
   const submit = () => {
     if (!canSubmit || !ageGroup) return;
     if (allowedSports.length && !allowedSports.includes(sport)) return;
@@ -288,7 +285,7 @@ export default function PostScreen() {
       level,
       availability: trainingTbd && gameTbd ? "TBD" : [trainingDays.join("/") || "TBD", gameDays.join("/") || "TBD"].join(" | "),
       description,
-      needs: needs || needsPlaceholder,
+      needs: isPlayersWanted ? "Players wanted" : isClubTrials ? "Club trials" : isCoachWanted ? "Coach wanted" : "Player looking",
       ageGroup: ageGroup.label,
       preferredAge: preferredAge ?? undefined,
       positions,
@@ -308,7 +305,6 @@ export default function PostScreen() {
     });
     setSelectedSport(sport);
     setTitle("");
-    setNeeds("");
     setDescription("");
     setPlayerDescription("");
     setAgeGroup(null);
@@ -408,7 +404,6 @@ export default function PostScreen() {
             <Field label="In 100 words or less, describe what type of player you are looking for" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe the player profile, attitude and skills required…" multiline />
           )}
 
-          <Field label={isPlayersWanted ? "Positions needed" : isClubTrials ? "Trial details" : isCoachWanted ? "Coach requirements" : "What you want"} value={needs} onChangeText={setNeeds} placeholder={needsPlaceholder} />
           <Field label="Details *" value={description} onChangeText={setDescription} placeholder="Describe the opportunity, player, club culture or requirements" multiline />
 
           {showSchedule && (
