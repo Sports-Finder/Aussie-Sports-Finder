@@ -174,15 +174,31 @@ export default function ProfileScreen() {
         bio: clubBio,
       });
     } else if (isGuardian) {
-      updateAccount({ bio: guardianBio });
-    } else {
-      if (isCoach) {
-        updateAccount({ bio: coachBio });
-        return;
-      }
+      updateAccount({
+        playerName: currentAccount?.playerName,
+        parentGuardianName: currentAccount?.parentGuardianName,
+        bio: guardianBio,
+      });
       updatePlayerProfile({
         ...playerProfile,
-        name: isGuardian ? (currentAccount?.playerName ?? playerProfile.name) : (currentAccount?.fullName ?? playerProfile.name),
+        name: currentAccount?.playerName ?? playerProfile.name,
+        location: currentAccount?.location ?? playerProfile.location,
+        sports: (currentAccount?.sports ?? []).join(", "),
+        bio: guardianBio,
+      });
+    } else if (isCoach) {
+      updateAccount({ bio: coachBio });
+      updatePlayerProfile({
+        ...playerProfile,
+        name: currentAccount?.fullName ?? playerProfile.name,
+        location: currentAccount?.location ?? playerProfile.location,
+        sports: (currentAccount?.sports ?? []).join(", "),
+        bio: coachBio,
+      });
+    } else {
+      updatePlayerProfile({
+        ...playerProfile,
+        name: currentAccount?.fullName ?? playerProfile.name,
         location: currentAccount?.location ?? playerProfile.location,
         sports: (currentAccount?.sports ?? []).join(", "),
         bio: playerBio,
