@@ -38,10 +38,13 @@ function MyAdvertCard({ advert }: { advert: Advert }) {
 export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { createAdvert, adverts, activeProfile, setActiveProfile, clubProfile, playerProfile, approvedSports, selectedSport, setSelectedSport } = useSportsConnect();
+  const { createAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
   const [type, setType] = useState<Advert["type"]>("player-looking");
   const [title, setTitle] = useState("");
-  const [sport, setSport] = useState(selectedSport === allSportsFilterName ? approvedSports[0].name : selectedSport);
+  const allowedSports = activeProfile === "club"
+    ? [currentAccount?.defaultSport || clubProfile.sport].filter(Boolean)
+    : (currentAccount?.sports?.length ? currentAccount.sports : [playerProfile.sports.split(", ")[0] || selectedSport]).filter(Boolean);
+  const [sport, setSport] = useState(allowedSports[0] || selectedSport);
   const [location, setLocation] = useState(playerProfile.location);
   const [level, setLevel] = useState("Competitive amateur");
   const [availability, setAvailability] = useState("Evenings and weekends");
@@ -54,9 +57,11 @@ export default function PostScreen() {
   const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && location.trim().length > 1 && description.trim().length > 10;
   const availableTypes = advertTypesByRole[activeProfile];
   const activeTheme = getSportTheme(sport, approvedSports);
+  const sportChoices = allowedSports.length ? approvedSports.filter((item) => allowedSports.includes(item.name)) : approvedSports;
 
   const submit = () => {
     if (!canSubmit) return;
+    if (allowedSports.length && !allowedSports.includes(sport)) return;
     createAdvert({ type, title, sport, location, level, availability, needs: needs || (type === "players-wanted" ? "Open to suitable players" : type === "club-trials" ? "Trial details" : type === "coach-wanted" ? "Looking for an experienced coach" : "Looking for the right club"), description });
     setSelectedSport(sport);
     setTitle("");
@@ -92,8 +97,11 @@ export default function PostScreen() {
             ))}
           </View>
           <Text style={[styles.formLabel, { color: colors.mutedForeground }]}>Sport</Text>
+          <Text style={[styles.formHint, { color: colors.mutedForeground }]}>
+            {activeProfile === "club" ? "Clubs can only post for their single club sport." : "Only your selected sports are available here."}
+          </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sportPickerScroll}>
-            {approvedSports.map((item) => (
+            {sportChoices.map((item) => (
               <Pressable key={item.name} onPress={() => setSport(item.name)} style={({ pressed }) => [styles.sportChoice, { backgroundColor: sport === item.name ? item.button : item.soft, opacity: pressed ? 0.75 : 1 }]}>
                 <Text style={[styles.sportChoiceText, { color: sport === item.name ? "#FFFFFF" : item.text }]}>{item.name}</Text>
               </Pressable>
