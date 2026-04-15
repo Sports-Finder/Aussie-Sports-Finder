@@ -122,6 +122,8 @@ const advertTypesByRole: Record<AccountRole, { value: Advert["type"]; label: str
   ],
 };
 
+const coachTitles = ["Senior", "Assistant", "Amateur", "Experienced", "Inexperienced", "Intermediate", "Professional"];
+
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
 
@@ -412,6 +414,7 @@ export default function PostScreen() {
   const [ageGroup, setAgeGroup] = useState<AgeGroup | null>(null);
   const [preferredAge, setPreferredAge] = useState<number | null>(null);
   const [positions, setPositions] = useState<string[]>([]);
+  const [coachTitle, setCoachTitle] = useState("");
   const [playerDescription, setPlayerDescription] = useState("");
   const [trainingDays, setTrainingDays] = useState<string[]>([]);
   const [trainingFrom, setTrainingFrom] = useState("");
@@ -458,14 +461,15 @@ export default function PostScreen() {
       type === "coach-looking" ? "Coach seeking club" :
       "Player seeking club";
     const ageLabel = ageGroup ? ageGroup.label.replace(/\(.*\)/, "").trim() : "";
+    const coachTitleLabel = type === "coach-looking" ? coachTitle : "";
     const positionLabel = positions.length === 1 ? positions[0] : "";
     const levelLabel = level.trim() && level !== "Competitive amateur" ? level.trim() : "";
     const locationLabel = [suburb.trim(), state.trim()].filter(Boolean).join(", ");
     const ending = locationLabel ? `in ${locationLabel}` : "";
-    const parts = [ageLabel, positionLabel, levelLabel, roleLabel, sportLabel].filter(Boolean);
+    const parts = [ageLabel, coachTitleLabel, positionLabel, levelLabel, roleLabel, sportLabel].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" ");
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, positions, level, suburb, state]);
+  }, [sport, type, ageGroup, coachTitle, positions, level, suburb, state]);
 
   const loadAdvertForEdit = (advert: Advert) => {
     setEditingId(advert.id);
@@ -481,6 +485,7 @@ export default function PostScreen() {
     setAgeGroup(foundGroup);
     setPreferredAge(advert.preferredAge ?? null);
     setPositions(advert.positions ?? []);
+    setCoachTitle("");
     setTrainingDays(advert.trainingDays ?? []);
     setTrainingFrom(advert.trainingTimeFrom ?? "");
     setTrainingTo(advert.trainingTimeTo ?? "");
@@ -505,6 +510,7 @@ export default function PostScreen() {
     setAgeGroup(null);
     setPreferredAge(null);
     setPositions([]);
+    setCoachTitle("");
     setTrainingDays([]);
     setTrainingFrom("");
     setTrainingTo("");
@@ -534,6 +540,7 @@ export default function PostScreen() {
   const isCoachWanted = type === "coach-wanted";
   const showPlayerDesc = isPlayerLooking || isCoachLooking;
   const showClubDesc = isPlayersWanted || isClubTrials || isCoachWanted;
+  const showCoachTitle = isCoachLooking;
   const showSchedule = isPlayerLooking || isPlayersWanted;
   const showClubFees = isPlayersWanted;
   const trainingDaysOk = trainingTbd || trainingDays.length > 0;
@@ -564,7 +571,8 @@ export default function PostScreen() {
       needs: isPlayersWanted ? "Players wanted" : isClubTrials ? "Club trials" : isCoachWanted ? "Coach wanted" : "Player looking",
       ageGroup: ageGroup.label,
       preferredAge: preferredAge ?? undefined,
-      positions,
+      positions: showCoachTitle ? [] : positions,
+      coachTitle: showCoachTitle ? coachTitle : undefined,
       playerDescription: playerDescription.trim() || undefined,
       trainingDays,
       trainingTimeFrom: trainingFrom.trim() || undefined,
@@ -677,11 +685,23 @@ export default function PostScreen() {
             </>
           )}
 
-          <FormLabel text="Position(s)" />
-          <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select all that apply.</Text>
-          <View style={localStyles.pillRow}>
-            {positionOptions.map((p) => <Pill key={p} label={p} active={positions.includes(p)} onPress={() => togglePosition(p)} />)}
-          </View>
+          {showCoachTitle ? (
+            <>
+              <FormLabel text="Coach Title" required />
+              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select one coach title only.</Text>
+              <View style={localStyles.pillRow}>
+                {coachTitles.map((item) => <Pill key={item} label={item} active={coachTitle === item} onPress={() => setCoachTitle(item)} />)}
+              </View>
+            </>
+          ) : (
+            <>
+              <FormLabel text="Position(s)" />
+              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select all that apply.</Text>
+              <View style={localStyles.pillRow}>
+                {positionOptions.map((p) => <Pill key={p} label={p} active={positions.includes(p)} onPress={() => togglePosition(p)} />)}
+              </View>
+            </>
+          )}
 
           <Field label="Advert title" value={title} editable={false} placeholder="Auto-generated from your selections" />
           <Field label="Location *" value={suburb} onChangeText={setSuburb} placeholder="Suburb or town" />
