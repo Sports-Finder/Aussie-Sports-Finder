@@ -115,18 +115,20 @@ export default function ProfileScreen() {
   const [currentPasscodeInput, setCurrentPasscodeInput] = useState("");
   const [newPasscodeInput, setNewPasscodeInput] = useState("");
 
-  const [bio, setBio] = useState(playerProfile.bio ?? "");
+  const [playerBio, setPlayerBio] = useState(playerProfile.bio ?? "");
+  const [coachBio, setCoachBio] = useState(currentAccount?.role === "coach" ? currentAccount.bio ?? "" : "");
   const [clubBio, setClubBio] = useState(clubProfile.bio ?? "");
   const [clubMapAddress, setClubMapAddress] = useState(clubProfile.mapAddress ?? "");
   const [suburb, setSuburb] = useState(currentAccount?.location ?? "");
   const [state, setState] = useState("");
 
   useEffect(() => {
-    setBio(playerProfile.bio ?? "");
+    setPlayerBio(playerProfile.bio ?? "");
+    setCoachBio(currentAccount?.role === "coach" ? currentAccount.bio ?? "" : "");
     setClubBio(clubProfile.bio ?? "");
     setClubMapAddress(clubProfile.mapAddress ?? "");
     setSuburb(currentAccount?.location ?? "");
-  }, [playerProfile, clubProfile]);
+  }, [currentAccount?.bio, currentAccount?.role, clubProfile, playerProfile]);
 
   const pendingImages = profileImages.filter((img) => img.status === "pending");
   const pendingSports = pendingSportRequests.filter((r) => r.status === "pending");
@@ -170,12 +172,16 @@ export default function ProfileScreen() {
         bio: clubBio,
       });
     } else {
+      if (isCoach) {
+        updateAccount({ bio: coachBio });
+        return;
+      }
       updatePlayerProfile({
         ...playerProfile,
         name: isGuardian ? (currentAccount?.playerName ?? playerProfile.name) : (currentAccount?.fullName ?? playerProfile.name),
         location: currentAccount?.location ?? playerProfile.location,
         sports: (currentAccount?.sports ?? []).join(", "),
-        bio,
+        bio: playerBio,
       });
     }
     setMode("view");
@@ -183,7 +189,8 @@ export default function ProfileScreen() {
   };
 
   const openEdit = () => {
-    setBio(playerProfile.bio ?? "");
+    setPlayerBio(playerProfile.bio ?? "");
+    setCoachBio(currentAccount?.role === "coach" ? currentAccount.bio ?? "" : "");
     setClubBio(clubProfile.bio ?? "");
     setClubMapAddress(clubProfile.mapAddress ?? "");
     setMode("edit");
@@ -472,8 +479,8 @@ export default function ProfileScreen() {
             />
             <Field
               label={isGuardian ? "Player bio" : isCoach ? "Coach bio" : "Bio"}
-              value={bio}
-              onChangeText={(value) => setBio(value.slice(0, 250))}
+              value={isCoach ? coachBio : playerBio}
+              onChangeText={(value) => (isCoach ? setCoachBio(value.slice(0, 250)) : setPlayerBio(value.slice(0, 250)))}
               multiline
               maxLength={250}
             />
