@@ -402,7 +402,7 @@ export default function PostScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [type, setType] = useState<Advert["type"]>(advertTypesByRole[activeProfile][0].value);
-  const [sport, setSport] = useState(allowedSports[0] || selectedSport);
+  const [sport, setSport] = useState(currentAccount?.defaultSport || allowedSports[0] || selectedSport);
   const [suburb, setSuburb] = useState(playerProfile.location);
   const [state, setState] = useState("");
   const [level, setLevel] = useState("Competitive amateur");
@@ -427,10 +427,10 @@ export default function PostScreen() {
   const [title, setTitle] = useState("");
 
   useEffect(() => {
-    const nextSport = allowedSports[0] || selectedSport;
+    const nextSport = currentAccount?.defaultSport || allowedSports[0] || selectedSport;
     setSport((current) => (allowedSports.includes(current) ? current : nextSport));
     setPositions([]);
-  }, [allowedSports, selectedSport]);
+  }, [allowedSports, currentAccount?.defaultSport, selectedSport]);
 
   useEffect(() => {
     const sportLabel = sport.includes(" (") ? sport.split(" (")[0] : sport;
