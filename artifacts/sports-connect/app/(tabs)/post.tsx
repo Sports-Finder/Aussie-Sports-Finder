@@ -216,7 +216,8 @@ export default function PostScreen() {
 
   const [type, setType] = useState<Advert["type"]>(advertTypesByRole[activeProfile][0].value);
   const [sport, setSport] = useState(allowedSports[0] || selectedSport);
-  const [location, setLocation] = useState(playerProfile.location);
+  const [suburb, setSuburb] = useState(playerProfile.location);
+  const [state, setState] = useState("");
   const [level, setLevel] = useState("Competitive amateur");
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -255,11 +256,12 @@ export default function PostScreen() {
     const ageLabel = ageGroup ? ageGroup.label.replace(/\(.*\)/, "").trim() : "";
     const positionLabel = positions.length === 1 ? positions[0] : "";
     const levelLabel = level.trim() && level !== "Competitive amateur" ? level.trim() : "";
-    const locationLabel = location.trim() ? `in ${location.trim()}` : "";
+    const locationLabel = [suburb.trim(), state.trim()].filter(Boolean).join(", ");
+    const ending = locationLabel ? `in ${locationLabel}` : "";
     const parts = [ageLabel, positionLabel, levelLabel, roleLabel, sportLabel].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" ");
-    setTitle([titleBody, locationLabel].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, positions, level, location]);
+    setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
+  }, [sport, type, ageGroup, positions, level, suburb, state]);
 
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
   const myAdverts = adverts.filter((a) => a.postedBy === ownerName);
@@ -280,7 +282,7 @@ export default function PostScreen() {
   const trainingDaysOk = trainingTbd || trainingDays.length > 0;
   const gameDaysOk = gameTbd || gameDays.length > 0;
   const scheduleOk = !showSchedule || (trainingDaysOk && gameDaysOk);
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && location.trim().length > 1 && description.trim().length > 10 && ageGroup !== null && scheduleOk;
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && ageGroup !== null && scheduleOk;
 
   function toggleDay(list: string[], day: string): string[] {
     return list.includes(day) ? list.filter((d) => d !== day) : [...list, day];
@@ -298,7 +300,7 @@ export default function PostScreen() {
       type,
       title,
       sport,
-      location,
+      location: [suburb.trim(), state.trim()].filter(Boolean).join(", "),
       level,
       availability: trainingTbd && gameTbd ? "TBD" : [trainingDays.join("/") || "TBD", gameDays.join("/") || "TBD"].join(" | "),
       description,
@@ -409,7 +411,8 @@ export default function PostScreen() {
           </View>
 
           <Field label="Advert title" value={title} editable={false} placeholder="Auto-generated from your selections" />
-          <Field label="Location *" value={location} onChangeText={setLocation} placeholder="Suburb or town" />
+          <Field label="Location *" value={suburb} onChangeText={setSuburb} placeholder="Suburb or town" />
+          <Field label="State *" value={state} onChangeText={setState} placeholder="NSW, VIC, QLD, WA, SA, TAS, ACT, NT" />
           <Field label="Level" value={level} onChangeText={setLevel} placeholder="Beginner, amateur, semi-pro, elite" />
 
           {showPlayerDesc && (
