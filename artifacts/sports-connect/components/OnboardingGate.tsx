@@ -70,7 +70,7 @@ function isValidSocialLink(platform: keyof SocialLinks, value: string) {
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { currentAccount, isAdmin, adminLogin, approvedSports, createAccount, pickAccountImage } = useSportsConnect();
+  const { currentAccount, isAdmin, adminLogin, approvedSports, createAccount, pickAccountImage, signOutResetToken } = useSportsConnect();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [step, setStep] = useState<Step>("auth");
@@ -104,6 +104,40 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   });
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [defaultSport, setDefaultSport] = useState("");
+
+  React.useEffect(() => {
+    setStep("auth");
+    setAuthMethod("email");
+    setEmail("");
+    setVerificationCode("");
+    setHumanChecked(false);
+    setRole("player");
+    setProfileImageId(undefined);
+    setShowDobPicker(false);
+    setDraftDob("");
+    setForm({
+      fullName: "",
+      parentGuardianName: "",
+      playerName: "",
+      clubName: "",
+      gender: "",
+      dateOfBirth: "",
+      location: "",
+      mobile: "",
+      clubAddress: "",
+      clubWebsite: "",
+      clubContactEmail: "",
+      clubContactMobile: "",
+      instagram: "",
+      facebook: "",
+      x: "",
+      tiktok: "",
+      highlightReelUrl: "",
+      agreed: false,
+    });
+    setSelectedSports([]);
+    setDefaultSport("");
+  }, [signOutResetToken]);
 
   const age = calculateAge(form.dateOfBirth);
   const isClub = role === "club";

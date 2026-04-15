@@ -150,6 +150,7 @@ type SportsConnectState = {
   moderateSportRequest: (requestId: string, status: "approved" | "rejected") => void;
   createAccount: (draft: DraftAccount) => void;
   signOut: () => void;
+  signOutResetToken: number;
   adminLogin: (passcode: string) => boolean;
   adminSignOut: () => void;
   changeAdminPasscode: (current: string, next: string) => boolean;
@@ -327,6 +328,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [activeProfile, setActiveProfile] = useState<ProfileType>(defaultState.activeProfile);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
+  const [signOutResetToken, setSignOutResetToken] = useState(0);
 
   useEffect(() => {
     AsyncStorage.getItem(adminStorageKey).then((stored) => {
@@ -433,6 +435,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
 
   const signOut = () => {
     setCurrentAccount(undefined);
+    setSignOutResetToken((current) => current + 1);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
@@ -604,6 +607,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     moderateSportRequest,
     createAccount,
     signOut,
+    signOutResetToken,
     adminLogin,
     adminSignOut,
     changeAdminPasscode,
