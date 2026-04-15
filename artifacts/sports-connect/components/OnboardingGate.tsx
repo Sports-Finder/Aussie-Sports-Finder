@@ -289,10 +289,6 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
         {step === "type" ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Create an account</Text>
-            <Pressable onPress={() => { setStep("auth"); setRole("player"); }} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.75 : 1 }]}>
-              <Feather name="arrow-left" size={16} color={colors.primary} />
-              <Text style={[styles.backBtnText, { color: colors.primary }]}>Back to create an account</Text>
-            </Pressable>
             {(Object.keys(roleCopy) as AccountRole[]).map((item) => (
               <Pressable key={item} onPress={() => { setRole(item); setStep("details"); }} style={({ pressed }) => [styles.roleCard, { backgroundColor: colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
                 <Text style={[styles.roleTitle, { color: colors.secondaryForeground }]}>{roleCopy[item].title}</Text>
@@ -304,6 +300,10 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
         {step === "details" ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Pressable onPress={() => setStep("type")} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.75 : 1 }]}>
+              <Feather name="arrow-left" size={16} color={colors.primary} />
+              <Text style={[styles.backBtnText, { color: colors.primary }]}>Back to create an account</Text>
+            </Pressable>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>{isClub ? "Club account setup" : role === "guardian" ? "Parent/Guardian player setup" : role === "coach" ? "Coach account setup" : "Player account setup"}</Text>
             {isClub ? (
               <>
@@ -447,4 +447,6 @@ const styles = StyleSheet.create({
   modalButtonText: { fontWeight: "700", fontSize: 15 },
   adminLink: { alignItems: "center", paddingVertical: 4 },
   adminLinkText: { fontWeight: "600", fontSize: 12, textDecorationLine: "underline" },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start" },
+  backBtnText: { fontWeight: "700", fontSize: 13 },
 });
