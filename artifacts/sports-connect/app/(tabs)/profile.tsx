@@ -13,10 +13,11 @@ const fallbackImage = require("@/assets/images/player-placeholder.png");
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { activeProfile, setActiveProfile, playerProfile, clubProfile, updatePlayerProfile, updateClubProfile, pickProfileImage, profileImages, moderateImage, getImageUri } = useSportsConnect();
+  const { activeProfile, setActiveProfile, playerProfile, clubProfile, updatePlayerProfile, updateClubProfile, pickProfileImage, profileImages, moderateImage, getImageUri, approvedSports, pendingSportRequests, moderateSportRequest } = useSportsConnect();
   const [player, setPlayer] = useState(playerProfile);
   const [club, setClub] = useState(clubProfile);
   const pendingImages = profileImages.filter((image) => image.status === "pending");
+  const pendingSports = pendingSportRequests.filter((request) => request.status === "pending");
   const playerImage = getImageUri(playerProfile.imageId, true);
   const clubImage = getImageUri(clubProfile.imageId, true);
   const clubMapQuery = `${club.name} ${club.mapAddress || club.location}`;
@@ -64,7 +65,14 @@ export default function ProfileScreen() {
             </View>
           </View>
           <Field label="Club name" value={club.name} onChangeText={(name) => setClub((current) => ({ ...current, name }))} />
-          <Field label="Sport" value={club.sport} onChangeText={(sport) => setClub((current) => ({ ...current, sport }))} />
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Club sport</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sportPickerScroll}>
+            {approvedSports.map((sport) => (
+              <Pressable key={sport.name} onPress={() => setClub((current) => ({ ...current, sport: sport.name }))} style={({ pressed }) => [styles.sportChoice, { backgroundColor: club.sport === sport.name ? sport.button : sport.soft, opacity: pressed ? 0.75 : 1 }]}>
+                <Text style={[styles.sportChoiceText, { color: club.sport === sport.name ? "#FFFFFF" : sport.text }]}>{sport.name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
           <Field label="Suburb, city and state" value={club.location} onChangeText={(location) => setClub((current) => ({ ...current, location }))} />
           <Field label="Club ground or street address" value={club.mapAddress ?? ""} onChangeText={(mapAddress) => setClub((current) => ({ ...current, mapAddress }))} placeholder="e.g. Princes Park, Carlton North VIC" />
           <Field label="Club bio" value={club.bio} onChangeText={(bio) => setClub((current) => ({ ...current, bio }))} multiline />
@@ -112,6 +120,35 @@ export default function ProfileScreen() {
             </View>
           ))}
         </View>
+
+        <SectionTitle title="Admin sport approvals" action={`${pendingSports.length} pending`} />
+        <View style={[styles.adminCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.adminHeader}>
+            <View style={[styles.adminIcon, { backgroundColor: colors.pitchSoft }]}>
+              <Feather name="list" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.profileCopy}>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Requested sports</Text>
+              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Approved sports are added to the top-level filter list and can be used in new adverts.</Text>
+            </View>
+          </View>
+          {pendingSports.length === 0 ? (
+            <Text style={[styles.cardText, { color: colors.mutedForeground }]}>No sport requests need review right now.</Text>
+          ) : pendingSports.map((request) => (
+            <View key={request.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}>
+              <View style={styles.reviewCopy}>
+                <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{request.name}</Text>
+                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Pending admin approval</Text>
+              </View>
+              <Pressable onPress={() => moderateSportRequest(request.id, "approved")} style={[styles.reviewButton, { backgroundColor: colors.primary }]}>
+                <Feather name="check" color="#FFFFFF" size={18} />
+              </Pressable>
+              <Pressable onPress={() => moderateSportRequest(request.id, "rejected")} style={[styles.reviewButton, { backgroundColor: colors.destructive }]}>
+                <Feather name="x" color="#FFFFFF" size={18} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
       </ScrollView>
     </ScreenShell>
   );
@@ -127,6 +164,10 @@ const styles = StyleSheet.create({
   profileCopy: { flex: 1 },
   cardTitle: { fontWeight: "700", fontSize: 19 },
   cardText: { fontWeight: "500", fontSize: 14, lineHeight: 20, marginTop: 3 },
+  fieldLabel: { fontWeight: "600", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  sportPickerScroll: { gap: 8, paddingRight: 20, paddingBottom: 12 },
+  sportChoice: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
+  sportChoiceText: { fontWeight: "800", fontSize: 13 },
   mapButtons: { flexDirection: "row", gap: 10, marginBottom: 12 },
   mapButton: { flex: 1, minHeight: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
   mapButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },

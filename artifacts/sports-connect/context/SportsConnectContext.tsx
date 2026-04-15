@@ -5,9 +5,18 @@ import * as Location from "expo-location";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Alert, Platform } from "react-native";
 
+import { SportTheme, createCustomSportTheme, defaultSportThemes } from "@/constants/sports";
+
 type AdvertType = "player-looking" | "players-wanted";
 type ProfileType = "player" | "club";
 type ImageStatus = "pending" | "approved" | "rejected";
+
+export type SportRequest = {
+  id: string;
+  name: string;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+};
 
 export type Advert = {
   id: string;
@@ -83,8 +92,14 @@ type SportsConnectState = {
   clubProfile: ClubProfile;
   playerProfile: PlayerProfile;
   notificationSettings: NotificationSettings;
+  approvedSports: SportTheme[];
+  pendingSportRequests: SportRequest[];
+  selectedSport: string;
   activeProfile: ProfileType;
+  setSelectedSport: (sport: string) => void;
   setActiveProfile: (profile: ProfileType) => void;
+  requestSport: (name: string) => void;
+  moderateSportRequest: (requestId: string, status: "approved" | "rejected") => void;
   createAdvert: (draft: DraftAdvert) => void;
   connectOnAdvert: (advert: Advert) => string;
   sendMessage: (conversationId: string, body: string) => void;
@@ -97,7 +112,7 @@ type SportsConnectState = {
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
 };
 
-const storageKey = "sports-connect-state-v3-club-maps";
+const storageKey = "sports-connect-state-v4-sport-filters";
 
 const now = () => new Date().toISOString();
 const makeId = () => Date.now().toString() + Math.random().toString(36).slice(2, 9);
@@ -106,8 +121,8 @@ const seedAdverts: Advert[] = [
   {
     id: "ad-1",
     type: "players-wanted",
-    title: "Melbourne footy club needs a box-to-box midfielder",
-    sport: "Soccer",
+    title: "Melbourne club needs a box-to-box midfielder",
+    sport: "Football (Soccer)",
     location: "Melbourne VIC",
     distanceKm: 4,
     postedBy: "Yarra United SC",
@@ -122,7 +137,7 @@ const seedAdverts: Advert[] = [
     id: "ad-2",
     type: "player-looking",
     title: "Goalkeeper moving to Brisbane and looking for a club",
-    sport: "Soccer",
+    sport: "Football (Soccer)",
     location: "Brisbane QLD",
     distanceKm: 18,
     postedBy: "Jordan Miles",
@@ -163,6 +178,36 @@ const seedAdverts: Advert[] = [
     description: "Wing/full-back with pace and kicking range, looking for coaching, structure and a welcoming Australian club culture.",
     createdAt: now(),
   },
+  {
+    id: "ad-5",
+    type: "players-wanted",
+    title: "Aussie Rules club searching for a ruck and half-forward",
+    sport: "Aussie Rules Football",
+    location: "Adelaide SA",
+    distanceKm: 42,
+    postedBy: "Parklands Footy Club",
+    postedByType: "club",
+    level: "Community league",
+    availability: "Training Tuesday and Thursday, matches Saturday",
+    needs: "Ruck, half-forward and utility players welcome",
+    description: "A family-friendly community footy club with strong social culture and competitive senior teams.",
+    createdAt: now(),
+  },
+  {
+    id: "ad-6",
+    type: "players-wanted",
+    title: "Cricket club needs all-rounders for summer season",
+    sport: "Cricket",
+    location: "Perth WA",
+    distanceKm: 48,
+    postedBy: "Swan River Cricket Club",
+    postedByType: "club",
+    level: "Local senior grades",
+    availability: "Training Wednesday, matches Saturday",
+    needs: "Batting all-rounders and wicketkeeper considered",
+    description: "Welcoming cricket club preparing squads for the summer season across multiple senior grades.",
+    createdAt: now(),
+  },
 ];
 
 const seedConversation: Conversation = {
@@ -183,14 +228,14 @@ const defaultState = {
   profileImages: [] as ProfileImage[],
   clubProfile: {
     name: "Yarra United SC",
-    sport: "Soccer",
+    sport: "Football (Soccer)",
     location: "Melbourne VIC",
     mapAddress: "Princes Park, Carlton North VIC",
     bio: "A community club with senior, academy and development teams. We recruit players who are reliable, coachable and good teammates across Melbourne.",
   },
   playerProfile: {
     name: "You",
-    sports: "Soccer, Futsal",
+    sports: "Football (Soccer), Futsal (Indoor Soccer)",
     location: "Melbourne VIC",
     bio: "Midfielder available for competitive local soccer. Strong fitness, positive attitude and regular availability.",
   },
@@ -199,6 +244,9 @@ const defaultState = {
     radiusKm: 25,
     locationLabel: "Melbourne area",
   },
+  approvedSports: defaultSportThemes,
+  pendingSportRequests: [] as SportRequest[],
+  selectedSport: "All Sports",
   activeProfile: "player" as ProfileType,
 };
 
@@ -211,6 +259,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [clubProfile, setClubProfile] = useState<ClubProfile>(defaultState.clubProfile);
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile>(defaultState.playerProfile);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(defaultState.notificationSettings);
+  const [approvedSports, setApprovedSports] = useState<SportTheme[]>(defaultState.approvedSports);
+  const [pendingSportRequests, setPendingSportRequests] = useState<SportRequest[]>(defaultState.pendingSportRequests);
+  const [selectedSport, setSelectedSport] = useState(defaultState.selectedSport);
   const [activeProfile, setActiveProfile] = useState<ProfileType>(defaultState.activeProfile);
 
   useEffect(() => {
@@ -223,14 +274,43 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
       setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
       setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
+      setApprovedSports(parsed.approvedSports ?? defaultState.approvedSports);
+      setPendingSportRequests(parsed.pendingSportRequests ?? []);
+      setSelectedSport(parsed.selectedSport ?? defaultState.selectedSport);
       setActiveProfile(parsed.activeProfile ?? "player");
     }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    const snapshot = { adverts, conversations, profileImages, clubProfile, playerProfile, notificationSettings, activeProfile };
+    const snapshot = { adverts, conversations, profileImages, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile };
     AsyncStorage.setItem(storageKey, JSON.stringify(snapshot)).catch(() => undefined);
-  }, [adverts, conversations, profileImages, clubProfile, playerProfile, notificationSettings, activeProfile]);
+  }, [adverts, conversations, profileImages, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
+
+  const requestSport = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const alreadyApproved = approvedSports.some((sport) => sport.name.toLowerCase() === trimmed.toLowerCase());
+    const alreadyPending = pendingSportRequests.some((request) => request.name.toLowerCase() === trimmed.toLowerCase() && request.status === "pending");
+    if (alreadyApproved || alreadyPending) {
+      Alert.alert("Sport already exists", "This sport is already available or waiting for admin approval.");
+      return;
+    }
+    setPendingSportRequests((current) => [{ id: makeId(), name: trimmed, status: "pending", requestedAt: now() }, ...current]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const moderateSportRequest = (requestId: string, status: "approved" | "rejected") => {
+    const request = pendingSportRequests.find((item) => item.id === requestId);
+    if (!request) return;
+    if (status === "approved") {
+      setApprovedSports((current) => {
+        if (current.some((sport) => sport.name.toLowerCase() === request.name.toLowerCase())) return current;
+        return [...current, createCustomSportTheme(request.name)];
+      });
+    }
+    setPendingSportRequests((current) => current.map((item) => item.id === requestId ? { ...item, status } : item));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  };
 
   const createAdvert = (draft: DraftAdvert) => {
     const owner = activeProfile === "club" ? clubProfile.name : playerProfile.name;
@@ -340,8 +420,14 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     clubProfile,
     playerProfile,
     notificationSettings,
+    approvedSports,
+    pendingSportRequests,
+    selectedSport,
     activeProfile,
+    setSelectedSport,
     setActiveProfile,
+    requestSport,
+    moderateSportRequest,
     createAdvert,
     connectOnAdvert,
     sendMessage,
@@ -352,7 +438,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     pickProfileImage,
     moderateImage,
     getImageUri,
-  }), [adverts, conversations, profileImages, clubProfile, playerProfile, notificationSettings, activeProfile]);
+  }), [adverts, conversations, profileImages, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

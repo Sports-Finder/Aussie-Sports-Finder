@@ -1,11 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
-import { FlatList, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { FlatList, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Advert, useSportsConnect } from "@/context/SportsConnectContext";
 import { IconButton, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
+import { allSportsFilterName, getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
 
@@ -92,20 +93,28 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
 export default function DiscoverScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { adverts, notificationSettings, toggleNotifications, setNotificationRadius } = useSportsConnect();
+  const { adverts, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport } = useSportsConnect();
   const [filter, setFilter] = useState<Filter>("all");
   const [stateFilter, setStateFilter] = useState<AustralianStateFilter>("All");
   const [selected, setSelected] = useState<Advert | null>(null);
+  const [sportRequest, setSportRequest] = useState("");
+  const activeTheme = selectedSport === allSportsFilterName ? null : getSportTheme(selectedSport, approvedSports);
 
   const filtered = useMemo(() => adverts.filter((advert) => {
+    const matchesSport = selectedSport === allSportsFilterName || advert.sport === selectedSport;
+    if (!matchesSport) return false;
     const matchesState = stateFilter === "All" || advert.location.includes(stateFilter);
     if (!matchesState) return false;
     if (filter === "all") return true;
     if (filter === "near") return advert.distanceKm <= notificationSettings.radiusKm;
     return advert.type === filter;
-  }), [adverts, filter, notificationSettings.radiusKm, stateFilter]);
+  }), [adverts, filter, notificationSettings.radiusKm, selectedSport, stateFilter]);
 
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
+  const submitSportRequest = () => {
+    requestSport(sportRequest);
+    setSportRequest("");
+  };
 
   return (
     <ScreenShell>
@@ -116,6 +125,34 @@ export default function DiscoverScreen() {
             <Text style={[styles.title, { color: colors.foreground }]}>Find your next club or player</Text>
           </View>
           <IconButton icon="bell" label="Notifications" onPress={toggleNotifications} />
+        </View>
+
+        <View style={[styles.sportPanel, { backgroundColor: activeTheme?.background ?? colors.card, borderColor: activeTheme?.soft ?? colors.border }]}>
+          <View style={styles.sportPanelHeader}>
+            <View>
+              <Text style={[styles.sportKicker, { color: activeTheme?.primary ?? colors.primary }]}>Sports filter</Text>
+              <Text style={[styles.sportTitle, { color: activeTheme?.text ?? colors.foreground }]}>{selectedSport === allSportsFilterName ? "All sports" : selectedSport}</Text>
+            </View>
+            <View style={[styles.sportCountBadge, { backgroundColor: activeTheme?.button ?? colors.primary }]}>
+              <Text style={styles.sportCountText}>{filtered.length}</Text>
+            </View>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sportScroll}>
+            <Pressable onPress={() => setSelectedSport(allSportsFilterName)} style={({ pressed }) => [styles.sportChip, { backgroundColor: selectedSport === allSportsFilterName ? colors.primary : colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
+              <Text style={[styles.sportChipText, { color: selectedSport === allSportsFilterName ? colors.primaryForeground : colors.secondaryForeground }]}>All Sports</Text>
+            </Pressable>
+            {approvedSports.map((sport) => (
+              <Pressable key={sport.name} onPress={() => setSelectedSport(sport.name)} style={({ pressed }) => [styles.sportChip, { backgroundColor: selectedSport === sport.name ? sport.button : sport.soft, opacity: pressed ? 0.75 : 1 }]}>
+                <Text style={[styles.sportChipText, { color: selectedSport === sport.name ? "#FFFFFF" : sport.text }]}>{sport.name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <View style={styles.addSportRow}>
+            <TextInput value={sportRequest} onChangeText={setSportRequest} placeholder="Add a sport for admin approval" placeholderTextColor={colors.mutedForeground} style={[styles.addSportInput, { backgroundColor: colors.background, borderColor: activeTheme?.soft ?? colors.border, color: colors.foreground }]} />
+            <Pressable onPress={submitSportRequest} style={({ pressed }) => [styles.addSportButton, { backgroundColor: activeTheme?.button ?? colors.primary, opacity: pressed ? 0.75 : 1 }]}>
+              <Feather name="plus" color="#FFFFFF" size={18} />
+            </Pressable>
+          </View>
         </View>
 
         <ImageBackground source={heroImage} imageStyle={styles.heroImage} style={styles.hero} resizeMode="cover">
@@ -138,7 +175,7 @@ export default function DiscoverScreen() {
           {[10, 25, 50].map((radius) => <Pill key={radius} label={`${radius} km`} active={notificationSettings.radiusKm === radius} onPress={() => setNotificationRadius(radius)} />)}
         </View>
 
-        <SectionTitle title="Advert marketplace" action={`${filtered.length} live`} />
+        <SectionTitle title={`${selectedSport === allSportsFilterName ? "All sports" : selectedSport} adverts`} action={`${filtered.length} live`} />
         <View style={styles.filterRow}>
           <Pill label="All" active={filter === "all"} onPress={() => setFilter("all")} />
           <Pill label="Players wanted" active={filter === "players-wanted"} onPress={() => setFilter("players-wanted")} />
@@ -156,6 +193,13 @@ export default function DiscoverScreen() {
         </View>
 
         <FlatList data={filtered} scrollEnabled={false} keyExtractor={(item) => item.id} renderItem={({ item }) => <AdvertCard advert={item} onPress={() => setSelected(item)} />} />
+        {filtered.length === 0 ? (
+          <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="search" color={activeTheme?.primary ?? colors.primary} size={24} />
+            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No adverts in this sport yet</Text>
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Try another sport or post the first advert for this category.</Text>
+          </View>
+        ) : null}
       </ScrollView>
       {selected ? <AdvertDetail advert={selected} onClose={() => setSelected(null)} /> : null}
     </ScreenShell>
@@ -173,6 +217,18 @@ const styles = StyleSheet.create({
   heroContent: { padding: 20 },
   heroTitle: { color: "#FFFFFF", fontWeight: "700", fontSize: 24, letterSpacing: -0.3 },
   heroText: { color: "#E7F4EF", fontWeight: "500", fontSize: 14, lineHeight: 20, marginTop: 6, maxWidth: 300 },
+  sportPanel: { borderWidth: 1, borderRadius: 28, padding: 16, gap: 12 },
+  sportPanelHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  sportKicker: { fontWeight: "800", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8 },
+  sportTitle: { fontWeight: "800", fontSize: 23, letterSpacing: -0.5, marginTop: 2 },
+  sportCountBadge: { minWidth: 44, height: 44, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  sportCountText: { color: "#FFFFFF", fontWeight: "800", fontSize: 16 },
+  sportScroll: { paddingRight: 20, gap: 8 },
+  sportChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
+  sportChipText: { fontWeight: "800", fontSize: 13 },
+  addSportRow: { flexDirection: "row", gap: 8 },
+  addSportInput: { flex: 1, borderWidth: 1, borderRadius: 16, minHeight: 46, paddingHorizontal: 14, fontWeight: "600", fontSize: 14 },
+  addSportButton: { width: 48, height: 46, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   alertCard: { borderRadius: 26, padding: 18, flexDirection: "row", alignItems: "center", gap: 14 },
   alertTextWrap: { flex: 1 },
   alertTitle: { color: "#FFFFFF", fontWeight: "700", fontSize: 17 },
@@ -205,4 +261,7 @@ const styles = StyleSheet.create({
   mapActions: { flexDirection: "row", gap: 10, marginBottom: 4 },
   mapAction: { flex: 1, minHeight: 46, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
   mapActionText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
+  emptyState: { borderWidth: 1, borderRadius: 24, padding: 22, alignItems: "center", gap: 8 },
+  emptyTitle: { fontWeight: "800", fontSize: 17 },
+  emptyText: { fontWeight: "500", fontSize: 14, lineHeight: 20, textAlign: "center" },
 });
