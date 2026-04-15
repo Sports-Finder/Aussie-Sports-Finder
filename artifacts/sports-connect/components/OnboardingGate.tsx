@@ -62,6 +62,10 @@ function isAustralianLocation(value: string) {
   return states.some((state) => upper.includes(state)) || value.trim().length > 3;
 }
 
+function getStateOptions() {
+  return states;
+}
+
 function isValidSocialLink(platform: keyof SocialLinks, value: string) {
   if (!value.trim()) return true;
   const allowed = {
@@ -100,7 +104,8 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     clubName: "",
     gender: "",
     dateOfBirth: "",
-    location: "",
+    suburb: "",
+    state: "",
     mobile: "",
     clubAddress: "",
     clubWebsite: "",
@@ -133,7 +138,8 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       clubName: "",
       gender: "",
       dateOfBirth: "",
-      location: "",
+      suburb: "",
+      state: "",
       mobile: "",
       clubAddress: "",
       clubWebsite: "",
@@ -169,7 +175,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     const nameValid = role === "guardian" ? Boolean(form.parentGuardianName.trim() && form.playerName.trim()) : Boolean(form.fullName.trim());
     const guardianAgeValid = role === "guardian" ? Boolean(age && Number(age) <= 17) : true;
     const playerAgeValid = role === "player" ? Boolean(age && Number(age) >= 18) : true;
-    return Boolean(nameValid && form.gender && form.dateOfBirth && guardianAgeValid && playerAgeValid && isAustralianLocation(form.location) && form.mobile.trim() && selectedSports.length && defaultSport);
+    return Boolean(nameValid && form.gender && form.dateOfBirth && guardianAgeValid && playerAgeValid && isAustralianLocation(`${form.suburb} ${form.state}`) && form.suburb.trim() && form.state && form.mobile.trim() && selectedSports.length && defaultSport);
   }, [age, defaultSport, form, humanChecked, isClub, primaryEmail, role, selectedSports.length]);
 
   if (currentAccount || isAdmin) return <>{children}</>;
@@ -236,7 +242,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       clubName: form.clubName,
       gender: form.gender,
       dateOfBirth: form.dateOfBirth,
-      location: isClub ? form.clubAddress : form.location,
+      location: isClub ? form.clubAddress : `${form.suburb} ${form.state}`.trim(),
       mobile: isClub ? form.clubContactMobile : form.mobile,
       sports: isClub ? [defaultSport] : selectedSports,
       defaultSport,
@@ -392,7 +398,13 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
                     </View>
                   </View>
                 </Modal>
-                <Input label="Suburb/City & State (Australia only) (required)" value={form.location} onChangeText={(value) => update("location", value)} />
+                <Input label="Suburb (required)" value={form.suburb} onChangeText={(value) => update("suburb", value)} />
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>State (required)</Text>
+                <View style={styles.wrapRow}>
+                  {getStateOptions().map((state) => (
+                    <Choice key={state} label={state} active={form.state === state} onPress={() => update("state", state)} />
+                  ))}
+                </View>
                 <Input label={role === "guardian" ? "Parent/Guardian Email Address (required)" : "Email Address (required)"} value={email} onChangeText={setEmail} keyboardType="email-address" />
                 <Input label={role === "guardian" ? "Parent/Guardian Mobile Number (required)" : "Mobile Number (required)"} value={form.mobile} onChangeText={(value) => update("mobile", value)} keyboardType="phone-pad" />
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>{role === "guardian" ? "Player sports played (required)" : role === "coach" ? "Sports coached (required)" : "Sports played (required)"}</Text>

@@ -12,6 +12,7 @@ type Mode = "view" | "edit";
 
 const fallbackImage = require("@/assets/images/player-placeholder.png");
 const genders = ["Male", "Female", "Pref Not to Say"];
+const states = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
 
 function parseDobAge(dob?: string) {
   if (!dob) return null;
@@ -117,11 +118,14 @@ export default function ProfileScreen() {
   const [bio, setBio] = useState(playerProfile.bio ?? "");
   const [clubBio, setClubBio] = useState(clubProfile.bio ?? "");
   const [clubMapAddress, setClubMapAddress] = useState(clubProfile.mapAddress ?? "");
+  const [suburb, setSuburb] = useState(currentAccount?.location ?? "");
+  const [state, setState] = useState("");
 
   useEffect(() => {
     setBio(playerProfile.bio ?? "");
     setClubBio(clubProfile.bio ?? "");
     setClubMapAddress(clubProfile.mapAddress ?? "");
+    setSuburb(currentAccount?.location ?? "");
   }, [playerProfile, clubProfile]);
 
   const pendingImages = profileImages.filter((img) => img.status === "pending");
@@ -344,7 +348,13 @@ export default function ProfileScreen() {
               ))}
             </View>
 
-            <Field label="Suburb, city and state" value={currentAccount?.location ?? ""} onChangeText={(v) => updateAccount({ location: v })} />
+            <Field label="Suburb" value={suburb} onChangeText={setSuburb} />
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>State</Text>
+            <View style={styles.wrapRow}>
+              {states.map((item) => (
+                <Choice key={item} label={item} active={state === item} onPress={() => setState(item)} />
+              ))}
+            </View>
             <Field label="Club ground or street address" value={clubMapAddress} onChangeText={setClubMapAddress} placeholder="e.g. Princes Park, Carlton North VIC" />
             <Field label="Club contact email" value={currentAccount?.clubContactEmail ?? ""} onChangeText={(v) => updateAccount({ clubContactEmail: v })} keyboardType="email-address" />
             <Field label="Club contact mobile" value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
@@ -439,7 +449,13 @@ export default function ProfileScreen() {
               </View>
             </Modal>
 
-            <Field label="Suburb/City & State (Australia only)" value={currentAccount?.location ?? ""} onChangeText={(v) => updateAccount({ location: v })} />
+            <Field label="Suburb" value={suburb} onChangeText={setSuburb} />
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>State</Text>
+            <View style={styles.wrapRow}>
+              {states.map((item) => (
+                <Choice key={item} label={item} active={state === item} onPress={() => setState(item)} />
+              ))}
+            </View>
             <Field
               label={isGuardian ? "Parent/Guardian email address" : "Email address"}
               value={currentAccount?.email ?? ""}
