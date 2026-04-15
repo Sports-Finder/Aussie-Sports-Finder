@@ -145,6 +145,10 @@ type NotificationSettings = {
 
 type DraftAdvert = Omit<Advert, "id" | "createdAt" | "distanceKm" | "postedBy" | "postedByType">;
 type DraftAccount = Omit<UserAccount, "id" | "createdAt" | "approved">;
+const normalizeAdvertType = (type: Advert["type"]): Advert["type"] => {
+  if (type === "player-looking") return "coach-looking";
+  return type;
+};
 
 type SportsConnectState = {
   adverts: Advert[];
@@ -212,7 +216,7 @@ const seedAdverts: Advert[] = [
   },
   {
     id: "ad-2",
-    type: "player-looking",
+    type: "coach-looking",
     title: "Goalkeeper moving to Brisbane and looking for a club",
     sport: "Football (Soccer)",
     location: "Brisbane QLD",
@@ -242,7 +246,7 @@ const seedAdverts: Advert[] = [
   },
   {
     id: "ad-4",
-    type: "player-looking",
+    type: "coach-looking",
     title: "Fast outside back seeking rugby league club",
     sport: "Rugby League",
     location: "Gold Coast QLD",
@@ -364,7 +368,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     AsyncStorage.getItem(storageKey).then((stored) => {
       if (!stored) return;
       const parsed = JSON.parse(stored) as typeof defaultState;
-      setAdverts(parsed.adverts ?? defaultState.adverts);
+      setAdverts((parsed.adverts ?? defaultState.adverts).map((advert) => ({
+        ...advert,
+        type: normalizeAdvertType(advert.type),
+      })));
       setConversations(parsed.conversations ?? defaultState.conversations);
       setProfileImages(parsed.profileImages ?? []);
       setPendingHighlightLinks(parsed.pendingHighlightLinks ?? []);
