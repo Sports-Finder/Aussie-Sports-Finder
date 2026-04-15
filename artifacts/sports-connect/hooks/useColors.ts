@@ -1,6 +1,8 @@
 import { useColorScheme } from "react-native";
 
+import { allSportsFilterName, getSportTheme } from "@/constants/sports";
 import colors from "@/constants/colors";
+import { useOptionalSportsConnect } from "@/context/SportsConnectContext";
 
 /**
  * Returns the design tokens for the current color scheme.
@@ -16,9 +18,31 @@ import colors from "@/constants/colors";
  */
 export function useColors() {
   const scheme = useColorScheme();
+  const sportsContext = useOptionalSportsConnect();
   const palette =
     scheme === "dark" && "dark" in colors
       ? (colors as Record<string, typeof colors.light>).dark
       : colors.light;
-  return { ...palette, radius: colors.radius };
+
+  if (!sportsContext || sportsContext.selectedSport === allSportsFilterName) {
+    return { ...palette, radius: colors.radius };
+  }
+
+  const sportTheme = getSportTheme(sportsContext.selectedSport, sportsContext.approvedSports);
+
+  return {
+    ...palette,
+    background: sportTheme.background,
+    card: "#FFFFFF",
+    primary: sportTheme.button,
+    secondary: sportTheme.soft,
+    secondaryForeground: sportTheme.text,
+    border: sportTheme.soft,
+    input: sportTheme.soft,
+    pitchSoft: sportTheme.soft,
+    accent: sportTheme.soft,
+    accentForeground: sportTheme.text,
+    tint: sportTheme.button,
+    radius: colors.radius,
+  };
 }

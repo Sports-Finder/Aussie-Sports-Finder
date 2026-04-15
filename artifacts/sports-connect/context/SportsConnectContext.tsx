@@ -448,3 +448,7 @@ export function useSportsConnect() {
   if (!context) throw new Error("useSportsConnect must be used inside SportsConnectProvider");
   return context;
 }
+
+export function useOptionalSportsConnect() {
+  return useContext(SportsConnectContext);
+}

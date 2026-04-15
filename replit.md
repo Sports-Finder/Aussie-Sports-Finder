@@ -6,7 +6,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 Aussie Sports Club Finder is an Australian-focused Expo mobile app artifact for players and sports clubs to post adverts, connect, message privately, manage profiles, submit profile images for admin moderation, enable nearby advert alerts, and open club locations in Apple Maps or Google Maps. The first build stores marketplace data locally with AsyncStorage.
 
-The mobile app now uses top-level sport filtering. Approved sports are defined in `artifacts/sports-connect/constants/sports.ts` with per-sport colour themes, and app state stores approved sports, pending sport requests, and the selected sport in AsyncStorage under `sports-connect-state-v4-sport-filters`. New sport requests can be submitted from Discover and approved/rejected from the Profile admin section before appearing in filters and posting.
+The mobile app now uses top-level sport filtering. Approved sports are defined in `artifacts/sports-connect/constants/sports.ts` with per-sport colour themes, and app state stores approved sports, pending sport requests, and the selected sport in AsyncStorage under `sports-connect-state-v4-sport-filters`. New sport requests can be submitted from Discover and approved/rejected from the Profile admin section before appearing in filters and posting. The shared colour hook applies the selected sport theme across the whole app background, tabs, chips, and primary buttons.
 
 ## Stack
 
