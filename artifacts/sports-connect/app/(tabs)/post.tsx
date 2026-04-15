@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -238,6 +238,12 @@ export default function PostScreen() {
   const [feesNegotiable, setFeesNegotiable] = useState(false);
   const [seasonFeesText, setSeasonFeesText] = useState("");
   const [trialRequired, setTrialRequired] = useState(false);
+
+  useEffect(() => {
+    const nextSport = allowedSports[0] || selectedSport;
+    setSport((current) => (allowedSports.includes(current) ? current : nextSport));
+    setPositions([]);
+  }, [allowedSports, selectedSport]);
 
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
   const myAdverts = adverts.filter((a) => a.postedBy === ownerName);
