@@ -215,7 +215,6 @@ export default function PostScreen() {
     : (currentAccount?.sports?.length ? currentAccount.sports : [playerProfile.sports.split(", ")[0] || selectedSport]).filter(Boolean);
 
   const [type, setType] = useState<Advert["type"]>(advertTypesByRole[activeProfile][0].value);
-  const [title, setTitle] = useState("");
   const [sport, setSport] = useState(allowedSports[0] || selectedSport);
   const [location, setLocation] = useState(playerProfile.location);
   const [level, setLevel] = useState("Competitive amateur");
@@ -237,12 +236,26 @@ export default function PostScreen() {
   const [feesNegotiable, setFeesNegotiable] = useState(false);
   const [seasonFeesText, setSeasonFeesText] = useState("");
   const [trialRequired, setTrialRequired] = useState(false);
+  const [title, setTitle] = useState("");
 
   useEffect(() => {
     const nextSport = allowedSports[0] || selectedSport;
     setSport((current) => (allowedSports.includes(current) ? current : nextSport));
     setPositions([]);
   }, [allowedSports, selectedSport]);
+
+  useEffect(() => {
+    const sportLabel = sport.includes(" (") ? sport.split(" (")[0] : sport;
+    const roleLabel =
+      type === "players-wanted" ? "Players wanted" :
+      type === "club-trials" ? "Club trials" :
+      type === "coach-wanted" ? "Coach wanted" :
+      type === "coach-looking" ? "Coach seeking club" :
+      "Player seeking club";
+    const ageLabel = ageGroup ? ageGroup.label.replace(/\(.*\)/, "").trim() : "";
+    const parts = [roleLabel, sportLabel, ageLabel].filter(Boolean);
+    setTitle(parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" "));
+  }, [sport, type, ageGroup]);
 
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
   const myAdverts = adverts.filter((a) => a.postedBy === ownerName);
@@ -304,7 +317,6 @@ export default function PostScreen() {
       trialRequired,
     });
     setSelectedSport(sport);
-    setTitle("");
     setDescription("");
     setPlayerDescription("");
     setAgeGroup(null);
@@ -392,7 +404,7 @@ export default function PostScreen() {
             {positionOptions.map((p) => <Pill key={p} label={p} active={positions.includes(p)} onPress={() => togglePosition(p)} />)}
           </View>
 
-          <Field label="Advert title *" value={title} onChangeText={setTitle} placeholder="e.g. Striker wanted for local Saturday comp" />
+          <Field label="Advert title" value={title} editable={false} placeholder="Auto-generated from your selections" />
           <Field label="Location *" value={location} onChangeText={setLocation} placeholder="Suburb or town" />
           <Field label="Level" value={level} onChangeText={setLevel} placeholder="Beginner, amateur, semi-pro, elite" />
 
