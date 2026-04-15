@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React, { useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "@/components/SportsUI";
@@ -63,6 +63,8 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const [humanChecked, setHumanChecked] = useState(false);
   const [role, setRole] = useState<AccountRole>("player");
   const [profileImageId, setProfileImageId] = useState<string | undefined>();
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  const [draftDob, setDraftDob] = useState("");
   const [form, setForm] = useState({
     fullName: "",
     parentGuardianName: "",
@@ -194,6 +196,12 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     if (imageId) setProfileImageId(imageId);
   };
 
+  const setDob = (date: Date) => {
+    const next = date.toISOString().slice(0, 10);
+    update("dateOfBirth", next);
+    setShowDobPicker(false);
+  };
+
   return (
     <View style={[styles.shell, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 26, paddingBottom: insets.bottom + 34 }]} keyboardShouldPersistTaps="handled">
@@ -254,7 +262,32 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
                 {role === "guardian" ? <Input label="Player's Full Name (required)" value={form.playerName} onChangeText={(value) => update("playerName", value)} /> : <Input label="Full Name (required)" value={form.fullName} onChangeText={(value) => update("fullName", value)} />}
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>{role === "guardian" ? "Player gender (required)" : "Gender (required)"}</Text>
                 <View style={styles.wrapRow}>{genders.map((gender) => <Choice key={gender} label={gender} active={form.gender === gender} onPress={() => update("gender", gender)} />)}</View>
-                <Input label={`${role === "guardian" ? "Player " : ""}Date of Birth YYYY-MM-DD (required)${age ? ` · Age ${age}` : ""}`} value={form.dateOfBirth} onChangeText={(value) => update("dateOfBirth", value)} />
+                <Pressable onPress={() => { setDraftDob(form.dateOfBirth); setShowDobPicker(true); }} style={({ pressed }) => [styles.dobButton, { backgroundColor: colors.background, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
+                  <Text style={[styles.label, { color: colors.mutedForeground }]}>{`${role === "guardian" ? "Player " : ""}Date of Birth (required)`}</Text>
+                  <Text style={[styles.dobValue, { color: form.dateOfBirth ? colors.foreground : colors.mutedForeground }]}>{form.dateOfBirth ? `${form.dateOfBirth}${age ? ` · Age ${age}` : ""}` : "Tap to choose a date"}</Text>
+                </Pressable>
+                <Modal transparent visible={showDobPicker} animationType="fade" onRequestClose={() => setShowDobPicker(false)}>
+                  <View style={styles.modalScrim}>
+                    <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                      <Text style={[styles.cardTitle, { color: colors.foreground }]}>Choose date of birth</Text>
+                      <View style={styles.dateRow}>
+                        <TextInput value={draftDob} onChangeText={setDraftDob} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground} style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]} />
+                      </View>
+                      <View style={styles.modalActions}>
+                        <Pressable onPress={() => setShowDobPicker(false)} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>
+                          <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>Cancel</Text>
+                        </Pressable>
+                        <Pressable onPress={() => {
+                          const parsed = new Date(draftDob);
+                          if (Number.isNaN(parsed.getTime())) return;
+                          setDob(parsed);
+                        }} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
+                          <Text style={[styles.modalButtonText, { color: colors.primaryForeground }]}>Set date</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  </View>
+                </Modal>
                 <Input label="Suburb/City & State (Australia only) (required)" value={form.location} onChangeText={(value) => update("location", value)} />
                 <Input label={role === "guardian" ? "Parent/Guardian Email Address (required)" : "Email Address (required)"} value={email} onChangeText={setEmail} keyboardType="email-address" />
                 <Input label={role === "guardian" ? "Parent/Guardian Mobile Number (required)" : "Mobile Number (required)"} value={form.mobile} onChangeText={(value) => update("mobile", value)} keyboardType="phone-pad" />
