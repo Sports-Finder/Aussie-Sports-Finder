@@ -114,7 +114,7 @@ function getPositions(sport: string): string[] {
 const advertTypesByRole: Record<AccountRole, { value: Advert["type"]; label: string }[]> = {
   player: [{ value: "player-looking", label: "Player looking for Club" }],
   guardian: [{ value: "player-looking", label: "Player looking for Club" }],
-  coach: [{ value: "coach-looking", label: "Coach looking for Club" }],
+  coach: [{ value: "coach-looking", label: "Coach looking for Team or Club" }],
   club: [
     { value: "players-wanted", label: "Players Wanted for Team" },
     { value: "club-trials", label: "Club Trials Info" },
@@ -431,6 +431,11 @@ export default function PostScreen() {
     setSport((current) => (allowedSports.includes(current) ? current : nextSport));
     setPositions([]);
   }, [allowedSports, currentAccount?.defaultSport, selectedSport]);
+
+  useEffect(() => {
+    const nextType = advertTypesByRole[activeProfile][0].value;
+    setType(nextType);
+  }, [activeProfile]);
 
   useEffect(() => {
     if (editingId) return;
