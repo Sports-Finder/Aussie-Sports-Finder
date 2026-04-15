@@ -123,6 +123,7 @@ const advertTypesByRole: Record<AccountRole, { value: Advert["type"]; label: str
 };
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
 
 function FormLabel({ text, required }: { text: string; required?: boolean }) {
   const colors = useColors();
@@ -412,7 +413,24 @@ export default function PostScreen() {
 
           <Field label="Advert title" value={title} editable={false} placeholder="Auto-generated from your selections" />
           <Field label="Location *" value={suburb} onChangeText={setSuburb} placeholder="Suburb or town" />
-          <Field label="State *" value={state} onChangeText={setState} placeholder="NSW, VIC, QLD, WA, SA, TAS, ACT, NT" />
+          <FormLabel text="State" required />
+          <View style={localStyles.stateRow}>
+            {AU_STATES.map((item) => (
+              <Pressable
+                key={item}
+                onPress={() => setState(item)}
+                style={({ pressed }) => [
+                  localStyles.stateChip,
+                  {
+                    backgroundColor: state === item ? colors.primary : colors.secondary,
+                    opacity: pressed ? 0.75 : 1,
+                  },
+                ]}
+              >
+                <Text style={[localStyles.stateChipText, { color: state === item ? "#FFFFFF" : colors.secondaryForeground }]}>{item}</Text>
+              </Pressable>
+            ))}
+          </View>
           <Field label="Level" value={level} onChangeText={setLevel} placeholder="Beginner, amateur, semi-pro, elite" />
 
           {showPlayerDesc && (
