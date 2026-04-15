@@ -71,17 +71,12 @@ export default function PostScreen() {
         <View style={styles.headerRow}>
           <View>
             <Text style={[styles.kicker, { color: colors.primary }]}>Post advert</Text>
-            <Text style={[styles.title, { color: colors.foreground }]}>Find the right match</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>Post Your Advertisement</Text>
           </View>
           <View style={[styles.roleBadge, { backgroundColor: colors.pitchSoft }]}>
             <Feather name={activeProfile === "club" ? "shield" : "user"} color={colors.primary} size={16} />
             <Text style={[styles.roleBadgeText, { color: colors.primary }]}>{activeProfile}</Text>
           </View>
-        </View>
-
-        <View style={styles.pillRow}>
-          <Pill label="Post as player" active={activeProfile === "player"} onPress={() => setActiveProfile("player")} />
-          <Pill label="Post as club" active={activeProfile === "club"} onPress={() => setActiveProfile("club")} />
         </View>
 
         <View style={[styles.sportHeader, { backgroundColor: activeTheme.background, borderColor: activeTheme.soft }]}>
