@@ -76,6 +76,22 @@ export type Advert = {
   description: string;
   needs: string;
   createdAt: string;
+  ageGroup: string;
+  preferredAge?: number;
+  positions: string[];
+  playerDescription?: string;
+  trainingDays?: string[];
+  trainingTimeFrom?: string;
+  trainingTimeTo?: string;
+  trainingTbd?: boolean;
+  gameDays?: string[];
+  gameTimeFrom?: string;
+  gameTimeTo?: string;
+  gameTbd?: boolean;
+  seasonFees?: number;
+  feesNegotiable?: boolean;
+  feesFree?: boolean;
+  trialRequired?: boolean;
 };
 
 export type Conversation = {
