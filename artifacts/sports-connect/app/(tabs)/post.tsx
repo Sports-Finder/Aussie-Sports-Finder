@@ -253,9 +253,13 @@ export default function PostScreen() {
       type === "coach-looking" ? "Coach seeking club" :
       "Player seeking club";
     const ageLabel = ageGroup ? ageGroup.label.replace(/\(.*\)/, "").trim() : "";
-    const parts = [roleLabel, sportLabel, ageLabel].filter(Boolean);
-    setTitle(parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" "));
-  }, [sport, type, ageGroup]);
+    const positionLabel = positions.length === 1 ? positions[0] : "";
+    const levelLabel = level.trim() && level !== "Competitive amateur" ? level.trim() : "";
+    const locationLabel = location.trim() ? `in ${location.trim()}` : "";
+    const parts = [ageLabel, positionLabel, levelLabel, roleLabel, sportLabel].filter(Boolean);
+    const titleBody = parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" ");
+    setTitle([titleBody, locationLabel].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
+  }, [sport, type, ageGroup, positions, level, location]);
 
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
   const myAdverts = adverts.filter((a) => a.postedBy === ownerName);
