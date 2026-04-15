@@ -433,6 +433,12 @@ export default function PostScreen() {
   }, [allowedSports, currentAccount?.defaultSport, selectedSport]);
 
   useEffect(() => {
+    if (editingId) return;
+    const nextSport = currentAccount?.defaultSport || allowedSports[0] || selectedSport;
+    setSport(nextSport);
+  }, [currentAccount?.defaultSport, allowedSports, selectedSport, editingId]);
+
+  useEffect(() => {
     const sportLabel = sport.includes(" (") ? sport.split(" (")[0] : sport;
     const roleLabel =
       type === "players-wanted" ? "Players wanted" :
