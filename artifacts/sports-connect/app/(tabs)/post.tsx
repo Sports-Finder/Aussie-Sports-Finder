@@ -414,7 +414,7 @@ export default function PostScreen() {
           <Field label="Advert title" value={title} editable={false} placeholder="Auto-generated from your selections" />
           <Field label="Location *" value={suburb} onChangeText={setSuburb} placeholder="Suburb or town" />
           <FormLabel text="State" required />
-          <View style={localStyles.choiceRow}>
+          <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
             {AU_STATES.map((item) => (
               <Pressable
                 key={item}
