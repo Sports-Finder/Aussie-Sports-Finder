@@ -414,20 +414,20 @@ export default function PostScreen() {
           <Field label="Advert title" value={title} editable={false} placeholder="Auto-generated from your selections" />
           <Field label="Location *" value={suburb} onChangeText={setSuburb} placeholder="Suburb or town" />
           <FormLabel text="State" required />
-          <View style={localStyles.stateRow}>
+          <View style={localStyles.choiceRow}>
             {AU_STATES.map((item) => (
               <Pressable
                 key={item}
                 onPress={() => setState(item)}
                 style={({ pressed }) => [
-                  localStyles.stateChip,
+                  localStyles.choice,
                   {
                     backgroundColor: state === item ? colors.primary : colors.secondary,
                     opacity: pressed ? 0.75 : 1,
                   },
                 ]}
               >
-                <Text style={[localStyles.stateChipText, { color: state === item ? "#FFFFFF" : colors.secondaryForeground }]}>{item}</Text>
+                <Text style={[localStyles.choiceText, { color: state === item ? "#FFFFFF" : colors.secondaryForeground }]}>{item}</Text>
               </Pressable>
             ))}
           </View>
