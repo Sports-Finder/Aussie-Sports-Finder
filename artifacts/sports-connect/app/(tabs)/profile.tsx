@@ -358,8 +358,8 @@ export default function ProfileScreen() {
             <Field label="Club ground or street address" value={clubMapAddress} onChangeText={setClubMapAddress} placeholder="e.g. Princes Park, Carlton North VIC" />
             <Field label="Club contact email" value={currentAccount?.clubContactEmail ?? ""} onChangeText={(v) => updateAccount({ clubContactEmail: v })} keyboardType="email-address" />
             <Field label="Club contact mobile" value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
+            <Field label="Club bio" value={clubBio} onChangeText={(value) => setClubBio(value.slice(0, 250))} multiline maxLength={250} />
             <Field label="Club website" value={currentAccount?.clubWebsite ?? ""} onChangeText={(v) => updateAccount({ clubWebsite: v })} />
-            <Field label="Club bio" value={clubBio} onChangeText={setClubBio} multiline />
 
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Social links (optional)</Text>
             <Field label="Instagram link" value={socialLinks.instagram ?? ""} onChangeText={(v) => updateSocial("instagram", v)} />
@@ -468,6 +468,13 @@ export default function ProfileScreen() {
               onChangeText={(v) => updateAccount({ mobile: v })}
               keyboardType="phone-pad"
             />
+            <Field
+              label={isGuardian ? "Player bio" : isCoach ? "Coach bio" : "Bio"}
+              value={bio}
+              onChangeText={(value) => setBio(value.slice(0, 250))}
+              multiline
+              maxLength={250}
+            />
 
             <Text style={[styles.label, { color: colors.mutedForeground }]}>
               {isGuardian ? "Player sports played (required)" : isCoach ? "Sports coached (required)" : "Sports played (required)"}
@@ -504,11 +511,6 @@ export default function ProfileScreen() {
             <Field label="X / Twitter link" value={socialLinks.x ?? ""} onChangeText={(v) => updateSocial("x", v)} />
             <Field label="TikTok link" value={socialLinks.tiktok ?? ""} onChangeText={(v) => updateSocial("tiktok", v)} />
             <Field label="Highlights reel link (admin approved)" value={currentAccount?.highlightReelUrl ?? ""} onChangeText={(v) => updateAccount({ highlightReelUrl: v, highlightReelStatus: v ? "pending" : undefined })} />
-
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>
-              {isCoach ? "Coaching bio" : "Player bio"}
-            </Text>
-            <Field label="" value={bio} onChangeText={setBio} multiline />
 
             <PrimaryButton
               label={isCoach ? "Submit coach image" : "Submit player image"}

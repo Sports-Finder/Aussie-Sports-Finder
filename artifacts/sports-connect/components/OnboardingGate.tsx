@@ -407,6 +407,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
                 </View>
                 <Input label={role === "guardian" ? "Parent/Guardian Email Address (required)" : "Email Address (required)"} value={email} onChangeText={setEmail} keyboardType="email-address" />
                 <Input label={role === "guardian" ? "Parent/Guardian Mobile Number (required)" : "Mobile Number (required)"} value={form.mobile} onChangeText={(value) => update("mobile", value)} keyboardType="phone-pad" />
+                <Input label={role === "guardian" ? "Player Bio (optional)" : role === "coach" ? "Coach Bio (optional)" : "Bio (optional)"} value={form.bio ?? ""} onChangeText={(value) => update("bio", value.slice(0, 250))} multiline maxLength={250} />
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>{role === "guardian" ? "Player sports played (required)" : role === "coach" ? "Sports coached (required)" : "Sports played (required)"}</Text>
                 <SportPicker selectedSports={selectedSports} onToggle={toggleSport} />
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>Default Sport (required)</Text>
