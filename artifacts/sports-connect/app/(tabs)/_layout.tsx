@@ -75,7 +75,7 @@ function ClassicTabLayout() {
         options={{
           title: "Discover",
           tabBarIcon: ({ color }) =>
-            isIOS ? <SymbolView name="magnifyingglass" tintColor={color} size={24} /> : <Feather name="search" size={22} color={color} />,
+            isIOS ? <SymbolView name="magnifyingglass" tintColor={color} size={48} /> : <Feather name="search" size={44} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -83,7 +83,7 @@ function ClassicTabLayout() {
         options={{
           title: "Post",
           tabBarIcon: ({ color }) =>
-            isIOS ? <SymbolView name="plus.circle" tintColor={color} size={24} /> : <Feather name="plus-circle" size={22} color={color} />,
+            isIOS ? <SymbolView name="plus.circle" tintColor={color} size={48} /> : <Feather name="plus-circle" size={44} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -91,7 +91,7 @@ function ClassicTabLayout() {
         options={{
           title: "Messages",
           tabBarIcon: ({ color }) =>
-            isIOS ? <SymbolView name="bubble.left.and.bubble.right" tintColor={color} size={24} /> : <Feather name="message-circle" size={22} color={color} />,
+            isIOS ? <SymbolView name="bubble.left.and.bubble.right" tintColor={color} size={48} /> : <Feather name="message-circle" size={44} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -99,7 +99,7 @@ function ClassicTabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color }) =>
-            isIOS ? <SymbolView name="person.crop.circle" tintColor={color} size={24} /> : <Feather name="user" size={22} color={color} />,
+            isIOS ? <SymbolView name="person.crop.circle" tintColor={color} size={48} /> : <Feather name="user" size={44} color={color} />,
         }}
       />
     </Tabs>
