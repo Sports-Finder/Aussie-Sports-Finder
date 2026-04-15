@@ -116,6 +116,7 @@ export default function ProfileScreen() {
   const [newPasscodeInput, setNewPasscodeInput] = useState("");
 
   const [playerBio, setPlayerBio] = useState(playerProfile.bio ?? "");
+  const [guardianBio, setGuardianBio] = useState(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
   const [coachBio, setCoachBio] = useState(currentAccount?.role === "coach" ? currentAccount.bio ?? "" : "");
   const [clubBio, setClubBio] = useState(clubProfile.bio ?? "");
   const [clubMapAddress, setClubMapAddress] = useState(clubProfile.mapAddress ?? "");
@@ -124,6 +125,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     setPlayerBio(playerProfile.bio ?? "");
+    setGuardianBio(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
     setCoachBio(currentAccount?.role === "coach" ? currentAccount.bio ?? "" : "");
     setClubBio(clubProfile.bio ?? "");
     setClubMapAddress(clubProfile.mapAddress ?? "");
@@ -171,6 +173,8 @@ export default function ProfileScreen() {
         mapAddress: clubMapAddress,
         bio: clubBio,
       });
+    } else if (isGuardian) {
+      updateAccount({ bio: guardianBio });
     } else {
       if (isCoach) {
         updateAccount({ bio: coachBio });
@@ -190,6 +194,7 @@ export default function ProfileScreen() {
 
   const openEdit = () => {
     setPlayerBio(playerProfile.bio ?? "");
+    setGuardianBio(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
     setCoachBio(currentAccount?.role === "coach" ? currentAccount.bio ?? "" : "");
     setClubBio(clubProfile.bio ?? "");
     setClubMapAddress(clubProfile.mapAddress ?? "");
@@ -241,7 +246,7 @@ export default function ProfileScreen() {
       { label: "Date of birth", value: currentAccount.dateOfBirth ? `${currentAccount.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` : "" },
       { label: "Location", value: currentAccount.location ?? "" },
       { label: "Mobile", value: currentAccount.mobile ?? "" },
-      { label: "Bio", value: bio },
+      { label: "Bio", value: isGuardian ? guardianBio : playerBio },
       { label: "Sports", value: (currentAccount.sports ?? []).join(", ") },
       { label: "Instagram", value: socialLinks.instagram ?? "", url: link(socialLinks.instagram ?? "") },
       { label: "Facebook", value: socialLinks.facebook ?? "", url: link(socialLinks.facebook ?? "") },
@@ -479,8 +484,14 @@ export default function ProfileScreen() {
             />
             <Field
               label={isGuardian ? "Player bio" : isCoach ? "Coach bio" : "Bio"}
-              value={isCoach ? coachBio : playerBio}
-              onChangeText={(value) => (isCoach ? setCoachBio(value.slice(0, 250)) : setPlayerBio(value.slice(0, 250)))}
+              value={isClub ? clubBio : isCoach ? coachBio : isGuardian ? guardianBio : playerBio}
+              onChangeText={(value) => {
+                const next = value.slice(0, 250);
+                if (isClub) setClubBio(next);
+                else if (isCoach) setCoachBio(next);
+                else if (isGuardian) setGuardianBio(next);
+                else setPlayerBio(next);
+              }}
               multiline
               maxLength={250}
             />
