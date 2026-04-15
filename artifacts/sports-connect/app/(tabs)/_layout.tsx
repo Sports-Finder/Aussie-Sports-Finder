@@ -5,7 +5,7 @@ import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -96,8 +96,21 @@ function ClassicTabLayout() {
         name="messages"
         options={{
           title: "Messages",
-          tabBarIcon: ({ color }) =>
-            isIOS ? <SymbolView name="bubble.left.and.bubble.right" tintColor={color} size={48} /> : <Feather name="message-circle" size={44} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <View style={styles.messageTabIconWrap}>
+              <View style={styles.orangeBadge}>
+                <View style={styles.orangeBadgeDot}>
+                  <Text style={styles.badgeText}>1</Text>
+                </View>
+              </View>
+              <View style={styles.redBadge}>
+                <View style={styles.redBadgeDot}>
+                  <Text style={styles.badgeText}>1</Text>
+                </View>
+              </View>
+              {isIOS ? <SymbolView name="bubble.left.and.bubble.right" tintColor={color} size={48} /> : <Feather name="message-circle" size={44} color={color} />}
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
@@ -118,3 +131,48 @@ export default function TabLayout() {
   }
   return <ClassicTabLayout />;
 }
+
+const styles = StyleSheet.create({
+  messageTabIconWrap: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orangeBadge: {
+    position: "absolute",
+    top: 2,
+    left: 2,
+    zIndex: 2,
+  },
+  redBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    zIndex: 2,
+  },
+  orangeBadgeDot: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#F59E0B",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  redBadgeDot: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: "#000000",
+    fontSize: 10,
+    fontWeight: "800",
+    lineHeight: 12,
+  },
+});
