@@ -393,6 +393,7 @@ export default function PostScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
+  const accountRole = currentAccount?.role ?? activeProfile;
 
   const allowedSports = activeProfile === "club"
     ? [currentAccount?.defaultSport || clubProfile.sport].filter(Boolean)
@@ -401,7 +402,7 @@ export default function PostScreen() {
   const [selectedMyAdvert, setSelectedMyAdvert] = useState<Advert | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [type, setType] = useState<Advert["type"]>(advertTypesByRole[activeProfile][0].value);
+  const [type, setType] = useState<Advert["type"]>(advertTypesByRole[accountRole][0].value);
   const [sport, setSport] = useState(currentAccount?.defaultSport || allowedSports[0] || selectedSport);
   const [suburb, setSuburb] = useState(playerProfile.location);
   const [state, setState] = useState("");
@@ -436,6 +437,11 @@ export default function PostScreen() {
     const nextType = advertTypesByRole[activeProfile][0].value;
     setType(nextType);
   }, [activeProfile]);
+
+  useEffect(() => {
+    const nextType = advertTypesByRole[accountRole][0].value;
+    setType(nextType);
+  }, [accountRole]);
 
   useEffect(() => {
     if (editingId) return;
@@ -518,7 +524,7 @@ export default function PostScreen() {
   const myAdverts = adverts.filter((a) => a.postedBy === ownerName);
   const activeTheme = getSportTheme(sport, approvedSports);
   const sportChoices = allowedSports.length ? approvedSports.filter((s) => allowedSports.includes(s.name)) : approvedSports;
-  const availableTypes = advertTypesByRole[activeProfile];
+  const availableTypes = advertTypesByRole[accountRole];
   const positionOptions = getPositions(sport);
 
   const isPlayerLooking = type === "player-looking";
