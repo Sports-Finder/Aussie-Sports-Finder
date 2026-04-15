@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
@@ -31,6 +31,37 @@ function formatDate(date: Date) {
   const day = `${date.getDate()}`.padStart(2, "0");
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   return `${day}-${month}-${date.getFullYear()}`;
+}
+
+const SOCIAL_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
+  Instagram: "instagram",
+  Facebook: "facebook",
+  "X / Twitter": "twitter",
+  TikTok: "music",
+  Website: "globe",
+  "Contact email": "mail",
+  "Highlight reel": "play-circle",
+};
+
+function normaliseUrl(raw: string) {
+  if (!raw.trim()) return "";
+  if (raw.startsWith("mailto:")) return raw;
+  return raw.startsWith("http") ? raw : `https://${raw}`;
+}
+
+async function openLink(raw: string) {
+  const url = normaliseUrl(raw);
+  if (!url) return;
+  try {
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert("Cannot open link", `Could not open: ${url}`);
+    }
+  } catch {
+    Alert.alert("Error", "Something went wrong trying to open that link.");
+  }
 }
 
 function Choice({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
@@ -168,35 +199,40 @@ export default function ProfileScreen() {
 
   const buildInfoRows = () => {
     if (!currentAccount) return [];
+    const link = (url: string) => url ? normaliseUrl(url) : undefined;
     if (isClub) {
       return [
         { label: "Club name", value: currentAccount.clubName ?? "" },
         { label: "Sport", value: currentAccount.defaultSport ?? "" },
         { label: "Address", value: currentAccount.clubAddress ?? currentAccount.location ?? "" },
-        { label: "Contact email", value: currentAccount.clubContactEmail ?? "" },
+        { label: "Contact email", value: currentAccount.clubContactEmail ?? "", url: currentAccount.clubContactEmail ? `mailto:${currentAccount.clubContactEmail}` : undefined },
         { label: "Contact mobile", value: currentAccount.clubContactMobile ?? "" },
-        { label: "Website", value: currentAccount.clubWebsite ?? "" },
-        { label: "Instagram", value: socialLinks.instagram ?? "" },
-        { label: "Facebook", value: socialLinks.facebook ?? "" },
-        { label: "X / Twitter", value: socialLinks.x ?? "" },
-        { label: "TikTok", value: socialLinks.tiktok ?? "" },
+        { label: "Website", value: currentAccount.clubWebsite ?? "", url: link(currentAccount.clubWebsite ?? "") },
+        { label: "Instagram", value: socialLinks.instagram ?? "", url: link(socialLinks.instagram ?? "") },
+        { label: "Facebook", value: socialLinks.facebook ?? "", url: link(socialLinks.facebook ?? "") },
+        { label: "X / Twitter", value: socialLinks.x ?? "", url: link(socialLinks.x ?? "") },
+        { label: "TikTok", value: socialLinks.tiktok ?? "", url: link(socialLinks.tiktok ?? "") },
       ].filter((row) => row.value);
     }
-    const rows = [
+    const rows: { label: string; value: string; url?: string }[] = [
       { label: isGuardian ? "Player name" : "Full name", value: isGuardian ? currentAccount.playerName ?? "" : currentAccount.fullName ?? "" },
       { label: "Gender", value: currentAccount.gender ?? "" },
       { label: "Date of birth", value: currentAccount.dateOfBirth ? `${currentAccount.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` : "" },
       { label: "Location", value: currentAccount.location ?? "" },
       { label: "Mobile", value: currentAccount.mobile ?? "" },
       { label: "Sports", value: (currentAccount.sports ?? []).join(", ") },
-      { label: "Instagram", value: socialLinks.instagram ?? "" },
-      { label: "Facebook", value: socialLinks.facebook ?? "" },
-      { label: "X / Twitter", value: socialLinks.x ?? "" },
-      { label: "TikTok", value: socialLinks.tiktok ?? "" },
+      { label: "Instagram", value: socialLinks.instagram ?? "", url: link(socialLinks.instagram ?? "") },
+      { label: "Facebook", value: socialLinks.facebook ?? "", url: link(socialLinks.facebook ?? "") },
+      { label: "X / Twitter", value: socialLinks.x ?? "", url: link(socialLinks.x ?? "") },
+      { label: "TikTok", value: socialLinks.tiktok ?? "", url: link(socialLinks.tiktok ?? "") },
     ];
     if (currentAccount.highlightReelUrl) {
       const status = currentAccount.highlightReelStatus;
-      rows.push({ label: "Highlight reel", value: `${currentAccount.highlightReelUrl}${status && status !== "approved" ? ` (${status})` : ""}` });
+      rows.push({
+        label: "Highlight reel",
+        value: `${currentAccount.highlightReelUrl}${status && status !== "approved" ? ` (${status})` : ""}`,
+        url: status === "approved" ? link(currentAccount.highlightReelUrl) : undefined,
+      });
     }
     return rows.filter((row) => row.value);
   };
@@ -250,11 +286,22 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </View>
-            {infoRows.map(({ label, value }) => (
-              <View key={label} style={styles.infoRow}>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{label}</Text>
-                <Text style={[styles.infoValue, { color: colors.foreground }]}>{value}</Text>
-              </View>
+            {infoRows.map(({ label, value, url }) => (
+              url ? (
+                <Pressable key={label} onPress={() => openLink(url)} style={({ pressed }) => [styles.infoRow, { opacity: pressed ? 0.65 : 1 }]}>
+                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{label}</Text>
+                  <View style={styles.linkRow}>
+                    {SOCIAL_ICONS[label] ? <Feather name={SOCIAL_ICONS[label]} size={14} color={colors.primary} /> : null}
+                    <Text style={[styles.infoValue, { color: colors.primary, flex: 1 }]} numberOfLines={1}>{value}</Text>
+                    <Feather name="external-link" size={13} color={colors.primary} />
+                  </View>
+                </Pressable>
+              ) : (
+                <View key={label} style={styles.infoRow}>
+                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{label}</Text>
+                  <Text style={[styles.infoValue, { color: colors.foreground }]}>{value}</Text>
+                </View>
+              )
             ))}
             {isClub ? (
               <View style={styles.mapRow}>
@@ -631,6 +678,7 @@ const styles = StyleSheet.create({
   fieldLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   infoRow: { gap: 3 },
   infoValue: { fontWeight: "600", fontSize: 15, lineHeight: 20 },
+  linkRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   choice: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
   choiceText: { fontWeight: "700", fontSize: 13 },
