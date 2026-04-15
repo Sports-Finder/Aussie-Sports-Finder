@@ -1,0 +1,98 @@
+Now I need to break this application up into two user type platforms, both club, coach and player or a parent/guardian of a player.
+
+I need to add a login/sign up page, allow Apple Sign Up, Google sign up and normal email sign ups (that require email verification to reduce fake accounts). Include a reCAPTCHA bot detection.
+
+After sign up, add a create an account page with the Icon logo.
+
+First include buttons for;
+
+I am a Player (18+ only) looking for a Club.
+I am a Parent/Guardian of an underage Player (17 years and under) looking for a Club.
+I am a Coach looking for a Club.
+I am a Club looking for Players.
+
+Which takes them to their relevant 'create an account' page.
+
+I need to create three different type of Account creation pages for each create an account option.
+This is the information that is shown you click on a club or player in an advertisement to bring up their profile page after you have requested to connect & the other accepts.
+
+Player Account set up page or a Parent/Guardian of a Player needs to include required fields of:
+ 
+- Full Name (required)
+- Male/Female/Pref Not to Say (required)
+- Date of Birth (which displays their current age next to their Name on their profile page) (required)
+- Suburb/City & State (Australia only) (required)
+- Email Address (required)
+- Mobile Number (required)
+- Sports played (include checkbox of all sports listed in app) (required)
+- Default Sport selection (from Sports played selections they've just chosen. This is the first sport they see when app opens) (required)
+ - Profile Pic (optional) (admin approval needed).
+ 
+Also include optional fields of Social Media links for Instagram, Facebook, X and TikTok (optional). The app must only accept links from those social accounts, no other random links. 
+Also include the option to link a Highlights Reels (this needs to be admin approved too.) (optional)
+
+In small print at the bottom include a disclaimer saying; Profile Pics and links are admin approved. Any inappropriate pics or links shared will result in the account being removed and banned from the application.
+
+Under the CREATE ACCOUNT button include a checkbox for user to agree to before button can be pressed.
+It says; All the player information I have provided is true and accurate. If a player account is found to be false or misleading, it will be shut down immediately.
+
+The Parent/Guardian of a Player Account set up page needs to also include required fields of: 
+
+- Parent/Guardian Full Name (required)
+- Player's Full Name (required)
+- Player Male/Female/Pref Not to Say (required)
+- Player Date of Birth (which displays their current age next to the Player Name on their profile page, underneath that add On Behalf of Parent/Guardian Full Name) (required)
+- Suburb/City & State (Australia only) (required)
+- Parent/Guardian Email Address (required)
+- Parent/Guardian Mobile Number (required)
+- Player Sports played (include checkbox of all sports listed in app) (required)
+- Default Sport dropdown list (from Sports played selection. This is the first sport they see when app opens) (required)
+- Profile Pic (optional) (admin approval needed). 
+
+Also include optional fields of Social Media links for Instagram, Facebook, X  and TikTok (optional). The app must only accept links from those social accounts, no other random links. 
+
+Also include the option to link a Highlights Reels (this needs to be admin approved too.) (optional)
+
+In small print at the bottom include a disclaimer saying; Profile Pics and links are admin approved. Any inappropriate pics or links shared will result in the account being removed and banned from the application.
+
+Under the CREATE ACCOUNT button include a checkbox for user to agree to before button can be pressed.
+It says; All the player information I have provided is true and accurate. If a Parent/Guardian's Player account is found to be false or misleading, it will be shut down immediately.
+
+The Coach Account set up page needs to also include required fields of: 
+
+- Parent/Guardian Full Name (required)
+- Player's Full Name (required)
+- Player Male/Female/Pref Not to Say (required)
+- Player Date of Birth (which displays their current age next to the Player Name on their profile page, underneath that add On Behalf of Parent/Guardian Full Name) (required)
+- Suburb/City & State (Australia only) (required)
+- Parent/Guardian Email Address (required)
+- Parent/Guardian Mobile Number (required)
+- Player Sports played (include checkbox of all sports listed in app) (required)
+- Default Sport dropdown list (from Sports played selection. This is the first sport they see when app opens) (required)
+- Profile Pic (optional) (admin approval needed). 
+
+Also include optional fields of Social Media links for Instagram, Facebook, X  and TikTok (optional). The app must only accept links from those social accounts, no other random links. 
+
+Also include the option to link a Highlights Reels (this needs to be admin approved too.) (optional)
+
+In small print at the bottom include a disclaimer saying; Profile Pics and links are admin approved. Any inappropriate pics or links shared will result in the account being removed and banned from the application.
+
+Under the CREATE ACCOUNT button include a checkbox for user to agree to before button can be pressed.
+It says; All the player information I have provided is true and accurate. If a Parent/Guardian's Player account is found to be false or misleading, it will be shut down immediately.
+
+
+The Club Account set up page needs to include required fields of: 
+
+- Club Name (required)
+- Dropdown list of Sports (this becomes their default at login) (required)
+- Full Address including Suburb, City and State (Australia only) + option to link to Apple Maps or Google Maps) (Australia only). (required) 
+- Club Website Address. (optional)
+- Club Contact Email Address (required)
+- Club Contact Mobile Number (required)
+- Club Profile Pic (optional) (admin approval needed) 
+
+Also include optional fields of Social Media links for Instagram, Facebook, X and TikTok (optional) 
+
+Include a disclaimer before hitting CREATE ACCOUNT to say "All the Club information I have provided is true and accurate. If a club account is found to be false or misleading, it will be shut down immediately."
+
+Please include a disclaimer saying this. A pop up notification will be sent out once approved.

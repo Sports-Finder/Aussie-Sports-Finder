@@ -13,11 +13,12 @@ const fallbackImage = require("@/assets/images/player-placeholder.png");
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { activeProfile, setActiveProfile, playerProfile, clubProfile, updatePlayerProfile, updateClubProfile, pickProfileImage, profileImages, moderateImage, getImageUri, approvedSports, pendingSportRequests, moderateSportRequest } = useSportsConnect();
+  const { activeProfile, setActiveProfile, playerProfile, clubProfile, updatePlayerProfile, updateClubProfile, pickProfileImage, profileImages, moderateImage, getImageUri, approvedSports, pendingSportRequests, moderateSportRequest, currentAccount, signOut, pendingHighlightLinks, moderateHighlightLink } = useSportsConnect();
   const [player, setPlayer] = useState(playerProfile);
   const [club, setClub] = useState(clubProfile);
   const pendingImages = profileImages.filter((image) => image.status === "pending");
   const pendingSports = pendingSportRequests.filter((request) => request.status === "pending");
+  const pendingHighlights = pendingHighlightLinks.filter((link) => link.status === "pending");
   const playerImage = getImageUri(playerProfile.imageId, true);
   const clubImage = getImageUri(clubProfile.imageId, true);
   const clubMapQuery = `${club.name} ${club.mapAddress || club.location}`;
@@ -35,6 +36,17 @@ export default function ProfileScreen() {
           <Text style={[styles.kicker, { color: colors.primary }]}>Profiles and admin</Text>
           <Text style={[styles.title, { color: colors.foreground }]}>Trust starts here</Text>
         </View>
+
+        {currentAccount ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{currentAccount.role === "club" ? currentAccount.clubName : currentAccount.role === "guardian" ? currentAccount.playerName : currentAccount.fullName}</Text>
+            <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
+              {currentAccount.role === "guardian" ? `On Behalf of ${currentAccount.parentGuardianName}` : `${currentAccount.role} account`} · Default sport: {currentAccount.defaultSport}
+            </Text>
+            {currentAccount.dateOfBirth ? <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Age: {Math.max(0, new Date().getFullYear() - new Date(currentAccount.dateOfBirth).getFullYear())}</Text> : null}
+            <PrimaryButton label="Sign out" icon="log-out" onPress={signOut} />
+          </View>
+        ) : null}
 
         <View style={styles.pillRow}>
           <Pill label="Player profile" active={activeProfile === "player"} onPress={() => setActiveProfile("player")} />
@@ -144,6 +156,35 @@ export default function ProfileScreen() {
                 <Feather name="check" color="#FFFFFF" size={18} />
               </Pressable>
               <Pressable onPress={() => moderateSportRequest(request.id, "rejected")} style={[styles.reviewButton, { backgroundColor: colors.destructive }]}>
+                <Feather name="x" color="#FFFFFF" size={18} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+
+        <SectionTitle title="Admin highlight reel approvals" action={`${pendingHighlights.length} pending`} />
+        <View style={[styles.adminCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.adminHeader}>
+            <View style={[styles.adminIcon, { backgroundColor: colors.pitchSoft }]}>
+              <Feather name="video" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.profileCopy}>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Highlight links</Text>
+              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Optional highlight reels stay pending until an admin approves them.</Text>
+            </View>
+          </View>
+          {pendingHighlights.length === 0 ? (
+            <Text style={[styles.cardText, { color: colors.mutedForeground }]}>No highlight reels need review right now.</Text>
+          ) : pendingHighlights.map((link) => (
+            <View key={link.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}>
+              <View style={styles.reviewCopy}>
+                <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{link.owner}</Text>
+                <Text style={[styles.cardText, { color: colors.mutedForeground }]} numberOfLines={1}>{link.url}</Text>
+              </View>
+              <Pressable onPress={() => moderateHighlightLink(link.id, "approved")} style={[styles.reviewButton, { backgroundColor: colors.primary }]}>
+                <Feather name="check" color="#FFFFFF" size={18} />
+              </Pressable>
+              <Pressable onPress={() => moderateHighlightLink(link.id, "rejected")} style={[styles.reviewButton, { backgroundColor: colors.destructive }]}>
                 <Feather name="x" color="#FFFFFF" size={18} />
               </Pressable>
             </View>

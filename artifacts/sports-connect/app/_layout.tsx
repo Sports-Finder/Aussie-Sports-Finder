@@ -15,6 +15,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OnboardingGate } from "@/components/OnboardingGate";
 import { SportsConnectProvider } from "@/context/SportsConnectContext";
 import colors from "@/constants/colors";
 
@@ -83,7 +84,9 @@ export default function RootLayout() {
           <SportsConnectProvider>
             <GestureHandlerRootView style={{ flex: 1 }}>
               <KeyboardProvider>
-                <RootLayoutNav />
+                <OnboardingGate>
+                  <RootLayoutNav />
+                </OnboardingGate>
               </KeyboardProvider>
             </GestureHandlerRootView>
           </SportsConnectProvider>

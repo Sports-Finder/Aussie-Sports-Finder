@@ -10,12 +10,56 @@ import { SportTheme, createCustomSportTheme, defaultSportThemes } from "@/consta
 type AdvertType = "player-looking" | "players-wanted";
 type ProfileType = "player" | "club";
 type ImageStatus = "pending" | "approved" | "rejected";
+export type AccountRole = "player" | "guardian" | "coach" | "club";
+export type AuthMethod = "apple" | "google" | "email";
+
+export type SocialLinks = {
+  instagram?: string;
+  facebook?: string;
+  x?: string;
+  tiktok?: string;
+};
 
 export type SportRequest = {
   id: string;
   name: string;
   status: "pending" | "approved" | "rejected";
   requestedAt: string;
+};
+
+export type HighlightLink = {
+  id: string;
+  owner: string;
+  url: string;
+  status: ImageStatus;
+  submittedAt: string;
+};
+
+export type UserAccount = {
+  id: string;
+  role: AccountRole;
+  authMethod: AuthMethod;
+  email: string;
+  fullName?: string;
+  parentGuardianName?: string;
+  playerName?: string;
+  clubName?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  location?: string;
+  mobile?: string;
+  sports: string[];
+  defaultSport: string;
+  profileImageId?: string;
+  socialLinks: SocialLinks;
+  highlightReelUrl?: string;
+  highlightReelStatus?: ImageStatus;
+  clubWebsite?: string;
+  clubAddress?: string;
+  clubContactEmail?: string;
+  clubContactMobile?: string;
+  createdAt: string;
+  approved: boolean;
 };
 
 export type Advert = {
@@ -84,11 +128,14 @@ type NotificationSettings = {
 };
 
 type DraftAdvert = Omit<Advert, "id" | "createdAt" | "distanceKm" | "postedBy" | "postedByType">;
+type DraftAccount = Omit<UserAccount, "id" | "createdAt" | "approved">;
 
 type SportsConnectState = {
   adverts: Advert[];
   conversations: Conversation[];
   profileImages: ProfileImage[];
+  pendingHighlightLinks: HighlightLink[];
+  currentAccount?: UserAccount;
   clubProfile: ClubProfile;
   playerProfile: PlayerProfile;
   notificationSettings: NotificationSettings;
@@ -100,6 +147,8 @@ type SportsConnectState = {
   setActiveProfile: (profile: ProfileType) => void;
   requestSport: (name: string) => void;
   moderateSportRequest: (requestId: string, status: "approved" | "rejected") => void;
+  createAccount: (draft: DraftAccount) => void;
+  signOut: () => void;
   createAdvert: (draft: DraftAdvert) => void;
   connectOnAdvert: (advert: Advert) => string;
   sendMessage: (conversationId: string, body: string) => void;
@@ -108,11 +157,13 @@ type SportsConnectState = {
   updateClubProfile: (profile: ClubProfile) => void;
   updatePlayerProfile: (profile: PlayerProfile) => void;
   pickProfileImage: (owner: "club" | "player") => Promise<void>;
+  pickAccountImage: (owner: string) => Promise<string | undefined>;
   moderateImage: (imageId: string, status: ImageStatus) => void;
+  moderateHighlightLink: (linkId: string, status: ImageStatus) => void;
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
 };
 
-const storageKey = "sports-connect-state-v4-sport-filters";
+const storageKey = "sports-connect-state-v5-account-onboarding";
 
 const now = () => new Date().toISOString();
 const makeId = () => Date.now().toString() + Math.random().toString(36).slice(2, 9);
@@ -226,6 +277,8 @@ const defaultState = {
   adverts: seedAdverts,
   conversations: [seedConversation],
   profileImages: [] as ProfileImage[],
+  pendingHighlightLinks: [] as HighlightLink[],
+  currentAccount: undefined as UserAccount | undefined,
   clubProfile: {
     name: "Yarra United SC",
     sport: "Football (Soccer)",
@@ -256,6 +309,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [adverts, setAdverts] = useState<Advert[]>(defaultState.adverts);
   const [conversations, setConversations] = useState<Conversation[]>(defaultState.conversations);
   const [profileImages, setProfileImages] = useState<ProfileImage[]>(defaultState.profileImages);
+  const [pendingHighlightLinks, setPendingHighlightLinks] = useState<HighlightLink[]>(defaultState.pendingHighlightLinks);
+  const [currentAccount, setCurrentAccount] = useState<UserAccount | undefined>(defaultState.currentAccount);
   const [clubProfile, setClubProfile] = useState<ClubProfile>(defaultState.clubProfile);
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile>(defaultState.playerProfile);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(defaultState.notificationSettings);
@@ -271,6 +326,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       setAdverts(parsed.adverts ?? defaultState.adverts);
       setConversations(parsed.conversations ?? defaultState.conversations);
       setProfileImages(parsed.profileImages ?? []);
+      setPendingHighlightLinks(parsed.pendingHighlightLinks ?? []);
+      setCurrentAccount(parsed.currentAccount);
       setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
       setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
       setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
@@ -282,9 +339,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
-    const snapshot = { adverts, conversations, profileImages, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile };
+    const snapshot = { adverts, conversations, profileImages, pendingHighlightLinks, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile };
     AsyncStorage.setItem(storageKey, JSON.stringify(snapshot)).catch(() => undefined);
-  }, [adverts, conversations, profileImages, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
 
   const requestSport = (name: string) => {
     const trimmed = name.trim();
@@ -310,6 +367,52 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     }
     setPendingSportRequests((current) => current.map((item) => item.id === requestId ? { ...item, status } : item));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  };
+
+  const createAccount = (draft: DraftAccount) => {
+    const account: UserAccount = {
+      ...draft,
+      id: makeId(),
+      createdAt: now(),
+      approved: true,
+    };
+    setCurrentAccount(account);
+    setSelectedSport(account.defaultSport);
+    if (account.role === "club") {
+      setActiveProfile("club");
+      setClubProfile((current) => ({
+        ...current,
+        name: account.clubName || current.name,
+        sport: account.defaultSport,
+        location: account.location || current.location,
+        mapAddress: account.clubAddress || current.mapAddress,
+        imageId: account.profileImageId,
+      }));
+    } else {
+      setActiveProfile("player");
+      setPlayerProfile((current) => ({
+        ...current,
+        name: account.role === "guardian" ? account.playerName || current.name : account.fullName || account.playerName || current.name,
+        sports: account.sports.join(", "),
+        location: account.location || current.location,
+        imageId: account.profileImageId,
+      }));
+    }
+    if (account.highlightReelUrl) {
+      setPendingHighlightLinks((current) => [{
+        id: makeId(),
+        owner: account.role === "club" ? account.clubName || "Club" : account.playerName || account.fullName || "Player",
+        url: account.highlightReelUrl,
+        status: "pending",
+        submittedAt: now(),
+      }, ...current]);
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const signOut = () => {
+    setCurrentAccount(undefined);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
   const createAdvert = (draft: DraftAdvert) => {
@@ -401,8 +504,28 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
+  const pickAccountImage = async (owner: string) => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission needed", "Allow photo access to submit a profile image for admin review.");
+      return undefined;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85, allowsEditing: true, aspect: [1, 1] });
+    if (result.canceled || !result.assets[0]?.uri) return undefined;
+    const image: ProfileImage = { id: makeId(), owner, uri: result.assets[0].uri, status: "pending", submittedAt: now() };
+    setProfileImages((current) => [image, ...current]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    return image.id;
+  };
+
   const moderateImage = (imageId: string, status: ImageStatus) => {
     setProfileImages((current) => current.map((image) => image.id === imageId ? { ...image, status } : image));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  };
+
+  const moderateHighlightLink = (linkId: string, status: ImageStatus) => {
+    setPendingHighlightLinks((current) => current.map((link) => link.id === linkId ? { ...link, status } : link));
+    setCurrentAccount((account) => account?.highlightReelUrl && pendingHighlightLinks.some((link) => link.id === linkId && link.url === account.highlightReelUrl) ? { ...account, highlightReelStatus: status } : account);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
@@ -417,6 +540,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     adverts,
     conversations,
     profileImages,
+    pendingHighlightLinks,
+    currentAccount,
     clubProfile,
     playerProfile,
     notificationSettings,
@@ -428,6 +553,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setActiveProfile,
     requestSport,
     moderateSportRequest,
+    createAccount,
+    signOut,
     createAdvert,
     connectOnAdvert,
     sendMessage,
@@ -436,9 +563,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     updateClubProfile: setClubProfile,
     updatePlayerProfile: setPlayerProfile,
     pickProfileImage,
+    pickAccountImage,
     moderateImage,
+    moderateHighlightLink,
     getImageUri,
-  }), [adverts, conversations, profileImages, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
+  }), [adverts, conversations, profileImages, pendingHighlightLinks, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

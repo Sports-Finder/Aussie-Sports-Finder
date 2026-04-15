@@ -8,6 +8,8 @@ Aussie Sports Club Finder is an Australian-focused Expo mobile app artifact for 
 
 The mobile app now uses top-level sport filtering. Approved sports are defined in `artifacts/sports-connect/constants/sports.ts` with per-sport colour themes, and app state stores approved sports, pending sport requests, and the selected sport in AsyncStorage under `sports-connect-state-v4-sport-filters`. New sport requests can be submitted from Discover and approved/rejected from the Profile admin section before appearing in filters and posting. The shared colour hook applies the selected sport theme across the whole app background, tabs, chips, and primary buttons.
 
+Account onboarding is local-first in the Expo app. `components/OnboardingGate.tsx` gates the app until a user chooses Apple, Google, or email sign-up, completes bot/email-verification UI, selects one of four account roles (player 18+, parent/guardian for under-18 player, coach, club), and submits the required account setup form. Account data, pending profile images, highlight reel links, and moderation state are persisted in AsyncStorage under `sports-connect-state-v5-account-onboarding`.
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
