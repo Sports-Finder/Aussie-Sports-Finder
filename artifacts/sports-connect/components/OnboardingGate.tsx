@@ -70,7 +70,9 @@ function isValidSocialLink(platform: keyof SocialLinks, value: string) {
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { currentAccount, approvedSports, createAccount, pickAccountImage } = useSportsConnect();
+  const { currentAccount, isAdmin, adminLogin, approvedSports, createAccount, pickAccountImage } = useSportsConnect();
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [step, setStep] = useState<Step>("auth");
   const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
   const [email, setEmail] = useState("");
@@ -125,7 +127,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     return Boolean(nameValid && form.gender && form.dateOfBirth && guardianAgeValid && playerAgeValid && isAustralianLocation(form.location) && form.mobile.trim() && selectedSports.length && defaultSport);
   }, [age, defaultSport, form, humanChecked, isClub, primaryEmail, role, selectedSports.length]);
 
-  if (currentAccount) return <>{children}</>;
+  if (currentAccount || isAdmin) return <>{children}</>;
 
   const update = (key: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -233,8 +235,46 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
             <PrimaryButton label="Continue with Google" icon="mail" onPress={() => beginAuth("google")} />
             <PrimaryButton label="Sign up with Email" icon="at-sign" onPress={() => beginAuth("email")} />
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Email sign ups include verification and bot detection before account setup.</Text>
+            <Pressable onPress={() => { setAdminPasscodeInput(""); setShowAdminModal(true); }} style={styles.adminLink}>
+              <Text style={[styles.adminLinkText, { color: colors.mutedForeground }]}>Admin access</Text>
+            </Pressable>
           </View>
         ) : null}
+
+        <Modal transparent visible={showAdminModal} animationType="fade" onRequestClose={() => setShowAdminModal(false)}>
+          <View style={styles.modalScrim}>
+            <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Admin login</Text>
+              <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Enter your admin passcode to access moderation tools.</Text>
+              <TextInput
+                value={adminPasscodeInput}
+                onChangeText={setAdminPasscodeInput}
+                placeholder="Admin passcode"
+                placeholderTextColor={colors.mutedForeground}
+                secureTextEntry
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+              />
+              <View style={styles.modalActions}>
+                <Pressable onPress={() => setShowAdminModal(false)} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>
+                  <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    const ok = adminLogin(adminPasscodeInput);
+                    if (ok) {
+                      setShowAdminModal(false);
+                    } else {
+                      Alert.alert("Incorrect passcode", "The passcode you entered is incorrect. Please try again.");
+                    }
+                  }}
+                  style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Text style={[styles.modalButtonText, { color: colors.primaryForeground }]}>Login</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {step === "verify" ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -393,4 +433,14 @@ const styles = StyleSheet.create({
   checkBox: { width: 22, height: 22, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center", marginTop: 1 },
   checkText: { flex: 1, fontWeight: "600", fontSize: 13, lineHeight: 19 },
   smallPrint: { fontWeight: "500", fontSize: 12, lineHeight: 18 },
+  dobButton: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12, gap: 4 },
+  dobValue: { fontWeight: "600", fontSize: 15 },
+  dateRow: { gap: 8 },
+  modalScrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 24 },
+  modalCard: { width: "100%", borderWidth: 1, borderRadius: 28, padding: 22, gap: 16 },
+  modalActions: { flexDirection: "row", gap: 10 },
+  modalButton: { flex: 1, minHeight: 48, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  modalButtonText: { fontWeight: "700", fontSize: 15 },
+  adminLink: { alignItems: "center", paddingVertical: 4 },
+  adminLinkText: { fontWeight: "600", fontSize: 12, textDecorationLine: "underline" },
 });

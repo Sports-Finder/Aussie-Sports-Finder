@@ -8,9 +8,9 @@ import { useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
 
-const fallbackImage = require("@/assets/images/player-placeholder.png");
-
 type Mode = "view" | "edit";
+
+const fallbackImage = require("@/assets/images/player-placeholder.png");
 
 function parseDobAge(dob?: string) {
   if (!dob) return null;
@@ -45,9 +45,15 @@ export default function ProfileScreen() {
     signOut,
     pendingHighlightLinks,
     moderateHighlightLink,
+    isAdmin,
+    adminSignOut,
+    changeAdminPasscode,
   } = useSportsConnect();
 
   const [mode, setMode] = useState<Mode>("view");
+  const [showChangePasscode, setShowChangePasscode] = useState(false);
+  const [currentPasscodeInput, setCurrentPasscodeInput] = useState("");
+  const [newPasscodeInput, setNewPasscodeInput] = useState("");
   const [player, setPlayer] = useState(playerProfile);
   const [club, setClub] = useState(clubProfile);
 
@@ -206,93 +212,160 @@ export default function ProfileScreen() {
 
         {mode === "edit" ? <PrimaryButton label="Save profile" icon="check" onPress={save} /> : null}
 
-        <SectionTitle title="Admin image moderation" action={`${pendingImages.length} pending`} />
-        <View style={[styles.adminCard, { backgroundColor: colors.navy, borderColor: colors.navy }]}> 
-          <View style={styles.adminHeader}>
-            <View style={[styles.adminIcon, { backgroundColor: colors.accent }]}>
-              <Feather name="lock" size={18} color={colors.accentForeground} />
-            </View>
-            <View style={styles.profileCopy}>
-              <Text style={[styles.adminTitle, { color: "#FFF" }]}>Admin permissions</Text>
-              <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Only approved profile images become public. Pending uploads appear here for review.</Text>
-            </View>
-          </View>
-          {pendingImages.length === 0 ? (
-            <Text style={[styles.adminText, { color: "#B9CBC4" }]}>No images need review right now.</Text>
-          ) : pendingImages.map((img) => (
-            <View key={img.id} style={[styles.reviewRow, { backgroundColor: "rgba(255,255,255,0.08)" }]}>
-              <ProfileAvatar uri={img.uri} fallback={fallbackImage} size={54} />
-              <View style={styles.reviewCopy}>
-                <Text style={[styles.reviewTitle, { color: "#FFF" }]}>{img.owner} image</Text>
-                <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Pending review</Text>
+        {isAdmin ? (
+          <>
+            <SectionTitle title="Admin image moderation" action={`${pendingImages.length} pending`} />
+            <View style={[styles.adminCard, { backgroundColor: colors.navy, borderColor: colors.navy }]}>
+              <View style={styles.adminHeader}>
+                <View style={[styles.adminIcon, { backgroundColor: colors.accent }]}>
+                  <Feather name="lock" size={18} color={colors.accentForeground} />
+                </View>
+                <View style={styles.profileCopy}>
+                  <Text style={[styles.adminTitle, { color: "#FFF" }]}>Admin permissions</Text>
+                  <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Only approved profile images become public. Pending uploads appear here for review.</Text>
+                </View>
               </View>
-              <Pressable onPress={() => moderateImage(img.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
-                <Feather name="check" color="#FFF" size={18} />
-              </Pressable>
-              <Pressable onPress={() => moderateImage(img.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
-                <Feather name="x" color="#FFF" size={18} />
-              </Pressable>
+              {pendingImages.length === 0 ? (
+                <Text style={[styles.adminText, { color: "#B9CBC4" }]}>No images need review right now.</Text>
+              ) : pendingImages.map((img) => (
+                <View key={img.id} style={[styles.reviewRow, { backgroundColor: "rgba(255,255,255,0.08)" }]}>
+                  <ProfileAvatar uri={img.uri} fallback={fallbackImage} size={54} />
+                  <View style={styles.reviewCopy}>
+                    <Text style={[styles.reviewTitle, { color: "#FFF" }]}>{img.owner} image</Text>
+                    <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Pending review</Text>
+                  </View>
+                  <Pressable onPress={() => moderateImage(img.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
+                    <Feather name="check" color="#FFF" size={18} />
+                  </Pressable>
+                  <Pressable onPress={() => moderateImage(img.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
+                    <Feather name="x" color="#FFF" size={18} />
+                  </Pressable>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
 
-        <SectionTitle title="Admin sport approvals" action={`${pendingSports.length} pending`} />
-        <View style={[styles.adminCard, { backgroundColor: colors.card, borderColor: colors.border }]}> 
-          <View style={styles.adminHeader}>
-            <View style={[styles.adminIcon, { backgroundColor: colors.pitchSoft }]}>
-              <Feather name="list" size={18} color={colors.primary} />
-            </View>
-            <View style={styles.profileCopy}>
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Requested sports</Text>
-              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Approved sports are added to the filter list and can be used in adverts.</Text>
-            </View>
-          </View>
-          {pendingSports.length === 0 ? (
-            <Text style={[styles.cardText, { color: colors.mutedForeground }]}>No sport requests need review right now.</Text>
-          ) : pendingSports.map((req) => (
-            <View key={req.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}> 
-              <View style={styles.reviewCopy}>
-                <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{req.name}</Text>
-                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Pending admin approval</Text>
+            <SectionTitle title="Admin sport approvals" action={`${pendingSports.length} pending`} />
+            <View style={[styles.adminCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.adminHeader}>
+                <View style={[styles.adminIcon, { backgroundColor: colors.pitchSoft }]}>
+                  <Feather name="list" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.profileCopy}>
+                  <Text style={[styles.cardTitle, { color: colors.foreground }]}>Requested sports</Text>
+                  <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Approved sports are added to the filter list and can be used in adverts.</Text>
+                </View>
               </View>
-              <Pressable onPress={() => moderateSportRequest(req.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
-                <Feather name="check" color="#FFF" size={18} />
-              </Pressable>
-              <Pressable onPress={() => moderateSportRequest(req.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
-                <Feather name="x" color="#FFF" size={18} />
-              </Pressable>
+              {pendingSports.length === 0 ? (
+                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>No sport requests need review right now.</Text>
+              ) : pendingSports.map((req) => (
+                <View key={req.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}>
+                  <View style={styles.reviewCopy}>
+                    <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{req.name}</Text>
+                    <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Pending admin approval</Text>
+                  </View>
+                  <Pressable onPress={() => moderateSportRequest(req.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
+                    <Feather name="check" color="#FFF" size={18} />
+                  </Pressable>
+                  <Pressable onPress={() => moderateSportRequest(req.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
+                    <Feather name="x" color="#FFF" size={18} />
+                  </Pressable>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
 
-        <SectionTitle title="Admin highlight reel approvals" action={`${pendingHighlights.length} pending`} />
-        <View style={[styles.adminCard, { backgroundColor: colors.card, borderColor: colors.border }]}> 
-          <View style={styles.adminHeader}>
-            <View style={[styles.adminIcon, { backgroundColor: colors.pitchSoft }]}>
-              <Feather name="video" size={18} color={colors.primary} />
-            </View>
-            <View style={styles.profileCopy}>
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Highlight links</Text>
-              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Highlight reels stay pending until an admin approves them.</Text>
-            </View>
-          </View>
-          {pendingHighlights.length === 0 ? (
-            <Text style={[styles.cardText, { color: colors.mutedForeground }]}>No highlight reels need review right now.</Text>
-          ) : pendingHighlights.map((link) => (
-            <View key={link.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}> 
-              <View style={styles.reviewCopy}>
-                <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{link.owner}</Text>
-                <Text style={[styles.cardText, { color: colors.mutedForeground }]} numberOfLines={1}>{link.url}</Text>
+            <SectionTitle title="Admin highlight reel approvals" action={`${pendingHighlights.length} pending`} />
+            <View style={[styles.adminCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.adminHeader}>
+                <View style={[styles.adminIcon, { backgroundColor: colors.pitchSoft }]}>
+                  <Feather name="video" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.profileCopy}>
+                  <Text style={[styles.cardTitle, { color: colors.foreground }]}>Highlight links</Text>
+                  <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Highlight reels stay pending until an admin approves them.</Text>
+                </View>
               </View>
-              <Pressable onPress={() => moderateHighlightLink(link.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
-                <Feather name="check" color="#FFF" size={18} />
-              </Pressable>
-              <Pressable onPress={() => moderateHighlightLink(link.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
-                <Feather name="x" color="#FFF" size={18} />
+              {pendingHighlights.length === 0 ? (
+                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>No highlight reels need review right now.</Text>
+              ) : pendingHighlights.map((link) => (
+                <View key={link.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}>
+                  <View style={styles.reviewCopy}>
+                    <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{link.owner}</Text>
+                    <Text style={[styles.cardText, { color: colors.mutedForeground }]} numberOfLines={1}>{link.url}</Text>
+                  </View>
+                  <Pressable onPress={() => moderateHighlightLink(link.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
+                    <Feather name="check" color="#FFF" size={18} />
+                  </Pressable>
+                  <Pressable onPress={() => moderateHighlightLink(link.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
+                    <Feather name="x" color="#FFF" size={18} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+
+            <SectionTitle title="Admin account" action="" />
+            <View style={[styles.adminCard, { backgroundColor: colors.navy, borderColor: colors.navy }]}>
+              <View style={styles.adminHeader}>
+                <View style={[styles.adminIcon, { backgroundColor: colors.accent }]}>
+                  <Feather name="settings" size={18} color={colors.accentForeground} />
+                </View>
+                <View style={styles.profileCopy}>
+                  <Text style={[styles.adminTitle, { color: "#FFF" }]}>Admin settings</Text>
+                  <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Manage your admin passcode or sign out of admin mode.</Text>
+                </View>
+              </View>
+              {showChangePasscode ? (
+                <>
+                  <TextInput
+                    value={currentPasscodeInput}
+                    onChangeText={setCurrentPasscodeInput}
+                    placeholder="Current passcode"
+                    placeholderTextColor="#B9CBC4"
+                    secureTextEntry
+                    style={[styles.adminInput, { borderColor: "rgba(255,255,255,0.2)", color: "#FFF", backgroundColor: "rgba(255,255,255,0.08)" }]}
+                  />
+                  <TextInput
+                    value={newPasscodeInput}
+                    onChangeText={setNewPasscodeInput}
+                    placeholder="New passcode"
+                    placeholderTextColor="#B9CBC4"
+                    secureTextEntry
+                    style={[styles.adminInput, { borderColor: "rgba(255,255,255,0.2)", color: "#FFF", backgroundColor: "rgba(255,255,255,0.08)" }]}
+                  />
+                  <View style={styles.adminActions}>
+                    <Pressable onPress={() => { setShowChangePasscode(false); setCurrentPasscodeInput(""); setNewPasscodeInput(""); }} style={({ pressed }) => [styles.adminActionBtn, { backgroundColor: "rgba(255,255,255,0.12)", opacity: pressed ? 0.8 : 1 }]}>
+                      <Text style={[styles.adminActionText, { color: "#FFF" }]}>Cancel</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        const ok = changeAdminPasscode(currentPasscodeInput, newPasscodeInput);
+                        if (ok) {
+                          setShowChangePasscode(false);
+                          setCurrentPasscodeInput("");
+                          setNewPasscodeInput("");
+                          Alert.alert("Passcode updated", "Your new admin passcode has been saved.");
+                        } else {
+                          Alert.alert("Incorrect passcode", "The current passcode you entered is incorrect.");
+                        }
+                      }}
+                      style={({ pressed }) => [styles.adminActionBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                    >
+                      <Text style={[styles.adminActionText, { color: "#FFF" }]}>Save new passcode</Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : (
+                <Pressable onPress={() => { setCurrentPasscodeInput(""); setNewPasscodeInput(""); setShowChangePasscode(true); }} style={({ pressed }) => [styles.adminActionBtn, { backgroundColor: "rgba(255,255,255,0.12)", opacity: pressed ? 0.8 : 1 }]}>
+                  <Feather name="key" color="#FFF" size={15} />
+                  <Text style={[styles.adminActionText, { color: "#FFF" }]}>Change passcode</Text>
+                </Pressable>
+              )}
+              <Pressable onPress={adminSignOut} style={({ pressed }) => [styles.adminActionBtn, { backgroundColor: colors.destructive, opacity: pressed ? 0.8 : 1 }]}>
+                <Feather name="log-out" color="#FFF" size={15} />
+                <Text style={[styles.adminActionText, { color: "#FFF" }]}>Sign out of admin</Text>
               </Pressable>
             </View>
-          ))}
-        </View>
+          </>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -331,4 +404,8 @@ const styles = StyleSheet.create({
   reviewCopy: { flex: 1 },
   reviewTitle: { fontWeight: "700", fontSize: 15 },
   reviewBtn: { width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  adminInput: { borderWidth: 1, borderRadius: 14, minHeight: 46, paddingHorizontal: 14, fontWeight: "600", fontSize: 15 },
+  adminActions: { flexDirection: "row", gap: 10 },
+  adminActionBtn: { flex: 1, flexDirection: "row", gap: 8, minHeight: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  adminActionText: { fontWeight: "700", fontSize: 14 },
 });

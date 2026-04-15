@@ -143,12 +143,16 @@ type SportsConnectState = {
   pendingSportRequests: SportRequest[];
   selectedSport: string;
   activeProfile: ProfileType;
+  isAdmin: boolean;
   setSelectedSport: (sport: string) => void;
   setActiveProfile: (profile: ProfileType) => void;
   requestSport: (name: string) => void;
   moderateSportRequest: (requestId: string, status: "approved" | "rejected") => void;
   createAccount: (draft: DraftAccount) => void;
   signOut: () => void;
+  adminLogin: (passcode: string) => boolean;
+  adminSignOut: () => void;
+  changeAdminPasscode: (current: string, next: string) => boolean;
   createAdvert: (draft: DraftAdvert) => void;
   connectOnAdvert: (advert: Advert) => string;
   sendMessage: (conversationId: string, body: string) => void;
@@ -164,6 +168,8 @@ type SportsConnectState = {
 };
 
 const storageKey = "sports-connect-state-v5-account-onboarding";
+const adminStorageKey = "sports-connect-admin-v1";
+const defaultAdminPasscode = "AUSSCF-2025";
 
 const now = () => new Date().toISOString();
 const makeId = () => Date.now().toString() + Math.random().toString(36).slice(2, 9);
@@ -318,6 +324,20 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [pendingSportRequests, setPendingSportRequests] = useState<SportRequest[]>(defaultState.pendingSportRequests);
   const [selectedSport, setSelectedSport] = useState(defaultState.selectedSport);
   const [activeProfile, setActiveProfile] = useState<ProfileType>(defaultState.activeProfile);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
+
+  useEffect(() => {
+    AsyncStorage.getItem(adminStorageKey).then((stored) => {
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as { adminPasscode?: string };
+      if (parsed.adminPasscode) setAdminPasscode(parsed.adminPasscode);
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode })).catch(() => undefined);
+  }, [adminPasscode]);
 
   useEffect(() => {
     AsyncStorage.getItem(storageKey).then((stored) => {
@@ -413,6 +433,29 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const signOut = () => {
     setCurrentAccount(undefined);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const adminLogin = (passcode: string): boolean => {
+    if (passcode.trim() === adminPasscode) {
+      setIsAdmin(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      return true;
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+    return false;
+  };
+
+  const adminSignOut = () => {
+    setIsAdmin(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const changeAdminPasscode = (current: string, next: string): boolean => {
+    if (current.trim() !== adminPasscode) return false;
+    if (!next.trim()) return false;
+    setAdminPasscode(next.trim());
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    return true;
   };
 
   const createAdvert = (draft: DraftAdvert) => {
@@ -549,12 +592,16 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     pendingSportRequests,
     selectedSport,
     activeProfile,
+    isAdmin,
     setSelectedSport,
     setActiveProfile,
     requestSport,
     moderateSportRequest,
     createAccount,
     signOut,
+    adminLogin,
+    adminSignOut,
+    changeAdminPasscode,
     createAdvert,
     connectOnAdvert,
     sendMessage,
@@ -567,7 +614,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     moderateImage,
     moderateHighlightLink,
     getImageUri,
-  }), [adverts, conversations, profileImages, pendingHighlightLinks, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
+  }), [adverts, conversations, profileImages, pendingHighlightLinks, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminPasscode]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }
