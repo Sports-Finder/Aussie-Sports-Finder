@@ -286,7 +286,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
                     <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                       <Text style={[styles.cardTitle, { color: colors.foreground }]}>Choose date of birth</Text>
                       <View style={styles.dateRow}>
-                        <TextInput value={draftDob} onChangeText={setDraftDob} placeholder="YYYY-MM-DD" placeholderTextColor={colors.mutedForeground} style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]} />
+                        <TextInput value={draftDob} onChangeText={setDraftDob} placeholder="DD-MM-YYYY" placeholderTextColor={colors.mutedForeground} style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]} />
                       </View>
                       <View style={styles.modalActions}>
                         <Pressable onPress={() => setShowDobPicker(false)} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>
