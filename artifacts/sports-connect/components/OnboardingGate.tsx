@@ -22,13 +22,28 @@ const roleCopy: Record<AccountRole, { title: string; subtitle: string }> = {
 };
 
 function calculateAge(dateOfBirth: string) {
-  const dob = new Date(dateOfBirth);
+  const dob = parseDob(dateOfBirth);
   if (Number.isNaN(dob.getTime())) return "";
   const today = new Date();
   let age = today.getFullYear() - dob.getFullYear();
   const monthDiff = today.getMonth() - dob.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age -= 1;
   return age >= 0 ? `${age}` : "";
+}
+
+function parseDob(dateOfBirth: string) {
+  const parts = dateOfBirth.split("-");
+  if (parts.length !== 3) return new Date("");
+  const [day, month, year] = parts.map((value) => Number(value));
+  if (!day || !month || !year) return new Date("");
+  return new Date(year, month - 1, day);
+}
+
+function formatDob(date: Date) {
+  const day = `${date.getDate()}`.padStart(2, "0");
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
 }
 
 function isAustralianLocation(value: string) {
@@ -197,7 +212,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   };
 
   const setDob = (date: Date) => {
-    const next = date.toISOString().slice(0, 10);
+    const next = formatDob(date);
     update("dateOfBirth", next);
     setShowDobPicker(false);
   };
@@ -278,7 +293,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
                           <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>Cancel</Text>
                         </Pressable>
                         <Pressable onPress={() => {
-                          const parsed = new Date(draftDob);
+                          const parsed = parseDob(draftDob);
                           if (Number.isNaN(parsed.getTime())) return;
                           setDob(parsed);
                         }} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
