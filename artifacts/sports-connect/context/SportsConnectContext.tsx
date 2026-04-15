@@ -440,7 +440,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const updateAccount = (profile: Partial<UserAccount>) => {
-    setCurrentAccount((current) => (current ? { ...current, ...profile } : current));
+    setCurrentAccount((current) => {
+      if (!current) return current;
+      const next = { ...current, ...profile };
+      if (profile.defaultSport) setSelectedSport(profile.defaultSport);
+      return next;
+    });
   };
 
   const adminLogin = (passcode: string): boolean => {
