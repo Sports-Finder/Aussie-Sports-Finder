@@ -404,7 +404,7 @@ export default function PostScreen() {
             <Field label="In 100 words or less, describe what type of player you are looking for" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe the player profile, attitude and skills required…" multiline />
           )}
 
-          <Field label="Details *" value={description} onChangeText={setDescription} placeholder="Describe the opportunity, player, club culture or requirements" multiline />
+          <Field label="Additional Details" value={description} onChangeText={setDescription} placeholder="Describe the opportunity, player, club culture or requirements" multiline />
 
           {showSchedule && (
             <>
