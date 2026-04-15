@@ -3,105 +3,191 @@ import { useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Field, Pill, PrimaryButton, ProfileAvatar, ScreenShell, SectionTitle } from "@/components/SportsUI";
+import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
 import { useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
 
 const fallbackImage = require("@/assets/images/player-placeholder.png");
 
+function parseDobAge(dob?: string) {
+  if (!dob) return null;
+  const parts = dob.split("-");
+  if (parts.length !== 3) return null;
+  const [day, month, year] = parts.map(Number);
+  if (!day || !month || !year) return null;
+  const birth = new Date(year, month - 1, day);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age -= 1;
+  return age >= 0 ? age : null;
+}
+
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { activeProfile, setActiveProfile, playerProfile, clubProfile, updatePlayerProfile, updateClubProfile, pickProfileImage, profileImages, moderateImage, getImageUri, approvedSports, pendingSportRequests, moderateSportRequest, currentAccount, signOut, pendingHighlightLinks, moderateHighlightLink } = useSportsConnect();
+  const {
+    playerProfile, clubProfile,
+    updatePlayerProfile, updateClubProfile,
+    pickProfileImage, profileImages, moderateImage, getImageUri,
+    approvedSports, pendingSportRequests, moderateSportRequest,
+    currentAccount, signOut,
+    pendingHighlightLinks, moderateHighlightLink,
+  } = useSportsConnect();
+
   const [player, setPlayer] = useState(playerProfile);
   const [club, setClub] = useState(clubProfile);
-  const pendingImages = profileImages.filter((image) => image.status === "pending");
-  const pendingSports = pendingSportRequests.filter((request) => request.status === "pending");
-  const pendingHighlights = pendingHighlightLinks.filter((link) => link.status === "pending");
+
+  const pendingImages = profileImages.filter((img) => img.status === "pending");
+  const pendingSports = pendingSportRequests.filter((r) => r.status === "pending");
+  const pendingHighlights = pendingHighlightLinks.filter((l) => l.status === "pending");
   const playerImage = getImageUri(playerProfile.imageId, true);
   const clubImage = getImageUri(clubProfile.imageId, true);
   const clubMapQuery = `${club.name} ${club.mapAddress || club.location}`;
 
+  const role = currentAccount?.role ?? "player";
+  const isClub = role === "club";
+  const isGuardian = role === "guardian";
+  const isCoach = role === "coach";
+
+  const age = parseDobAge(currentAccount?.dateOfBirth);
+
+  const accountName = isClub
+    ? currentAccount?.clubName
+    : isGuardian
+    ? currentAccount?.playerName
+    : currentAccount?.fullName;
+
+  const roleLabel = isClub
+    ? "Club account"
+    : isGuardian
+    ? `Parent/Guardian · Managing ${currentAccount?.playerName ?? "player"}`
+    : isCoach
+    ? "Coach account"
+    : "Player account";
+
   const save = () => {
     updatePlayerProfile(player);
     updateClubProfile(club);
-    Alert.alert("Profiles saved", "Profile changes are now available in the app.");
+    Alert.alert("Profile saved", "Your changes are now visible in the app.");
   };
 
   return (
-    <ScreenShell>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 116 }]} keyboardShouldPersistTaps="handled">
+    <View style={[styles.shell, { backgroundColor: colors.background }]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 116 }]}
+        keyboardShouldPersistTaps="handled"
+      >
         <View>
-          <Text style={[styles.kicker, { color: colors.primary }]}>Profiles and admin</Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>Trust starts here</Text>
+          <Text style={[styles.kicker, { color: colors.primary }]}>My profile</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>
+            {isClub ? "Club profile" : isGuardian ? "Player profile" : isCoach ? "Coach profile" : "Player profile"}
+          </Text>
         </View>
 
         {currentAccount ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>{currentAccount.role === "club" ? currentAccount.clubName : currentAccount.role === "guardian" ? currentAccount.playerName : currentAccount.fullName}</Text>
-            <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
-              {currentAccount.role === "guardian" ? `On Behalf of ${currentAccount.parentGuardianName}` : `${currentAccount.role} account`} · Default sport: {currentAccount.defaultSport}
-            </Text>
-            {currentAccount.dateOfBirth ? <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Age: {Math.max(0, new Date().getFullYear() - new Date(currentAccount.dateOfBirth).getFullYear())}</Text> : null}
+            <View style={styles.accountTop}>
+              <View style={[styles.accountIcon, { backgroundColor: colors.pitchSoft }]}>
+                <Feather
+                  name={isClub ? "shield" : isCoach ? "award" : "user"}
+                  size={22}
+                  color={colors.primary}
+                />
+              </View>
+              <View style={styles.accountCopy}>
+                <Text style={[styles.accountName, { color: colors.foreground }]}>{accountName}</Text>
+                <Text style={[styles.accountRole, { color: colors.mutedForeground }]}>{roleLabel}</Text>
+                {age !== null && !isClub ? (
+                  <Text style={[styles.accountRole, { color: colors.mutedForeground }]}>Age {age} · {currentAccount?.defaultSport}</Text>
+                ) : currentAccount?.defaultSport ? (
+                  <Text style={[styles.accountRole, { color: colors.mutedForeground }]}>{currentAccount.defaultSport}</Text>
+                ) : null}
+              </View>
+            </View>
             <PrimaryButton label="Sign out" icon="log-out" onPress={signOut} />
           </View>
         ) : null}
 
-        <View style={styles.pillRow}>
-          <Pill label="Player profile" active={activeProfile === "player"} onPress={() => setActiveProfile("player")} />
-          <Pill label="Club profile" active={activeProfile === "club"} onPress={() => setActiveProfile("club")} />
-        </View>
-
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.profileTop}>
-            <ProfileAvatar uri={playerImage} fallback={fallbackImage} size={72} />
-            <View style={styles.profileCopy}>
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Player profile</Text>
-              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Images stay pending until an admin approves them.</Text>
+        {isClub ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.profileTop}>
+              <ProfileAvatar uri={clubImage} fallback={fallbackImage} size={72} />
+              <View style={styles.profileCopy}>
+                <Text style={[styles.cardTitle, { color: colors.foreground }]}>Club profile</Text>
+                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Profile images need admin approval before going public.</Text>
+              </View>
             </View>
-          </View>
-          <Field label="Name" value={player.name} onChangeText={(name) => setPlayer((current) => ({ ...current, name }))} />
-          <Field label="Sports" value={player.sports} onChangeText={(sports) => setPlayer((current) => ({ ...current, sports }))} />
-          <Field label="Location" value={player.location} onChangeText={(location) => setPlayer((current) => ({ ...current, location }))} />
-          <Field label="Bio" value={player.bio} onChangeText={(bio) => setPlayer((current) => ({ ...current, bio }))} multiline />
-          <PrimaryButton label="Submit player image" icon="image" onPress={() => pickProfileImage("player")} />
-        </View>
-
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.profileTop}>
-            <ProfileAvatar uri={clubImage} fallback={fallbackImage} size={72} />
-            <View style={styles.profileCopy}>
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Club profile</Text>
-              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Clubs can maintain a profile and post multiple adverts.</Text>
-            </View>
-          </View>
-          <Field label="Club name" value={club.name} onChangeText={(name) => setClub((current) => ({ ...current, name }))} />
-          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Club sport</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sportPickerScroll}>
-            {approvedSports.map((sport) => (
-              <Pressable key={sport.name} onPress={() => setClub((current) => ({ ...current, sport: sport.name }))} style={({ pressed }) => [styles.sportChoice, { backgroundColor: club.sport === sport.name ? sport.button : sport.soft, opacity: pressed ? 0.75 : 1 }]}>
-                <Text style={[styles.sportChoiceText, { color: club.sport === sport.name ? "#FFFFFF" : sport.text }]}>{sport.name}</Text>
+            <Field label="Club name" value={club.name} onChangeText={(v) => setClub((c) => ({ ...c, name: v }))} />
+            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Club sport</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sportRow}>
+              {approvedSports.map((sport) => (
+                <Pressable
+                  key={sport.name}
+                  onPress={() => setClub((c) => ({ ...c, sport: sport.name }))}
+                  style={({ pressed }) => [styles.sportPill, { backgroundColor: club.sport === sport.name ? sport.button : sport.soft, opacity: pressed ? 0.75 : 1 }]}
+                >
+                  <Text style={[styles.sportPillText, { color: club.sport === sport.name ? "#FFF" : sport.text }]}>{sport.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Field label="Suburb, city and state" value={club.location} onChangeText={(v) => setClub((c) => ({ ...c, location: v }))} />
+            <Field label="Club ground or street address" value={club.mapAddress ?? ""} onChangeText={(v) => setClub((c) => ({ ...c, mapAddress: v }))} placeholder="e.g. Princes Park, Carlton North VIC" />
+            <Field label="Club bio" value={club.bio} onChangeText={(v) => setClub((c) => ({ ...c, bio: v }))} multiline />
+            <View style={styles.mapRow}>
+              <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
+                <Feather name="map" color="#FFF" size={16} />
+                <Text style={styles.mapBtnText}>Apple Maps</Text>
               </Pressable>
-            ))}
-          </ScrollView>
-          <Field label="Suburb, city and state" value={club.location} onChangeText={(location) => setClub((current) => ({ ...current, location }))} />
-          <Field label="Club ground or street address" value={club.mapAddress ?? ""} onChangeText={(mapAddress) => setClub((current) => ({ ...current, mapAddress }))} placeholder="e.g. Princes Park, Carlton North VIC" />
-          <Field label="Club bio" value={club.bio} onChangeText={(bio) => setClub((current) => ({ ...current, bio }))} multiline />
-          <View style={styles.mapButtons}>
-            <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapButton, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
-              <Feather name="map" color="#FFFFFF" size={17} />
-              <Text style={styles.mapButtonText}>Apple Maps</Text>
-            </Pressable>
-            <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapButton, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
-              <Feather name="navigation" color="#FFFFFF" size={17} />
-              <Text style={styles.mapButtonText}>Google Maps</Text>
-            </Pressable>
+              <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
+                <Feather name="navigation" color="#FFF" size={16} />
+                <Text style={styles.mapBtnText}>Google Maps</Text>
+              </Pressable>
+            </View>
+            <PrimaryButton label="Submit club image" icon="shield" onPress={() => pickProfileImage("club")} />
           </View>
-          <PrimaryButton label="Submit club image" icon="shield" onPress={() => pickProfileImage("club")} />
-        </View>
+        ) : (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.profileTop}>
+              <ProfileAvatar uri={playerImage} fallback={fallbackImage} size={72} />
+              <View style={styles.profileCopy}>
+                <Text style={[styles.cardTitle, { color: colors.foreground }]}>
+                  {isCoach ? "Coach profile" : "Player profile"}
+                </Text>
+                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
+                  {isGuardian
+                    ? "Managed by parent or guardian. Images need admin approval."
+                    : "Profile images need admin approval before going public."}
+                </Text>
+              </View>
+            </View>
+            <Field
+              label={isGuardian ? "Player name" : "Full name"}
+              value={player.name}
+              onChangeText={(v) => setPlayer((p) => ({ ...p, name: v }))}
+            />
+            <Field
+              label={isCoach ? "Sports coached" : "Sports played"}
+              value={player.sports}
+              onChangeText={(v) => setPlayer((p) => ({ ...p, sports: v }))}
+            />
+            <Field label="Location" value={player.location} onChangeText={(v) => setPlayer((p) => ({ ...p, location: v }))} />
+            <Field
+              label={isCoach ? "Coaching bio" : "Player bio"}
+              value={player.bio}
+              onChangeText={(v) => setPlayer((p) => ({ ...p, bio: v }))}
+              multiline
+            />
+            <PrimaryButton
+              label={isCoach ? "Submit coach image" : "Submit player image"}
+              icon="image"
+              onPress={() => pickProfileImage("player")}
+            />
+          </View>
+        )}
 
-        <PrimaryButton label="Save profile details" icon="check" onPress={save} />
+        <PrimaryButton label="Save profile" icon="check" onPress={save} />
 
         <SectionTitle title="Admin image moderation" action={`${pendingImages.length} pending`} />
         <View style={[styles.adminCard, { backgroundColor: colors.navy, borderColor: colors.navy }]}>
@@ -110,24 +196,24 @@ export default function ProfileScreen() {
               <Feather name="lock" size={18} color={colors.accentForeground} />
             </View>
             <View style={styles.profileCopy}>
-              <Text style={[styles.adminTitle, { color: "#FFFFFF" }]}>Admin permissions</Text>
-              <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Only approved profile images become public. Pending uploads are visible here for review.</Text>
+              <Text style={[styles.adminTitle, { color: "#FFF" }]}>Admin permissions</Text>
+              <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Only approved profile images become public. Pending uploads appear here for review.</Text>
             </View>
           </View>
           {pendingImages.length === 0 ? (
             <Text style={[styles.adminText, { color: "#B9CBC4" }]}>No images need review right now.</Text>
-          ) : pendingImages.map((image) => (
-            <View key={image.id} style={[styles.reviewRow, { backgroundColor: "rgba(255,255,255,0.08)" }]}>
-              <ProfileAvatar uri={image.uri} fallback={fallbackImage} size={54} />
+          ) : pendingImages.map((img) => (
+            <View key={img.id} style={[styles.reviewRow, { backgroundColor: "rgba(255,255,255,0.08)" }]}>
+              <ProfileAvatar uri={img.uri} fallback={fallbackImage} size={54} />
               <View style={styles.reviewCopy}>
-                <Text style={[styles.reviewTitle, { color: "#FFFFFF" }]}>{image.owner} image</Text>
+                <Text style={[styles.reviewTitle, { color: "#FFF" }]}>{img.owner}</Text>
                 <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Pending review</Text>
               </View>
-              <Pressable onPress={() => moderateImage(image.id, "approved")} style={[styles.reviewButton, { backgroundColor: colors.primary }]}>
-                <Feather name="check" color="#FFFFFF" size={18} />
+              <Pressable onPress={() => moderateImage(img.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
+                <Feather name="check" color="#FFF" size={18} />
               </Pressable>
-              <Pressable onPress={() => moderateImage(image.id, "rejected")} style={[styles.reviewButton, { backgroundColor: colors.destructive }]}>
-                <Feather name="x" color="#FFFFFF" size={18} />
+              <Pressable onPress={() => moderateImage(img.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
+                <Feather name="x" color="#FFF" size={18} />
               </Pressable>
             </View>
           ))}
@@ -141,22 +227,22 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.profileCopy}>
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>Requested sports</Text>
-              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Approved sports are added to the top-level filter list and can be used in new adverts.</Text>
+              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Approved sports are added to the filter list and can be used in adverts.</Text>
             </View>
           </View>
           {pendingSports.length === 0 ? (
             <Text style={[styles.cardText, { color: colors.mutedForeground }]}>No sport requests need review right now.</Text>
-          ) : pendingSports.map((request) => (
-            <View key={request.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}>
+          ) : pendingSports.map((req) => (
+            <View key={req.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}>
               <View style={styles.reviewCopy}>
-                <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{request.name}</Text>
+                <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{req.name}</Text>
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Pending admin approval</Text>
               </View>
-              <Pressable onPress={() => moderateSportRequest(request.id, "approved")} style={[styles.reviewButton, { backgroundColor: colors.primary }]}>
-                <Feather name="check" color="#FFFFFF" size={18} />
+              <Pressable onPress={() => moderateSportRequest(req.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
+                <Feather name="check" color="#FFF" size={18} />
               </Pressable>
-              <Pressable onPress={() => moderateSportRequest(request.id, "rejected")} style={[styles.reviewButton, { backgroundColor: colors.destructive }]}>
-                <Feather name="x" color="#FFFFFF" size={18} />
+              <Pressable onPress={() => moderateSportRequest(req.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
+                <Feather name="x" color="#FFF" size={18} />
               </Pressable>
             </View>
           ))}
@@ -170,7 +256,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.profileCopy}>
               <Text style={[styles.cardTitle, { color: colors.foreground }]}>Highlight links</Text>
-              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Optional highlight reels stay pending until an admin approves them.</Text>
+              <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Highlight reels stay pending until an admin approves them.</Text>
             </View>
           </View>
           {pendingHighlights.length === 0 ? (
@@ -181,44 +267,49 @@ export default function ProfileScreen() {
                 <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{link.owner}</Text>
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]} numberOfLines={1}>{link.url}</Text>
               </View>
-              <Pressable onPress={() => moderateHighlightLink(link.id, "approved")} style={[styles.reviewButton, { backgroundColor: colors.primary }]}>
-                <Feather name="check" color="#FFFFFF" size={18} />
+              <Pressable onPress={() => moderateHighlightLink(link.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
+                <Feather name="check" color="#FFF" size={18} />
               </Pressable>
-              <Pressable onPress={() => moderateHighlightLink(link.id, "rejected")} style={[styles.reviewButton, { backgroundColor: colors.destructive }]}>
-                <Feather name="x" color="#FFFFFF" size={18} />
+              <Pressable onPress={() => moderateHighlightLink(link.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
+                <Feather name="x" color="#FFF" size={18} />
               </Pressable>
             </View>
           ))}
         </View>
       </ScrollView>
-    </ScreenShell>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  shell: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 18 },
   kicker: { fontWeight: "700", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 },
-  title: { fontWeight: "700", fontSize: 32, letterSpacing: -0.8, marginTop: 4 },
-  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  card: { borderWidth: 1, borderRadius: 28, padding: 18 },
-  profileTop: { flexDirection: "row", gap: 14, alignItems: "center", marginBottom: 16 },
+  title: { fontWeight: "800", fontSize: 32, letterSpacing: -0.8, marginTop: 4 },
+  card: { borderWidth: 1, borderRadius: 28, padding: 18, gap: 14 },
+  accountTop: { flexDirection: "row", gap: 14, alignItems: "center" },
+  accountIcon: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  accountCopy: { flex: 1 },
+  accountName: { fontWeight: "800", fontSize: 19 },
+  accountRole: { fontWeight: "500", fontSize: 13, lineHeight: 20, marginTop: 2 },
+  profileTop: { flexDirection: "row", gap: 14, alignItems: "center" },
   profileCopy: { flex: 1 },
-  cardTitle: { fontWeight: "700", fontSize: 19 },
-  cardText: { fontWeight: "500", fontSize: 14, lineHeight: 20, marginTop: 3 },
-  fieldLabel: { fontWeight: "600", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
-  sportPickerScroll: { gap: 8, paddingRight: 20, paddingBottom: 12 },
-  sportChoice: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
-  sportChoiceText: { fontWeight: "800", fontSize: 13 },
-  mapButtons: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  mapButton: { flex: 1, minHeight: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
-  mapButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
+  cardTitle: { fontWeight: "700", fontSize: 17 },
+  cardText: { fontWeight: "500", fontSize: 13, lineHeight: 19, marginTop: 2 },
+  fieldLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
+  sportRow: { gap: 8, paddingBottom: 8, paddingRight: 20 },
+  sportPill: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
+  sportPillText: { fontWeight: "800", fontSize: 13 },
+  mapRow: { flexDirection: "row", gap: 10 },
+  mapBtn: { flex: 1, minHeight: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
+  mapBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
   adminCard: { borderWidth: 1, borderRadius: 28, padding: 18, gap: 14 },
   adminHeader: { flexDirection: "row", gap: 12, alignItems: "center" },
   adminIcon: { width: 42, height: 42, borderRadius: 15, alignItems: "center", justifyContent: "center" },
-  adminTitle: { fontWeight: "700", fontSize: 18 },
+  adminTitle: { fontWeight: "700", fontSize: 17 },
   adminText: { fontWeight: "500", fontSize: 13, lineHeight: 19 },
   reviewRow: { borderRadius: 18, padding: 10, flexDirection: "row", alignItems: "center", gap: 10 },
   reviewCopy: { flex: 1 },
-  reviewTitle: { fontWeight: "700", fontSize: 15, textTransform: "capitalize" },
-  reviewButton: { width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  reviewTitle: { fontWeight: "700", fontSize: 15 },
+  reviewBtn: { width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center" },
 });
