@@ -258,6 +258,7 @@ export default function ProfileScreen() {
     }
     const rows: { label: string; value: string; url?: string }[] = [
       { label: isGuardian ? "Parent/Guardian's Full Name" : "Full name", value: isGuardian ? currentAccount.parentGuardianName ?? "" : currentAccount.fullName ?? "" },
+      ...(isGuardian ? [{ label: "Player's Name", value: currentAccount.playerName ?? "" }] : []),
       { label: "Gender", value: currentAccount.gender ?? "" },
       { label: "Date of birth", value: currentAccount.dateOfBirth ? `${currentAccount.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` : "" },
       { label: "Location", value: currentAccount.location ?? "" },
