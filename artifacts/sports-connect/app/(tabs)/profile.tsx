@@ -257,7 +257,7 @@ export default function ProfileScreen() {
       ].filter((row) => row.value);
     }
     const rows: { label: string; value: string; url?: string }[] = [
-      { label: isGuardian ? "Player name" : "Full name", value: isGuardian ? currentAccount.playerName ?? "" : currentAccount.fullName ?? "" },
+      { label: isGuardian ? "Player's Name" : "Full name", value: isGuardian ? currentAccount.playerName ?? "" : currentAccount.fullName ?? "" },
       { label: "Gender", value: currentAccount.gender ?? "" },
       { label: "Date of birth", value: currentAccount.dateOfBirth ? `${currentAccount.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` : "" },
       { label: "Location", value: currentAccount.location ?? "" },
@@ -325,7 +325,7 @@ export default function ProfileScreen() {
                   {isClub ? "Club profile" : isCoach ? "Coach profile" : "Player profile"}
                 </Text>
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
-                  {isClub ? "Club details shown below." : isGuardian ? "Managed by parent or guardian." : "Profile details shown below."}
+                  {isClub ? "Club details shown below." : isGuardian ? `${currentAccount?.parentGuardianName ?? "Parent/Guardian"} (Parent/Guardian) is managing this Player.` : "Profile details shown below."}
                 </Text>
               </View>
             </View>
@@ -418,7 +418,7 @@ export default function ProfileScreen() {
                   {isCoach ? "Edit coach profile" : isGuardian ? "Edit player profile" : "Edit player profile"}
                 </Text>
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
-                  {isGuardian ? "Managed by parent or guardian." : "Changes save back to your account profile."}
+                  {isGuardian ? `${currentAccount?.parentGuardianName ?? "Parent/Guardian"} (Parent/Guardian) is managing this Player.` : "Changes save back to your account profile."}
                 </Text>
               </View>
             </View>
