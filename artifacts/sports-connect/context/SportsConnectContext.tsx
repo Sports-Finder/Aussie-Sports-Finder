@@ -58,6 +58,7 @@ export type UserAccount = {
   clubAddress?: string;
   clubContactEmail?: string;
   clubContactMobile?: string;
+  password?: string;
   createdAt: string;
   approved: boolean;
 };
@@ -171,6 +172,8 @@ type SportsConnectState = {
   setActiveProfile: (profile: ProfileType) => void;
   requestSport: (name: string) => void;
   moderateSportRequest: (requestId: string, status: "approved" | "rejected") => void;
+  accounts: UserAccount[];
+  loginWithEmail: (email: string, password: string) => boolean;
   createAccount: (draft: DraftAccount) => void;
   signOut: () => void;
   signOutResetToken: number;
@@ -194,7 +197,7 @@ type SportsConnectState = {
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
 };
 
-const storageKey = "sports-connect-state-v6-account-onboarding";
+const storageKey = "sports-connect-state-v7-email-auth";
 const adminStorageKey = "sports-connect-admin-v1";
 const defaultAdminPasscode = "AUSSCF-2025";
 
@@ -381,6 +384,7 @@ const defaultState = {
   conversations: seedConversations,
   profileImages: [] as ProfileImage[],
   pendingHighlightLinks: [] as HighlightLink[],
+  accounts: [] as UserAccount[],
   currentAccount: undefined as UserAccount | undefined,
   clubProfile: {
     name: "Yarra United SC",
@@ -413,6 +417,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [conversations, setConversations] = useState<Conversation[]>(defaultState.conversations);
   const [profileImages, setProfileImages] = useState<ProfileImage[]>(defaultState.profileImages);
   const [pendingHighlightLinks, setPendingHighlightLinks] = useState<HighlightLink[]>(defaultState.pendingHighlightLinks);
+  const [accounts, setAccounts] = useState<UserAccount[]>(defaultState.accounts);
   const [currentAccount, setCurrentAccount] = useState<UserAccount | undefined>(defaultState.currentAccount);
   const [clubProfile, setClubProfile] = useState<ClubProfile>(defaultState.clubProfile);
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile>(defaultState.playerProfile);
@@ -448,6 +453,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       setConversations(parsed.conversations ?? defaultState.conversations);
       setProfileImages(parsed.profileImages ?? []);
       setPendingHighlightLinks(parsed.pendingHighlightLinks ?? []);
+      setAccounts(parsed.accounts ?? []);
       setCurrentAccount(parsed.currentAccount);
       setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
       setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
@@ -460,9 +466,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
-    const snapshot = { adverts, conversations, profileImages, pendingHighlightLinks, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile };
+    const snapshot = { adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile };
     AsyncStorage.setItem(storageKey, JSON.stringify(snapshot)).catch(() => undefined);
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
 
   const requestSport = (name: string) => {
     const trimmed = name.trim();
@@ -497,6 +503,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       createdAt: now(),
       approved: true,
     };
+    setAccounts((current) => [...current, account]);
     setCurrentAccount(account);
     setSelectedSport(account.defaultSport);
     if (account.role === "club") {
@@ -535,6 +542,21 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setCurrentAccount(undefined);
     setSignOutResetToken((current) => current + 1);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const loginWithEmail = (emailInput: string, passwordInput: string): boolean => {
+    const match = accounts.find(
+      (acc) => acc.email.toLowerCase() === emailInput.toLowerCase().trim() && acc.password === passwordInput
+    );
+    if (!match) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+      return false;
+    }
+    setCurrentAccount(match);
+    setSelectedSport(match.defaultSport);
+    setActiveProfile(match.role === "club" ? "club" : "player");
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    return true;
   };
 
   const updateAccount = (profile: Partial<UserAccount>) => {
@@ -729,6 +751,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setActiveProfile,
     requestSport,
     moderateSportRequest,
+    accounts,
+    loginWithEmail,
     createAccount,
     signOut,
     signOutResetToken,
@@ -750,7 +774,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     moderateImage,
     moderateHighlightLink,
     getImageUri,
-  }), [adverts, conversations, profileImages, pendingHighlightLinks, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminPasscode]);
+  }), [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminPasscode]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }
