@@ -342,6 +342,10 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
         {step === "type" ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Pressable onPress={() => setStep("auth")} style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.75 : 1 }]}>
+              <Feather name="arrow-left" size={16} color={colors.primary} />
+              <Text style={[styles.backBtnText, { color: colors.primary }]}>Back to login or sign up</Text>
+            </Pressable>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Create an account</Text>
             {(Object.keys(roleCopy) as AccountRole[]).map((item) => (
               <Pressable key={item} onPress={() => { setRole(item); setStep("details"); }} style={({ pressed }) => [styles.roleCard, { backgroundColor: colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
@@ -430,7 +434,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
             <Input label="Facebook link (optional)" value={form.facebook} onChangeText={(value) => update("facebook", value)} />
             <Input label="X link (optional)" value={form.x} onChangeText={(value) => update("x", value)} />
             <Input label="TikTok link (optional)" value={form.tiktok} onChangeText={(value) => update("tiktok", value)} />
-                {!isClub ? <Input label="Highlight Reel (YouTube & Vimeo links only, optional, admin approved)" value={form.highlightReelUrl} onChangeText={(value) => update("highlightReelUrl", value)} /> : null}
+            {!isClub ? <Input label="Highlight Reel (YouTube & Vimeo links only, optional, admin approved)" value={form.highlightReelUrl} onChangeText={(value) => update("highlightReelUrl", value)} /> : null}
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Profile Pics and links are admin approved. Any inappropriate pics or links shared will result in the account being removed and banned from the application.</Text>
             <CheckRow active={Boolean(form.agreed)} label={isClub ? "All the Club information I have provided is true and accurate. If a club account is found to be false or misleading, it will be shut down immediately." : role === "guardian" ? "All the player information I have provided is true and accurate. If a Parent/Guardian's Player account is found to be false or misleading, it will be shut down immediately." : "All the player information I have provided is true and accurate. If a player account is found to be false or misleading, it will be shut down immediately."} onPress={() => update("agreed", !form.agreed)} />
             <PrimaryButton label="Create account" icon="user-check" onPress={submit} disabled={!requiredDetailsValid || !socialLinksValid || (isClub && !form.agreed)} />
