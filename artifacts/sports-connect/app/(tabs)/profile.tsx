@@ -5,12 +5,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
 import { SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
+import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
 
 type Mode = "view" | "edit";
-
-const fallbackImage = require("@/assets/images/player-placeholder.png");
 const genders = ["Male", "Female", "Pref Not to Say"];
 const states = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
 
@@ -143,6 +142,7 @@ export default function ProfileScreen() {
   const isClub = role === "club";
   const isGuardian = role === "guardian";
   const isCoach = role === "coach";
+  const fallbackImage = getDefaultAvatar(role, currentAccount?.gender);
   const age = parseDobAge(currentAccount?.dateOfBirth);
   const accountName = isClub
     ? currentAccount?.clubName

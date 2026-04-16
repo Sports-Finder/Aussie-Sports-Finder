@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "@/components/SportsUI";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
+import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { useColors } from "@/hooks/useColors";
 
 const logo = require("@/assets/images/icon.png");
@@ -417,6 +418,13 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
               </>
             )}
 
+            <View style={styles.avatarPreviewRow}>
+              <Image source={getDefaultAvatar(role, form.gender)} style={styles.avatarPreviewImg} contentFit="cover" />
+              <View style={styles.avatarPreviewInfo}>
+                <Text style={[styles.avatarPreviewLabel, { color: colors.foreground }]}>Your default profile picture</Text>
+                <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>This default picture is shown until your own photo is approved by an admin.</Text>
+              </View>
+            </View>
             <PrimaryButton label={profileImageId ? "Profile pic submitted for approval" : "Add profile pic for admin approval"} icon="image" onPress={pickImage} />
             <Input label="Instagram link (optional)" value={form.instagram} onChangeText={(value) => update("instagram", value)} />
             <Input label="Facebook link (optional)" value={form.facebook} onChangeText={(value) => update("facebook", value)} />
@@ -509,4 +517,8 @@ const styles = StyleSheet.create({
   adminLinkText: { fontWeight: "600", fontSize: 12, textDecorationLine: "underline" },
   backBtn: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start" },
   backBtnText: { fontWeight: "700", fontSize: 13 },
+  avatarPreviewRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  avatarPreviewImg: { width: 72, height: 72, borderRadius: 36 },
+  avatarPreviewInfo: { flex: 1, gap: 4 },
+  avatarPreviewLabel: { fontWeight: "700", fontSize: 14 },
 });
