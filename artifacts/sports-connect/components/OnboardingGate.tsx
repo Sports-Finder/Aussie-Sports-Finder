@@ -188,7 +188,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     const nameValid = role === "guardian" ? Boolean(form.parentGuardianName.trim() && form.playerName.trim()) : Boolean(form.fullName.trim());
     const guardianAgeValid = role === "guardian" ? Boolean(age && Number(age) <= 17) : true;
     const playerAgeValid = role === "player" ? Boolean(age && Number(age) >= 18) : true;
-    return Boolean(nameValid && form.gender && form.dateOfBirth && guardianAgeValid && playerAgeValid && form.mobile.trim() && selectedSports.length && defaultSport);
+    return Boolean(nameValid && form.gender && form.dateOfBirth && guardianAgeValid && playerAgeValid && form.mobile.trim() && selectedSports.length && defaultSport && form.agreed);
   }, [age, defaultSport, form, humanChecked, isClub, primaryEmail, role, selectedSports.length]);
 
   if (currentAccount || isAdmin) return <>{children}</>;
