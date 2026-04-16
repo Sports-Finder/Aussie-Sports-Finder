@@ -185,6 +185,7 @@ type SportsConnectState = {
   deleteAdvert: (id: string) => void;
   connectOnAdvert: (advert: Advert) => string;
   sendMessage: (conversationId: string, body: string) => void;
+  markConversationRead: (conversationId: string) => void;
   toggleNotifications: () => Promise<void>;
   setNotificationRadius: (radiusKm: number) => void;
   updateClubProfile: (profile: ClubProfile) => void;
@@ -658,6 +659,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
+  const markConversationRead = (conversationId: string) => {
+    setConversations((current) => current.map((conversation) => conversation.id === conversationId ? { ...conversation, hasUnread: false } : conversation));
+  };
+
   const toggleNotifications = async () => {
     if (!notificationSettings.enabled) {
       let next: NotificationSettings = { ...notificationSettings, enabled: true };
@@ -764,6 +769,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     deleteAdvert,
     connectOnAdvert,
     sendMessage,
+    markConversationRead,
     toggleNotifications,
     setNotificationRadius,
     updateClubProfile: setClubProfile,

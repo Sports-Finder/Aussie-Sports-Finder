@@ -105,8 +105,12 @@ function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversati
 function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClose: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { sendMessage } = useSportsConnect();
+  const { sendMessage, markConversationRead } = useSportsConnect();
   const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    markConversationRead(conversation.id);
+  }, [conversation.id, markConversationRead]);
 
   const submit = () => {
     const trimmed = draft.trim();
@@ -195,7 +199,7 @@ export default function MessagesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const { conversations } = useSportsConnect();
+  const { conversations, markConversationRead } = useSportsConnect();
   const [page, setPage] = useState(0);
   const [openConv, setOpenConv] = useState<Conversation | null>(null);
 
@@ -206,6 +210,9 @@ export default function MessagesScreen() {
   const handleBoxPress = (conv: Conversation) => {
     if (conv.pendingRequest) {
       return;
+    }
+    if (conv.hasUnread) {
+      markConversationRead(conv.id);
     }
     setOpenConv(conv);
   };
