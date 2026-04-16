@@ -113,7 +113,7 @@ function getPositions(sport: string): string[] {
 
 const advertTypesByRole: Record<AccountRole, { value: Advert["type"]; label: string }[]> = {
   player: [{ value: "player-looking", label: "Player looking for Club" }],
-  guardian: [{ value: "player-looking", label: "Player looking for Club" }],
+  guardian: [{ value: "player-looking", label: "Parent/Guardian's Player Looking for a Club" }],
   coach: [{ value: "coach-looking", label: "Coach looking for Team or Club" }],
   club: [
     { value: "players-wanted", label: "Players Wanted for Team" },

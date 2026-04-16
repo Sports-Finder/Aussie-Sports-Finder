@@ -147,7 +147,7 @@ export default function ProfileScreen() {
   const accountName = isClub
     ? currentAccount?.clubName
     : isGuardian
-    ? currentAccount?.playerName
+    ? currentAccount?.parentGuardianName
     : currentAccount?.fullName;
   const roleLabel = isClub
     ? "Club account"
@@ -257,7 +257,7 @@ export default function ProfileScreen() {
       ].filter((row) => row.value);
     }
     const rows: { label: string; value: string; url?: string }[] = [
-      { label: isGuardian ? "Player's Name" : "Full name", value: isGuardian ? currentAccount.playerName ?? "" : currentAccount.fullName ?? "" },
+      { label: isGuardian ? "Parent/Guardian's Full Name" : "Full name", value: isGuardian ? currentAccount.parentGuardianName ?? "" : currentAccount.fullName ?? "" },
       { label: "Gender", value: currentAccount.gender ?? "" },
       { label: "Date of birth", value: currentAccount.dateOfBirth ? `${currentAccount.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` : "" },
       { label: "Location", value: currentAccount.location ?? "" },
