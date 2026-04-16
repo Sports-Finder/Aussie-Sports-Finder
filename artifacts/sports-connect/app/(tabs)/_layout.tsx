@@ -38,6 +38,8 @@ function ClassicTabLayout() {
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const requestCount = 1;
+  const unreadCount = 2;
 
   return (
     <Tabs
@@ -98,16 +100,20 @@ function ClassicTabLayout() {
           title: "Messages",
           tabBarIcon: ({ color }) => (
             <View style={styles.messageTabIconWrap}>
-              <View style={styles.orangeBadge}>
-                <View style={styles.orangeBadgeDot}>
-                  <Text style={styles.badgeText}>1</Text>
+              {requestCount > 0 ? (
+                <View style={styles.orangeBadge}>
+                  <View style={styles.orangeBadgeDot}>
+                    <Text style={styles.badgeText}>{requestCount}</Text>
+                  </View>
                 </View>
-              </View>
-              <View style={styles.redBadge}>
-                <View style={styles.redBadgeDot}>
-                  <Text style={styles.badgeText}>1</Text>
+              ) : null}
+              {unreadCount > 0 ? (
+                <View style={styles.redBadge}>
+                  <View style={styles.redBadgeDot}>
+                    <Text style={styles.badgeText}>{unreadCount}</Text>
+                  </View>
                 </View>
-              </View>
+              ) : null}
               {isIOS ? <SymbolView name="bubble.left.and.bubble.right" tintColor={color} size={48} /> : <Feather name="message-circle" size={44} color={color} />}
             </View>
           ),

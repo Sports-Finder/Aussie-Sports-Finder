@@ -194,7 +194,7 @@ type SportsConnectState = {
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
 };
 
-const storageKey = "sports-connect-state-v5-account-onboarding";
+const storageKey = "sports-connect-state-v6-account-onboarding";
 const adminStorageKey = "sports-connect-admin-v1";
 const defaultAdminPasscode = "AUSSCF-2025";
 
