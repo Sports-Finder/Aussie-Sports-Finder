@@ -7,6 +7,7 @@ import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 
+import { useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
 function NativeTabLayout() {
@@ -38,8 +39,9 @@ function ClassicTabLayout() {
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
-  const requestCount = 1;
-  const unreadCount = 2;
+  const { conversations } = useSportsConnect();
+  const requestCount = conversations.filter((c) => c.pendingRequest).length;
+  const unreadCount = conversations.filter((c) => !c.pendingRequest && c.hasUnread).length;
 
   return (
     <Tabs
