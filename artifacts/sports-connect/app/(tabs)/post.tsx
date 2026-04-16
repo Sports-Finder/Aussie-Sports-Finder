@@ -465,7 +465,7 @@ export default function PostScreen() {
     const coachTitleLabel = type === "coach-looking" ? coachTitle : "";
     const positionLabel = positions.length === 1 ? positions[0] : "";
     const levelLabel = level.trim() && level !== "Competitive amateur" ? level.trim() : "";
-    const locationLabel = [suburb.trim(), state.trim()].filter(Boolean).join(", ");
+    const locationLabel = suburb.trim();
     const ending = locationLabel ? `in ${locationLabel}` : "";
     const parts = [ageLabel, coachTitleLabel, positionLabel, levelLabel, roleLabel, sportLabel].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" ");
@@ -565,7 +565,7 @@ export default function PostScreen() {
       type,
       title,
       sport,
-      location: [suburb.trim(), state.trim()].filter(Boolean).join(", "),
+      location: suburb.trim(),
       level,
       availability: trainingTbd && gameTbd ? "TBD" : [trainingDays.join("/") || "TBD", gameDays.join("/") || "TBD"].join(" | "),
       description,
