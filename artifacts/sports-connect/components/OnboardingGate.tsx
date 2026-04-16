@@ -86,7 +86,7 @@ function isValidSocialLink(platform: keyof SocialLinks, value: string) {
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { currentAccount, isAdmin, adminLogin, approvedSports, createAccount, loginWithEmail, pickAccountImage, signOutResetToken } = useSportsConnect();
+  const { currentAccount, isAdmin, adminLogin, approvedSports, accounts, createAccount, loginWithEmail, pickAccountImage, signOutResetToken } = useSportsConnect();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [step, setStep] = useState<Step>("auth");
@@ -97,6 +97,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [recaptchaPassed, setRecaptchaPassed] = useState(false);
+  const [loginError, setLoginError] = useState<"no_account" | "wrong_password" | null>(null);
   const [humanChecked, setHumanChecked] = useState(false);
   const [role, setRole] = useState<AccountRole>("player");
   const [profileImageId, setProfileImageId] = useState<string | undefined>();
@@ -136,6 +137,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     setShowPassword(false);
     setShowConfirmPassword(false);
     setRecaptchaPassed(false);
+    setLoginError(null);
     setHumanChecked(false);
     setRole("player");
     setProfileImageId(undefined);
@@ -218,9 +220,15 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   };
 
   const handleEmailLogin = () => {
+    const emailLower = email.toLowerCase().trim();
+    const emailExists = accounts.some((acc) => acc.email.toLowerCase() === emailLower);
+    if (!emailExists) {
+      setLoginError("no_account");
+      return;
+    }
     const ok = loginWithEmail(email, password);
     if (!ok) {
-      Alert.alert("Login failed", "No account found with that email and password. Please check your details and try again.");
+      setLoginError("wrong_password");
     }
   };
 
@@ -392,15 +400,26 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
             </Pressable>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Login with Email</Text>
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Sign in to your existing account.</Text>
-            <Input label="Email Address" value={email} onChangeText={setEmail} keyboardType="email-address" />
+            <Input
+              label="Email Address"
+              value={email}
+              onChangeText={(v) => { setEmail(v); setLoginError(null); }}
+              keyboardType="email-address"
+            />
+            {loginError === "no_account" ? (
+              <Text style={[styles.errorText, { color: "#EF4444" }]}>There is no account created under this email address, please use Sign Up with Email option to create an account.</Text>
+            ) : null}
             <View style={styles.passwordRow}>
               <View style={styles.passwordFlex}>
-                <Input label="Password" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+                <Input label="Password" value={password} onChangeText={(v) => { setPassword(v); setLoginError(null); }} secureTextEntry={!showPassword} />
               </View>
               <Pressable onPress={() => setShowPassword(!showPassword)} style={[styles.eyeBtn, { backgroundColor: colors.secondary }]}>
                 <Feather name={showPassword ? "eye-off" : "eye"} size={18} color={colors.secondaryForeground} />
               </Pressable>
             </View>
+            {loginError === "wrong_password" ? (
+              <Text style={[styles.errorText, { color: "#EF4444" }]}>Incorrect password, please try again.</Text>
+            ) : null}
             <PrimaryButton label="Login" icon="log-in" onPress={handleEmailLogin} disabled={!email.includes("@") || password.length < 1} />
           </View>
         ) : null}
