@@ -22,7 +22,7 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="messages">
         <Icon sf={{ default: "bubble.left.and.bubble.right", selected: "bubble.left.and.bubble.right.fill" }} />
-        <Label>Communication Hub</Label>
+        <Label>Messages</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} />
@@ -95,7 +95,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: "Communication Hub",
+          title: "Messages",
           tabBarIcon: ({ color }) => (
             <View style={styles.messageTabIconWrap}>
               <View style={styles.orangeBadge}>
