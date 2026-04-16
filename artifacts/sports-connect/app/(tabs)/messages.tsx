@@ -1,7 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useState } from "react";
 import {
-  Dimensions,
   FlatList,
   Modal,
   Pressable,
@@ -10,6 +9,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,7 +19,7 @@ import { Conversation, useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
 const PAGE_SIZE = 6;
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const BOX_GAP = 12;
 
 function AvatarCircle({ label, color, size = 36 }: { label: string; color: string; size?: number }) {
   const initials = label
@@ -40,7 +40,7 @@ const avatarStyles = StyleSheet.create({
   initials: { color: "#FFFFFF", fontWeight: "800" },
 });
 
-function ChatBox({ conversation, onPress }: { conversation: Conversation; onPress: () => void }) {
+function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversation; onPress: () => void; boxWidth: number }) {
   const colors = useColors();
   const isPending = conversation.pendingRequest;
   const isUnread = !isPending && conversation.hasUnread;
@@ -56,7 +56,7 @@ function ChatBox({ conversation, onPress }: { conversation: Conversation; onPres
       onPress={onPress}
       style={({ pressed }) => [
         styles.chatBox,
-        { backgroundColor: bgColor, borderColor, opacity: pressed ? 0.80 : 1 },
+        { width: boxWidth, backgroundColor: bgColor, borderColor, opacity: pressed ? 0.80 : 1 },
       ]}
     >
       {(isPending || isUnread) && (
@@ -194,10 +194,12 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
 export default function MessagesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const { conversations } = useSportsConnect();
   const [page, setPage] = useState(0);
   const [openConv, setOpenConv] = useState<Conversation | null>(null);
 
+  const boxWidth = Math.max(100, (screenWidth - 40 - BOX_GAP) / 2);
   const totalPages = Math.ceil(conversations.length / PAGE_SIZE);
   const paged = conversations.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
@@ -243,7 +245,7 @@ export default function MessagesScreen() {
           <>
             <View style={styles.grid}>
               {paged.map((conv) => (
-                <ChatBox key={conv.id} conversation={conv} onPress={() => handleBoxPress(conv)} />
+                <ChatBox key={conv.id} conversation={conv} boxWidth={boxWidth} onPress={() => handleBoxPress(conv)} />
               ))}
             </View>
 
@@ -289,9 +291,6 @@ export default function MessagesScreen() {
   );
 }
 
-const BOX_GAP = 12;
-const BOX_WIDTH = (SCREEN_WIDTH - 40 - BOX_GAP) / 2;
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 20 },
@@ -304,7 +303,6 @@ const styles = StyleSheet.create({
   legendText: { fontWeight: "600", fontSize: 12 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: BOX_GAP },
   chatBox: {
-    width: BOX_WIDTH,
     minHeight: 160,
     borderRadius: 22,
     borderWidth: 2,
