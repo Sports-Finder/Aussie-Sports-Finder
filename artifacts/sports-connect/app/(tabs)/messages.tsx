@@ -44,7 +44,7 @@ export default function MessagesScreen() {
         <View style={[styles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 98 }]}>
           <View>
             <Text style={[styles.kicker, { color: colors.primary }]}>Private messaging</Text>
-            <Text style={[styles.title, { color: colors.foreground }]}>Connected chats</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>Communication Hub</Text>
           </View>
 
           {conversations.length === 0 ? (
