@@ -263,7 +263,7 @@ export default function DiscoverScreen() {
         <View style={styles.topRow}>
           <View>
             <Text style={[styles.kicker, { color: colors.primary }]}>Aussie Sports Club Finder</Text>
-            <Text style={[styles.title, { color: colors.foreground }]}>Find your next club or player</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>Find your Next Club, Coach or Player</Text>
           </View>
           <IconButton icon="bell" label="Notifications" onPress={toggleNotifications} />
         </View>
