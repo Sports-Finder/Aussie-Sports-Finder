@@ -101,6 +101,9 @@ export type Conversation = {
   playerName: string;
   status: "connected";
   messages: Message[];
+  pendingRequest?: boolean;
+  hasUnread?: boolean;
+  sport?: string;
 };
 
 export type Message = {
@@ -291,21 +294,91 @@ const seedAdverts: Advert[] = [
   },
 ];
 
-const seedConversation: Conversation = {
-  id: "conv-1",
-  advertId: "ad-1",
-  clubName: "Yarra United SC",
-  playerName: "You",
-  status: "connected",
-  messages: [
-    { id: "m1", sender: "them", body: "Thanks for connecting. Are you free to come down to training this Thursday?", createdAt: now() },
-    { id: "m2", sender: "me", body: "Yes, I can make Thursday. Please send the arrival time and kit colour.", createdAt: now() },
-  ],
-};
+const seedConversations: Conversation[] = [
+  {
+    id: "conv-1",
+    advertId: "ad-1",
+    clubName: "Yarra United SC",
+    playerName: "You",
+    status: "connected",
+    sport: "Football (Soccer)",
+    messages: [
+      { id: "m1", sender: "them", body: "Thanks for connecting. Are you free to come down to training this Thursday?", createdAt: now() },
+      { id: "m2", sender: "me", body: "Yes, I can make Thursday. Please send the arrival time and kit colour.", createdAt: now() },
+    ],
+  },
+  {
+    id: "conv-2",
+    advertId: "ad-3",
+    clubName: "Bondi Harbour Netball Club",
+    playerName: "You",
+    status: "connected",
+    sport: "Netball",
+    hasUnread: true,
+    messages: [
+      { id: "m3", sender: "them", body: "Hi! We'd love to invite you to our next trial session on Sunday.", createdAt: now() },
+    ],
+  },
+  {
+    id: "conv-3",
+    advertId: "ad-5",
+    clubName: "Parklands Footy Club",
+    playerName: "You",
+    status: "connected",
+    sport: "Aussie Rules Football",
+    pendingRequest: true,
+    messages: [],
+  },
+  {
+    id: "conv-4",
+    advertId: "ad-6",
+    clubName: "Swan River Cricket Club",
+    playerName: "You",
+    status: "connected",
+    sport: "Cricket",
+    hasUnread: true,
+    messages: [
+      { id: "m4", sender: "them", body: "We have a spot available for a batting all-rounder this season.", createdAt: now() },
+      { id: "m5", sender: "them", body: "Are you available for a chat this week?", createdAt: now() },
+    ],
+  },
+  {
+    id: "conv-5",
+    advertId: "ad-2",
+    clubName: "Brisbane Rovers FC",
+    playerName: "You",
+    status: "connected",
+    sport: "Football (Soccer)",
+    pendingRequest: true,
+    messages: [],
+  },
+  {
+    id: "conv-6",
+    advertId: "ad-4",
+    clubName: "Gold Coast Rugby League",
+    playerName: "You",
+    status: "connected",
+    sport: "Rugby League",
+    messages: [
+      { id: "m6", sender: "me", body: "Looking forward to training!", createdAt: now() },
+    ],
+  },
+  {
+    id: "conv-7",
+    advertId: "ad-1",
+    clubName: "Melbourne City Basketball",
+    playerName: "You",
+    status: "connected",
+    sport: "Basketball",
+    messages: [
+      { id: "m7", sender: "them", body: "Welcome to the squad!", createdAt: now() },
+    ],
+  },
+];
 
 const defaultState = {
   adverts: seedAdverts,
-  conversations: [seedConversation],
+  conversations: seedConversations,
   profileImages: [] as ProfileImage[],
   pendingHighlightLinks: [] as HighlightLink[],
   currentAccount: undefined as UserAccount | undefined,
