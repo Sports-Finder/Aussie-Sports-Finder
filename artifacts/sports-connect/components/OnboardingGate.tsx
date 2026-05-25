@@ -514,6 +514,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
               </View>
             </View>
             <PrimaryButton label={profileImageId ? "Profile pic submitted for approval" : "Add profile pic for admin approval"} icon="image" onPress={pickImage} />
+            <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Recommended 400 x 400 px. Minimum 200 x 200 px. Maximum file size 2 MB.</Text>
             <Input label="Instagram link (optional)" value={form.instagram} onChangeText={(value) => update("instagram", value)} />
             <Input label="Facebook link (optional)" value={form.facebook} onChangeText={(value) => update("facebook", value)} />
             <Input label="X link (optional)" value={form.x} onChangeText={(value) => update("x", value)} />

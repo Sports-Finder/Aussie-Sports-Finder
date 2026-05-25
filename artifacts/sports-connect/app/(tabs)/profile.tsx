@@ -409,6 +409,7 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
             <PrimaryButton label="Submit club image" icon="shield" onPress={() => pickProfileImage("club")} />
+            <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Recommended 400 x 400 px. Minimum 200 x 200 px. Maximum file size 2 MB.</Text>
           </View>
         ) : (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -554,6 +555,7 @@ export default function ProfileScreen() {
               icon="image"
               onPress={() => pickProfileImage("player")}
             />
+            <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Recommended 400 x 400 px. Minimum 200 x 200 px. Maximum file size 2 MB.</Text>
           </View>
         )}
 

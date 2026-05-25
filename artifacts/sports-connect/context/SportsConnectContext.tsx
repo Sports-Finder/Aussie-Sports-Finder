@@ -691,6 +691,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setNotificationSettings((current) => ({ ...current, radiusKm }));
   };
 
+  const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+  const MIN_DIMENSION = 200;
+
+  const validateImageAsset = (asset: ImagePicker.ImagePickerAsset): string | null => {
+    if ((asset.width ?? 0) < MIN_DIMENSION || (asset.height ?? 0) < MIN_DIMENSION) {
+      return `Image too small. Minimum size is ${MIN_DIMENSION} x ${MIN_DIMENSION} px.`;
+    }
+    if ((asset.fileSize ?? 0) > MAX_FILE_SIZE_BYTES) {
+      return `File too large. Maximum file size is 2 MB.`;
+    }
+    return null;
+  };
+
   const pickProfileImage = async (owner: "club" | "player") => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -699,7 +712,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85, allowsEditing: true, aspect: [1, 1] });
     if (result.canceled || !result.assets[0]?.uri) return;
-    const image: ProfileImage = { id: makeId(), owner, uri: result.assets[0].uri, status: "pending", submittedAt: now() };
+    const asset = result.assets[0];
+    const validationError = validateImageAsset(asset);
+    if (validationError) {
+      Alert.alert("Image not accepted", validationError);
+      return;
+    }
+    const image: ProfileImage = { id: makeId(), owner, uri: asset.uri, status: "pending", submittedAt: now() };
     setProfileImages((current) => [image, ...current]);
     if (owner === "club") setClubProfile((current) => ({ ...current, imageId: image.id }));
     if (owner === "player") setPlayerProfile((current) => ({ ...current, imageId: image.id }));
@@ -714,7 +733,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85, allowsEditing: true, aspect: [1, 1] });
     if (result.canceled || !result.assets[0]?.uri) return undefined;
-    const image: ProfileImage = { id: makeId(), owner, uri: result.assets[0].uri, status: "pending", submittedAt: now() };
+    const asset = result.assets[0];
+    const validationError = validateImageAsset(asset);
+    if (validationError) {
+      Alert.alert("Image not accepted", validationError);
+      return undefined;
+    }
+    const image: ProfileImage = { id: makeId(), owner, uri: asset.uri, status: "pending", submittedAt: now() };
     setProfileImages((current) => [image, ...current]);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return image.id;
