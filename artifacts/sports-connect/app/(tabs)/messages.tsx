@@ -110,7 +110,8 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
 
   useEffect(() => {
     markConversationRead(conversation.id);
-  }, [conversation.id, markConversationRead]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.id]);
 
   const submit = () => {
     const trimmed = draft.trim();
