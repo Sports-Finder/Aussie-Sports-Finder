@@ -233,7 +233,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
 export default function DiscoverScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { adverts, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport } = useSportsConnect();
+  const { adverts, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport, currentAccount } = useSportsConnect();
   const [filter, setFilter] = useState<Filter>("all");
   const [stateFilter, setStateFilter] = useState<AustralianStateFilter>("All");
   const [selected, setSelected] = useState<Advert | null>(null);
@@ -241,6 +241,7 @@ export default function DiscoverScreen() {
   const activeTheme = selectedSport === allSportsFilterName ? null : getSportTheme(selectedSport, approvedSports);
 
   const filtered = useMemo(() => adverts.filter((advert) => {
+    if (currentAccount && advert.ownerAccountId === currentAccount.id) return false;
     const matchesSport = selectedSport === allSportsFilterName || advert.sport === selectedSport;
     if (!matchesSport) return false;
     const matchesState = stateFilter === "All" || advert.location.includes(stateFilter);
@@ -248,7 +249,7 @@ export default function DiscoverScreen() {
     if (filter === "all") return true;
     if (filter === "near") return advert.distanceKm <= notificationSettings.radiusKm;
     return advert.type === filter;
-  }), [adverts, filter, notificationSettings.radiusKm, selectedSport, stateFilter]);
+  }), [adverts, currentAccount, filter, notificationSettings.radiusKm, selectedSport, stateFilter]);
 
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
 

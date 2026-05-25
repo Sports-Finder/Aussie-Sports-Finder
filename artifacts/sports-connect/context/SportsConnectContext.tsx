@@ -65,6 +65,7 @@ export type UserAccount = {
 
 export type Advert = {
   id: string;
+  ownerAccountId?: string;
   type: AdvertType;
   title: string;
   sport: string;
@@ -98,6 +99,8 @@ export type Advert = {
 export type Conversation = {
   id: string;
   advertId: string;
+  ownerAccountId?: string;
+  initiatorAccountId?: string;
   clubName: string;
   playerName: string;
   status: "connected";
@@ -110,6 +113,7 @@ export type Conversation = {
 export type Message = {
   id: string;
   sender: "me" | "them";
+  senderAccountId?: string;
   body: string;
   createdAt: string;
 };
@@ -198,7 +202,7 @@ type SportsConnectState = {
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
 };
 
-const storageKey = "sports-connect-state-v7-email-auth";
+const storageKey = "sports-connect-state-v8-clean";
 const adminStorageKey = "sports-connect-admin-v1";
 const defaultAdminPasscode = "AUSSCF-2025";
 
@@ -381,8 +385,8 @@ const seedConversations: Conversation[] = [
 ];
 
 const defaultState = {
-  adverts: seedAdverts,
-  conversations: seedConversations,
+  adverts: [] as Advert[],
+  conversations: [] as Conversation[],
   profileImages: [] as ProfileImage[],
   pendingHighlightLinks: [] as HighlightLink[],
   accounts: [] as UserAccount[],
@@ -556,6 +560,24 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setCurrentAccount(match);
     setSelectedSport(match.defaultSport);
     setActiveProfile(match.role === "club" ? "club" : "player");
+    if (match.role === "club") {
+      setClubProfile((current) => ({
+        ...current,
+        name: match.clubName || current.name,
+        sport: match.defaultSport,
+        location: match.location || current.location,
+        mapAddress: match.clubAddress || current.mapAddress,
+        imageId: match.profileImageId,
+      }));
+    } else {
+      setPlayerProfile((current) => ({
+        ...current,
+        name: match.role === "guardian" ? match.playerName || current.name : match.fullName || match.playerName || current.name,
+        sports: match.sports.join(", "),
+        location: match.location || current.location,
+        imageId: match.profileImageId,
+      }));
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return true;
   };
@@ -597,6 +619,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     const advert: Advert = {
       ...draft,
       id: makeId(),
+      ownerAccountId: currentAccount?.id,
       postedBy: owner,
       postedByType: activeProfile,
       distanceKm: Math.max(1, Math.floor(Math.random() * 32)),
@@ -628,19 +651,24 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   }, []);
 
   const connectOnAdvert = (advert: Advert) => {
-    const existing = conversations.find((conversation) => conversation.advertId === advert.id);
+    const existing = conversations.find((c) => c.advertId === advert.id && c.initiatorAccountId === currentAccount?.id);
     if (existing) return existing.id;
     const isClubAdvert = advert.postedByType === "club";
     const conversation: Conversation = {
       id: makeId(),
       advertId: advert.id,
+      ownerAccountId: advert.ownerAccountId,
+      initiatorAccountId: currentAccount?.id,
       clubName: isClubAdvert ? advert.postedBy : clubProfile.name,
       playerName: isClubAdvert ? playerProfile.name : advert.postedBy,
+      sport: advert.sport,
       status: "connected",
+      hasUnread: true,
       messages: [
         {
           id: makeId(),
           sender: "them",
+          senderAccountId: currentAccount?.id,
           body: `Connection agreed for “${advert.title}”. Use this private chat to arrange training, trials and next steps.`,
           createdAt: now(),
         },
@@ -654,8 +682,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const sendMessage = (conversationId: string, body: string) => {
     const trimmed = body.trim();
     if (!trimmed) return;
-    const message: Message = { id: makeId(), sender: "me", body: trimmed, createdAt: now() };
-    setConversations((current) => current.map((conversation) => conversation.id === conversationId ? { ...conversation, messages: [message, ...conversation.messages] } : conversation));
+    const message: Message = { id: makeId(), sender: "me", senderAccountId: currentAccount?.id, body: trimmed, createdAt: now() };
+    setConversations((current) => current.map((conversation) => conversation.id === conversationId ? { ...conversation, hasUnread: true, messages: [message, ...conversation.messages] } : conversation));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
@@ -763,9 +791,17 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return undefined;
   };
 
-  const value = useMemo<SportsConnectState>(() => ({
+  const value = useMemo<SportsConnectState>(() => {
+    const myConversations = currentAccount
+      ? conversations.filter((c) =>
+          !c.initiatorAccountId ||
+          c.initiatorAccountId === currentAccount.id ||
+          c.ownerAccountId === currentAccount.id
+        )
+      : conversations;
+    return {
     adverts,
-    conversations,
+    conversations: myConversations,
     profileImages,
     pendingHighlightLinks,
     currentAccount,
@@ -805,7 +841,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     moderateImage,
     moderateHighlightLink,
     getImageUri,
-  }), [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminPasscode]);
+    };
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminPasscode]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

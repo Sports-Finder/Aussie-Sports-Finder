@@ -105,7 +105,7 @@ function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversati
 function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClose: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { sendMessage, markConversationRead } = useSportsConnect();
+  const { sendMessage, markConversationRead, currentAccount } = useSportsConnect();
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
@@ -145,24 +145,29 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
             keyExtractor={(item) => item.id}
             style={styles.flex}
             contentContainerStyle={[styles.messageContent, { paddingBottom: insets.bottom + 20 }]}
-            renderItem={({ item }) => (
-              <View
-                style={[
-                  styles.bubble,
-                  item.sender === "me" ? styles.mine : styles.theirs,
-                  { backgroundColor: item.sender === "me" ? colors.primary : colors.secondary },
-                ]}
-              >
-                <Text
+            renderItem={({ item }) => {
+              const isMyMessage = item.senderAccountId
+                ? item.senderAccountId === currentAccount?.id
+                : item.sender === "me";
+              return (
+                <View
                   style={[
-                    styles.bubbleText,
-                    { color: item.sender === "me" ? colors.primaryForeground : colors.secondaryForeground },
+                    styles.bubble,
+                    isMyMessage ? styles.mine : styles.theirs,
+                    { backgroundColor: isMyMessage ? colors.primary : colors.secondary },
                   ]}
                 >
-                  {item.body}
-                </Text>
-              </View>
-            )}
+                  <Text
+                    style={[
+                      styles.bubbleText,
+                      { color: isMyMessage ? colors.primaryForeground : colors.secondaryForeground },
+                    ]}
+                  >
+                    {item.body}
+                  </Text>
+                </View>
+              );
+            }}
             ListEmptyComponent={
               <View style={styles.emptyChat}>
                 <Feather name="message-circle" size={32} color={colors.mutedForeground} />
