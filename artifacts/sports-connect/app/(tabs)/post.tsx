@@ -430,6 +430,7 @@ export default function PostScreen() {
   const [feesNegotiable, setFeesNegotiable] = useState(false);
   const [seasonFeesText, setSeasonFeesText] = useState("");
   const [trialRequired, setTrialRequired] = useState(false);
+  const [scheduleNote, setScheduleNote] = useState("");
   const [title, setTitle] = useState("");
 
   useEffect(() => {
@@ -500,6 +501,7 @@ export default function PostScreen() {
     setFeesNegotiable(advert.feesNegotiable ?? false);
     setSeasonFeesText(advert.seasonFees ? String(advert.seasonFees) : "");
     setTrialRequired(advert.trialRequired ?? false);
+    setScheduleNote(advert.scheduleNote || "");
     setSubmitted(false);
     setSelectedMyAdvert(null);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -525,6 +527,7 @@ export default function PostScreen() {
     setFeesNegotiable(false);
     setSeasonFeesText("");
     setTrialRequired(false);
+    setScheduleNote("");
     setSubmitted(false);
     setShowErrors(false);
   };
@@ -593,6 +596,7 @@ export default function PostScreen() {
       gameTimeFrom: gameFrom.trim() || undefined,
       gameTimeTo: gameTo.trim() || undefined,
       gameTbd,
+      scheduleNote: isPlayerLooking ? scheduleNote.trim() || undefined : undefined,
       seasonFees,
       feesNegotiable,
       feesFree,
@@ -622,6 +626,7 @@ export default function PostScreen() {
     setFeesNegotiable(false);
     setSeasonFeesText("");
     setTrialRequired(false);
+    setScheduleNote("");
     setSubmitted(true);
     setShowErrors(false);
   };
@@ -747,19 +752,37 @@ export default function PostScreen() {
 
           <Field label="Additional Details" value={description} onChangeText={setDescription} placeholder="Describe the opportunity, player, club culture or requirements" multiline />
 
-          {showSchedule && (
+          {isPlayerLooking && (
             <>
               <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>{isPlayerLooking ? "Available Training Days" : "Training Days"}</Text>
-
-              <DayPicker label={isPlayerLooking ? "Available training days" : "Training days"} selected={trainingDays} onToggle={(d) => setTrainingDays(toggleDay(trainingDays, d))} tbd={trainingTbd} onTbdToggle={() => { setTrainingTbd(!trainingTbd); setTrainingDays([]); }} />
-              <TimeRow label={isPlayerLooking ? "Available training times" : "Training times"} from={trainingFrom} to={trainingTo} onFromChange={setTrainingFrom} onToChange={setTrainingTo} disabled={trainingTbd} />
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Available Training Days</Text>
+              <DayPicker label="Available training days" selected={trainingDays} onToggle={(d) => setTrainingDays(toggleDay(trainingDays, d))} tbd={trainingTbd} onTbdToggle={() => { setTrainingTbd(!trainingTbd); setTrainingDays([]); }} />
 
               <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>{isPlayerLooking ? "Available Game Days" : "Game Days"}</Text>
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Available Game Days</Text>
+              <DayPicker label="Available game days" selected={gameDays} onToggle={(d) => setGameDays(toggleDay(gameDays, d))} tbd={gameTbd} onTbdToggle={() => { setGameTbd(!gameTbd); setGameDays([]); }} />
 
-              <DayPicker label={isPlayerLooking ? "Available game days" : "Game days"} selected={gameDays} onToggle={(d) => setGameDays(toggleDay(gameDays, d))} tbd={gameTbd} onTbdToggle={() => { setGameTbd(!gameTbd); setGameDays([]); }} />
-              <TimeRow label={isPlayerLooking ? "Available game times" : "Game times"} from={gameFrom} to={gameTo} onFromChange={setGameFrom} onToChange={setGameTo} disabled={gameTbd} />
+              <Field
+                label="Additional training or game day information (optional)"
+                value={scheduleNote}
+                onChangeText={setScheduleNote}
+                placeholder="e.g. Prefer weekend mornings, flexible on times, available school holidays…"
+                multiline
+              />
+            </>
+          )}
+
+          {isPlayersWanted && (
+            <>
+              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Training Days</Text>
+              <DayPicker label="Training days" selected={trainingDays} onToggle={(d) => setTrainingDays(toggleDay(trainingDays, d))} tbd={trainingTbd} onTbdToggle={() => { setTrainingTbd(!trainingTbd); setTrainingDays([]); }} />
+              <TimeRow label="Training times" from={trainingFrom} to={trainingTo} onFromChange={setTrainingFrom} onToChange={setTrainingTo} disabled={trainingTbd} />
+
+              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Game Days</Text>
+              <DayPicker label="Game days" selected={gameDays} onToggle={(d) => setGameDays(toggleDay(gameDays, d))} tbd={gameTbd} onTbdToggle={() => { setGameTbd(!gameTbd); setGameDays([]); }} />
+              <TimeRow label="Game times" from={gameFrom} to={gameTo} onFromChange={setGameFrom} onToChange={setGameTo} disabled={gameTbd} />
             </>
           )}
 

@@ -90,6 +90,7 @@ export type Advert = {
   gameTimeFrom?: string;
   gameTimeTo?: string;
   gameTbd?: boolean;
+  scheduleNote?: string;
   seasonFees?: number;
   feesNegotiable?: boolean;
   feesFree?: boolean;

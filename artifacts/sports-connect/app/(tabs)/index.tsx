@@ -206,6 +206,11 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               </View>
             ) : null}
 
+            {/* ── Schedule note (player-looking only) ── */}
+            {advert.scheduleNote ? (
+              <DetailRow label="Training / game day notes" value={advert.scheduleNote} />
+            ) : null}
+
             {/* ── Standard fields ── */}
             <DetailRow label="Level" value={advert.level} />
             {advert.availability && advert.availability !== "TBD | TBD" && !trainingSchedule && !gameSchedule
