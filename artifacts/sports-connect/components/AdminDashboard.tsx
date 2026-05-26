@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import React, { useMemo, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -565,18 +566,28 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
 function ModerationSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { profileImages, pendingHighlightLinks, pendingSportRequests, moderateImage, moderateHighlightLink, moderateSportRequest, getImageUri } = useSportsConnect();
+  const { profileImages, pendingHighlightLinks, pendingSportRequests, moderateImage, moderateHighlightLink, moderateSportRequest, getImageUri, accounts } = useSportsConnect();
   const pendingImages = profileImages.filter((i) => i.status === "pending");
   const pendingHighlights = pendingHighlightLinks.filter((l) => l.status === "pending");
   const pendingSports = pendingSportRequests.filter((r) => r.status === "pending");
+  const [fullSizeUri, setFullSizeUri] = useState<string | null>(null);
 
   return (
     <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+      <Modal transparent visible={!!fullSizeUri} animationType="fade" onRequestClose={() => setFullSizeUri(null)}>
+        <Pressable onPress={() => setFullSizeUri(null)} style={styles.scrim}>
+          <View style={styles.fullSizeWrap}>
+            {fullSizeUri && <Image source={{ uri: fullSizeUri }} style={styles.fullSizeImage} contentFit="contain" />}
+          </View>
+        </Pressable>
+      </Modal>
+
       <SectionTitle title="Profile images" action={`${pendingImages.length} pending`} />
       {pendingImages.length === 0 ? (
         <EmptyState icon="image" title="No images to review" text="Pending profile image submissions will appear here." />
       ) : pendingImages.map((img) => {
         const uri = getImageUri(img.id, true);
+        const account = accounts.find((a) => a.profileImageId === img.id);
         return (
           <View key={img.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.itemHeader}>
@@ -585,7 +596,21 @@ function ModerationSection() {
                 <Text style={[styles.badgeText, { color: "#92400E" }]}>Pending</Text>
               </View>
             </View>
-            <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>{uri ?? "(no preview)"}</Text>
+            {uri ? (
+              <Pressable onPress={() => setFullSizeUri(uri)} style={styles.thumbWrap}>
+                <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
+                <View style={styles.thumbOverlay}>
+                  <Feather name="maximize-2" size={16} color="#FFF" />
+                </View>
+              </Pressable>
+            ) : (
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>(no preview)</Text>
+            )}
+            {account ? (
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                Previous declines: {account.profileImageDeclines ?? 0}
+              </Text>
+            ) : null}
             <View style={styles.actionRow}>
               <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => moderateImage(img.id, "approved")} />
               <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => moderateImage(img.id, "rejected")} />
@@ -765,6 +790,12 @@ const styles = StyleSheet.create({
   actionBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12 },
   actionBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
   helperText: { fontWeight: "500", fontSize: 13, lineHeight: 19 },
+  thumbWrap: { width: 120, height: 120, borderRadius: 14, overflow: "hidden", alignSelf: "flex-start", position: "relative" },
+  thumb: { width: "100%", height: "100%" },
+  thumbOverlay: { position: "absolute", bottom: 4, right: 4, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 8, padding: 4 },
+  scrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", alignItems: "center", justifyContent: "center", padding: 24 },
+  fullSizeWrap: { width: "100%", aspectRatio: 1, borderRadius: 16, overflow: "hidden", backgroundColor: "#000" },
+  fullSizeImage: { width: "100%", height: "100%" },
   dangerZone: { marginTop: 18, gap: 8 },
   dangerTitle: { fontWeight: "700", fontSize: 16 },
   dangerText: { fontWeight: "500", fontSize: 13, lineHeight: 19 },

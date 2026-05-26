@@ -319,6 +319,11 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </View>
+            {currentAccount && currentAccount.profileImageDeclines ? (
+              <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
+                Admin did not approve your profile pic. Please upload another.
+              </Text>
+            ) : null}
             {infoRows.map(({ label, value, url }) => (
               url ? (
                 <Pressable key={label} onPress={() => openLink(url)} style={({ pressed }) => [styles.infoRow, { opacity: pressed ? 0.65 : 1 }]}>
@@ -358,6 +363,11 @@ export default function ProfileScreen() {
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Changes save back to your account profile.</Text>
               </View>
             </View>
+            {currentAccount && currentAccount.profileImageDeclines ? (
+              <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
+                Admin did not approve your profile pic. Please upload another.
+              </Text>
+            ) : null}
 
             <Field label="Club name" value={currentAccount?.clubName ?? ""} onChangeText={(v) => updateAccount({ clubName: v })} />
 
@@ -397,7 +407,13 @@ export default function ProfileScreen() {
                 <Text style={styles.mapBtnText}>Google Maps</Text>
               </Pressable>
             </View>
-            <PrimaryButton label="Submit club image" icon="shield" onPress={() => pickProfileImage("club")} />
+            <PrimaryButton
+              label="Submit club image"
+              icon="shield"
+              onPress={() => pickProfileImage("club")}
+              disabled={(currentAccount?.profileImageDeclines ?? 0) >= 3}
+              onPressWhenDisabled={() => Alert.alert("Upload blocked", "You have exceeded the maximum number of profile picture upload attempts. Contact admin for assistance.")}
+            />
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Recommended 400 x 400 px. Minimum 200 x 200 px. Maximum file size 2 MB.</Text>
           </View>
         ) : (
@@ -413,6 +429,11 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </View>
+            {currentAccount && currentAccount.profileImageDeclines ? (
+              <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
+                Admin did not approve your profile pic. Please upload another.
+              </Text>
+            ) : null}
 
             {isGuardian ? (
               <>
@@ -543,8 +564,15 @@ export default function ProfileScreen() {
               label={isCoach ? "Submit coach image" : "Submit player image"}
               icon="image"
               onPress={() => pickProfileImage("player")}
+              disabled={(currentAccount?.profileImageDeclines ?? 0) >= 3}
+              onPressWhenDisabled={() => Alert.alert("Upload blocked", "You have exceeded the maximum number of profile picture upload attempts. Contact admin for assistance.")}
             />
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Recommended 400 x 400 px. Minimum 200 x 200 px. Maximum file size 2 MB.</Text>
+            {currentAccount && currentAccount.profileImageDeclines ? (
+              <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
+                Admin did not approve your profile pic. Please upload another.
+              </Text>
+            ) : null}
           </View>
         )}
 

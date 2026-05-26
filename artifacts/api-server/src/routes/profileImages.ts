@@ -47,4 +47,22 @@ router.put("/profile-images/:publicId", async (req, res) => {
   }
 });
 
+router.delete("/profile-images/:publicId", async (req, res) => {
+  try {
+    const publicId = req.params.publicId;
+    const [deleted] = await db
+      .delete(profileImagesTable)
+      .where(eq(profileImagesTable.publicId, publicId))
+      .returning();
+    if (!deleted) {
+      res.status(404).json({ error: "Image not found" });
+      return;
+    }
+    res.status(204).send();
+  } catch (err) {
+    logger.error({ err }, "Failed to delete profile image");
+    res.status(500).json({ error: "Failed to delete profile image" });
+  }
+});
+
 export default router;

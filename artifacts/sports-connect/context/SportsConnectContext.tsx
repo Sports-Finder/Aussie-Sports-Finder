@@ -69,6 +69,7 @@ export type UserAccount = {
   statusReason?: string;
   bio?: string;
   socialId?: string;
+  profileImageDeclines?: number;
 };
 
 export type Advert = {
@@ -586,6 +587,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     const account: UserAccount = {
       ...rest,
       socialId,
+      profileImageDeclines: 0,
       id: publicId,
       createdAt: now(),
       approved: true,
@@ -1018,6 +1020,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const pickProfileImage = async (owner: "club" | "player") => {
+    const declines = currentAccount?.profileImageDeclines ?? 0;
+    if (declines >= 3) {
+      Alert.alert("Upload blocked", "You have exceeded the maximum number of profile picture upload attempts. Contact admin for assistance.");
+      return;
+    }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission needed", "Allow photo access to submit a profile image for admin review.");
@@ -1035,11 +1042,17 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setProfileImages((current) => [image, ...current]);
     if (owner === "club") setClubProfile((current) => ({ ...current, imageId: image.id }));
     if (owner === "player") setPlayerProfile((current) => ({ ...current, imageId: image.id }));
+    updateAccount({ profileImageId: image.id });
     api.createProfileImage({ ...image, publicId: image.id }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
   const pickAccountImage = async (owner: string) => {
+    const declines = currentAccount?.profileImageDeclines ?? 0;
+    if (declines >= 3) {
+      Alert.alert("Upload blocked", "You have exceeded the maximum number of profile picture upload attempts. Contact admin for assistance.");
+      return undefined;
+    }
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission needed", "Allow photo access to submit a profile image for admin review.");
@@ -1061,9 +1074,54 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const moderateImage = async (imageId: string, status: ImageStatus) => {
-    setProfileImages((current) => current.map((image) => image.id === imageId ? { ...image, status } : image));
-    try { await api.updateProfileImage(imageId, { status }); } catch (_) { /* silent */ }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    if (status === "approved") {
+      // Mark image as approved
+      setProfileImages((current) => current.map((image) => image.id === imageId ? { ...image, status } : image));
+      try { await api.updateProfileImage(imageId, { status }); } catch (_) { /* silent */ }
+      // Link approved image to the account/profile that owns it
+      const targetAccount = accounts.find((a) => a.profileImageId === imageId) ??
+        (currentAccount?.profileImageId === imageId ? currentAccount : undefined);
+      if (targetAccount) {
+        if (targetAccount.role === "club") {
+          setClubProfile((current) => ({ ...current, imageId }));
+        } else {
+          setPlayerProfile((current) => ({ ...current, imageId }));
+        }
+        if (targetAccount.id === currentAccount?.id) {
+          setCurrentAccount((current) => current ? { ...current, profileImageId: imageId } : current);
+        }
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      return;
+    }
+
+    // Rejected: completely remove the image
+    const targetAccount = accounts.find((a) => a.profileImageId === imageId) ??
+      (currentAccount?.profileImageId === imageId ? currentAccount : undefined);
+
+    if (targetAccount) {
+      const nextDeclines = (targetAccount.profileImageDeclines ?? 0) + 1;
+      // Update account state
+      setAccounts((current) => current.map((acc) => acc.id === targetAccount.id ? { ...acc, profileImageId: undefined, profileImageDeclines: nextDeclines } : acc));
+      if (targetAccount.id === currentAccount?.id) {
+        setCurrentAccount((current) => current ? { ...current, profileImageId: undefined, profileImageDeclines: nextDeclines } : current);
+      }
+      // Clear profile references
+      if (targetAccount.role === "club") {
+        setClubProfile((current) => ({ ...current, imageId: undefined }));
+      } else {
+        setPlayerProfile((current) => ({ ...current, imageId: undefined }));
+      }
+      // Sync account update to API
+      try { await api.updateAccount(targetAccount.id, { profileImageId: null, profileImageDeclines: String(nextDeclines) }); } catch (_) { /* silent */ }
+    }
+
+    // Remove image from local state
+    setProfileImages((current) => current.filter((img) => img.id !== imageId));
+    // Delete from API
+    try { await api.deleteProfileImage(imageId); } catch (_) { /* silent */ }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
   const moderateHighlightLink = (linkId: string, status: ImageStatus) => {

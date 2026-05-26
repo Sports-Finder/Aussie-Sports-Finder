@@ -39,6 +39,7 @@ export const api = {
 
   createProfileImage: (body: any) => apiFetch("/profile-images", { method: "POST", body: JSON.stringify(body) }),
   updateProfileImage: (publicId: string, body: any) => apiFetch(`/profile-images/${publicId}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteProfileImage: (publicId: string) => apiFetch(`/profile-images/${publicId}`, { method: "DELETE" }),
   updateSportRequest: (publicId: string, body: any) => apiFetch(`/sport-requests/${publicId}`, { method: "PUT", body: JSON.stringify(body) }),
 
   banEmail: (email: string) => apiFetch("/banned-emails", { method: "POST", body: JSON.stringify({ email }) }),

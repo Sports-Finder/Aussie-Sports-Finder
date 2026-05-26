@@ -28,6 +28,7 @@ export const accountsTable = pgTable("accounts", {
   clubAddress: text("club_address"),
   clubContactEmail: text("club_contact_email"),
   clubContactMobile: text("club_contact_mobile"),
+  profileImageDeclines: text("profile_image_declines").notNull().default("0"),
   status: text("status").notNull().default("active"), // active, closed, banned
   statusReason: text("status_reason"),
   statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),

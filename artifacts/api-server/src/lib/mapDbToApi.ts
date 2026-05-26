@@ -23,6 +23,7 @@ export function mapAccount(row: Record<string, unknown>) {
     clubAddress: row.clubAddress as string | undefined,
     clubContactEmail: row.clubContactEmail as string | undefined,
     clubContactMobile: row.clubContactMobile as string | undefined,
+    profileImageDeclines: Number(row.profileImageDeclines ?? "0") || 0,
     status: row.status as string,
     statusReason: row.statusReason as string | undefined,
     statusChangedAt: row.statusChangedAt ? new Date(row.statusChangedAt as string).toISOString() : undefined,
