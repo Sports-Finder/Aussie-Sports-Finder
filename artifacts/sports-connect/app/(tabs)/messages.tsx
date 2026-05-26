@@ -279,9 +279,33 @@ export default function MessagesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const { conversations, markConversationRead } = useSportsConnect();
+  const { conversations, markConversationRead, currentAccount } = useSportsConnect();
+
+  const isClubLocked = currentAccount?.role === "club" && currentAccount?.clubApprovalStatus !== "approved";
+  const clubLockStatus = currentAccount?.clubApprovalStatus ?? "pending";
+
   const [page, setPage] = useState(0);
   const [openConv, setOpenConv] = useState<Conversation | null>(null);
+
+  if (isClubLocked) {
+    return (
+      <ScreenShell>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 }}>
+          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: clubLockStatus === "rejected" ? "#FEF2F2" : "#FFFBEB", alignItems: "center", justifyContent: "center" }}>
+            <Feather name={clubLockStatus === "rejected" ? "x-circle" : "lock"} size={32} color={clubLockStatus === "rejected" ? "#DC2626" : "#D97706"} />
+          </View>
+          <Text style={{ fontWeight: "700", fontSize: 22, color: colors.foreground, textAlign: "center", letterSpacing: -0.4 }}>
+            {clubLockStatus === "rejected" ? "Account Not Approved" : "Approval Pending"}
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: "center", lineHeight: 22 }}>
+            {clubLockStatus === "rejected"
+              ? "Your club application was not approved. Messaging is not available. Please contact support for more information."
+              : "Your club account is awaiting admin approval. Messaging will be available once an admin approves your club.\n\nVisit your Profile tab to check your approval status."}
+          </Text>
+        </View>
+      </ScreenShell>
+    );
+  }
 
   const boxWidth = Math.max(100, (screenWidth - 40 - BOX_GAP) / 2);
   const totalPages = Math.ceil(conversations.length / PAGE_SIZE);

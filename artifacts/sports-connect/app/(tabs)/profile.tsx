@@ -154,14 +154,41 @@ export default function ProfileScreen() {
 
   const save = () => {
     if (isClub) {
-      updateClubProfile({
-        ...clubProfile,
-        name: currentAccount?.clubName ?? clubProfile.name,
-        sport: currentAccount?.defaultSport ?? clubProfile.sport,
-        location: currentAccount?.location ?? clubProfile.location,
-        mapAddress: clubMapAddress,
-        bio: clubBio,
-      });
+      const isApproved = currentAccount?.clubApprovalStatus === "approved";
+      const doClubSave = () => {
+        updateClubProfile({
+          ...clubProfile,
+          name: currentAccount?.clubName ?? clubProfile.name,
+          sport: currentAccount?.defaultSport ?? clubProfile.sport,
+          location: currentAccount?.location ?? clubProfile.location,
+          mapAddress: clubMapAddress,
+          bio: clubBio,
+        });
+        if (isApproved) {
+          resetClubApprovalAfterEdit();
+          setMode("view");
+          Alert.alert(
+            "Profile saved — Approval reset",
+            "Your club profile has been updated. Your admin approval has been reset to Pending and all active adverts and connections have been closed.\n\nYou will need to be re-approved by an admin before you can post or use messaging again."
+          );
+        } else {
+          setMode("view");
+          Alert.alert("Profile saved", "Your changes have been saved.");
+        }
+      };
+      if (isApproved) {
+        Alert.alert(
+          "Warning: This will reset your approval",
+          "Saving changes to your club profile will:\n\n• Reset your approval back to Pending\n• Close all your active adverts\n• Close all existing connections\n\nYou will not be able to post adverts or message players until an admin re-approves your club.\n\nDo you want to continue?",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Save & Reset Approval", style: "destructive", onPress: doClubSave },
+          ]
+        );
+        return;
+      }
+      doClubSave();
+      return;
     } else if (isGuardian) {
       updateAccount({
         playerName: currentAccount?.playerName,
@@ -305,6 +332,38 @@ export default function ProfileScreen() {
             <PrimaryButton label={mode === "edit" ? "Cancel editing" : "Edit Profile"} icon={mode === "edit" ? "x" : "edit-3"} onPress={mode === "edit" ? () => setMode("view") : openEdit} />
           </View>
         ) : null}
+
+        {isClub && currentAccount?.clubApprovalStatus !== "approved" && (
+          <View style={[styles.card, {
+            backgroundColor: currentAccount?.clubApprovalStatus === "rejected" ? "#FEF2F2" : "#FFFBEB",
+            borderColor: currentAccount?.clubApprovalStatus === "rejected" ? "#FECACA" : "#FDE68A",
+          }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <Feather
+                name={currentAccount?.clubApprovalStatus === "rejected" ? "x-circle" : "clock"}
+                size={20}
+                color={currentAccount?.clubApprovalStatus === "rejected" ? "#DC2626" : "#D97706"}
+              />
+              <Text style={{ fontWeight: "700", fontSize: 15, color: currentAccount?.clubApprovalStatus === "rejected" ? "#DC2626" : "#92400E" }}>
+                {currentAccount?.clubApprovalStatus === "rejected" ? "Club Application Not Approved" : "Awaiting Admin Approval"}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 13, lineHeight: 20, color: currentAccount?.clubApprovalStatus === "rejected" ? "#7F1D1D" : "#78350F" }}>
+              {currentAccount?.clubApprovalStatus === "rejected"
+                ? "Your club account application was not approved by an administrator. You cannot post adverts, view listings, or use messaging. Please contact support for more information."
+                : "Your club account is pending admin approval. Until approved, you cannot view adverts, post adverts, or use the messaging features. You will gain full access once an admin approves your club."}
+            </Text>
+          </View>
+        )}
+
+        {isClub && currentAccount?.clubApprovalStatus === "approved" && (
+          <View style={[styles.card, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Feather name="check-circle" size={18} color="#16A34A" />
+              <Text style={{ fontWeight: "700", fontSize: 14, color: "#15803D" }}>Club Approved — Full access enabled</Text>
+            </View>
+          </View>
+        )}
 
         {mode === "view" ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>

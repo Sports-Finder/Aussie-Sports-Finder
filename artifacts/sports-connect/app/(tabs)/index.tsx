@@ -333,6 +333,29 @@ export default function DiscoverScreen() {
     setSportRequest("");
   };
 
+  const isClubLocked = currentAccount?.role === "club" && currentAccount?.clubApprovalStatus !== "approved";
+  const clubLockStatus = currentAccount?.clubApprovalStatus ?? "pending";
+
+  if (isClubLocked) {
+    return (
+      <ScreenShell>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 }}>
+          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: clubLockStatus === "rejected" ? "#FEF2F2" : "#FFFBEB", alignItems: "center", justifyContent: "center" }}>
+            <Feather name={clubLockStatus === "rejected" ? "x-circle" : "lock"} size={32} color={clubLockStatus === "rejected" ? "#DC2626" : "#D97706"} />
+          </View>
+          <Text style={{ fontWeight: "700", fontSize: 22, color: colors.foreground, textAlign: "center", letterSpacing: -0.4 }}>
+            {clubLockStatus === "rejected" ? "Account Not Approved" : "Approval Pending"}
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: "center", lineHeight: 22 }}>
+            {clubLockStatus === "rejected"
+              ? "Your club application was not approved. You cannot browse or interact with adverts. Please contact support for more information."
+              : "Your club account is awaiting admin approval. You will be able to view adverts and connect with players once an admin approves your club.\n\nVisit your Profile tab to check your approval status."}
+          </Text>
+        </View>
+      </ScreenShell>
+    );
+  }
+
   return (
     <ScreenShell>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 116 }]}>

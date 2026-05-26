@@ -13,9 +13,10 @@ import {
   UserAccount,
   useSportsConnect,
 } from "@/context/SportsConnectContext";
+import type { ClubApprovalStatus } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
-type Section = "overview" | "adverts" | "chats" | "accounts" | "moderation" | "settings";
+type Section = "overview" | "adverts" | "chats" | "accounts" | "moderation" | "clubapprovals" | "settings";
 
 const sections: { key: Section; label: string; icon: keyof typeof Feather.glyphMap }[] = [
   { key: "overview", label: "Overview", icon: "grid" },
@@ -23,6 +24,7 @@ const sections: { key: Section; label: string; icon: keyof typeof Feather.glyphM
   { key: "chats", label: "Chats", icon: "message-circle" },
   { key: "accounts", label: "Accounts", icon: "users" },
   { key: "moderation", label: "Moderation", icon: "shield" },
+  { key: "clubapprovals", label: "Club Approvals", icon: "check-circle" },
   { key: "settings", label: "Settings", icon: "settings" },
 ];
 
@@ -111,6 +113,7 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
         {section === "chats" && <ChatsSection />}
         {section === "accounts" && <AccountsSection />}
         {section === "moderation" && <ModerationSection />}
+        {section === "clubapprovals" && <ClubApprovalsSection />}
         {section === "settings" && <SettingsSection onClose={onExit} />}
       </View>
     </View>
@@ -160,6 +163,7 @@ function OverviewSection({ setSection }: { setSection: (s: Section) => void }) {
   const pendingHighlights = pendingHighlightLinks.filter((l) => l.status === "pending").length;
   const pendingSports = pendingSportRequests.filter((r) => r.status === "pending").length;
   const bannedAccounts = accounts.filter((a) => a.status === "banned").length;
+  const pendingClubApprovals = accounts.filter((a) => a.role === "club" && (!a.clubApprovalStatus || a.clubApprovalStatus === "pending")).length;
 
   const countsByRole = (role: AccountRole) => accounts.filter((a) => a.role === role).length;
 
@@ -187,6 +191,7 @@ function OverviewSection({ setSection }: { setSection: (s: Section) => void }) {
         <StatCard label="Profile images" value={pendingImages} icon="image" color="#F59E0B" onPress={() => setSection("moderation")} />
         <StatCard label="Highlight reels" value={pendingHighlights} icon="video" color="#F59E0B" onPress={() => setSection("moderation")} />
         <StatCard label="Sport requests" value={pendingSports} icon="plus-circle" color="#F59E0B" onPress={() => setSection("moderation")} />
+        <StatCard label="Club approvals" value={pendingClubApprovals} icon="check-circle" color="#EF4444" onPress={() => setSection("clubapprovals")} />
       </View>
     </ScrollView>
   );
@@ -661,6 +666,102 @@ function ModerationSection() {
           </View>
         </View>
       ))}
+    </ScrollView>
+  );
+}
+
+function ClubApprovalsSection() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { accounts, adminApproveClub, adminRejectClub } = useSportsConnect();
+
+  const clubApprovalBadge = (status?: ClubApprovalStatus) => {
+    if (status === "approved") return { bg: "#D1FAE5", fg: "#065F46", label: "Approved" };
+    if (status === "rejected") return { bg: "#FEE2E2", fg: "#991B1B", label: "Rejected" };
+    return { bg: "#FEF3C7", fg: "#92400E", label: "Pending" };
+  };
+
+  const clubs = accounts
+    .filter((a) => a.role === "club")
+    .sort((a, b) => {
+      const order = { pending: 0, rejected: 1, approved: 2 };
+      const sa = order[a.clubApprovalStatus ?? "pending"] ?? 0;
+      const sb = order[b.clubApprovalStatus ?? "pending"] ?? 0;
+      if (sa !== sb) return sa - sb;
+      return b.createdAt > a.createdAt ? 1 : -1;
+    });
+
+  const confirmApprove = (acc: UserAccount) => {
+    Alert.alert(
+      "Approve Club",
+      `Approve "${acc.clubName ?? acc.email}"? They will gain full access to post adverts and use messaging.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Approve", onPress: () => adminApproveClub(acc.id) },
+      ]
+    );
+  };
+
+  const confirmReject = (acc: UserAccount) => {
+    Alert.alert(
+      "Reject Club",
+      `Reject "${acc.clubName ?? acc.email}"? Their account will remain but they cannot access the app.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Reject", style: "destructive", onPress: () => adminRejectClub(acc.id) },
+      ]
+    );
+  };
+
+  return (
+    <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+      <SectionTitle title="Club Approvals" action={`${clubs.filter((c) => !c.clubApprovalStatus || c.clubApprovalStatus === "pending").length} pending`} />
+      <Text style={[styles.helperText, { color: colors.mutedForeground, marginBottom: 12 }]}>
+        All new club accounts require admin approval before they can post adverts, view listings, or use messaging. Approvals are also reset when a club edits their profile.
+      </Text>
+
+      {clubs.length === 0 ? (
+        <EmptyState icon="shield" title="No club accounts" text="Club accounts will appear here for approval." />
+      ) : (
+        clubs.map((acc) => {
+          const badge = clubApprovalBadge(acc.clubApprovalStatus);
+          const isPending = !acc.clubApprovalStatus || acc.clubApprovalStatus === "pending";
+          return (
+            <View key={acc.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: isPending ? "#FDE68A" : colors.border, borderWidth: isPending ? 1.5 : 1 }]}>
+              <View style={styles.itemHeader}>
+                <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
+                  {acc.clubName ?? acc.email}
+                </Text>
+                <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                  <Text style={[styles.badgeText, { color: badge.fg }]}>{badge.label}</Text>
+                </View>
+              </View>
+              <View style={styles.metaRow}>
+                <Feather name="mail" size={12} color={colors.mutedForeground} />
+                <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>{acc.email}</Text>
+              </View>
+              {acc.location ? (
+                <View style={styles.metaRow}>
+                  <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>{acc.location}</Text>
+                </View>
+              ) : null}
+              <View style={styles.metaRow}>
+                <Feather name="activity" size={12} color={colors.mutedForeground} />
+                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Sport: {acc.defaultSport}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Feather name="clock" size={12} color={colors.mutedForeground} />
+                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Registered: {acc.createdAt.slice(0, 10)}</Text>
+              </View>
+              <View style={styles.actionRow}>
+                <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => confirmApprove(acc)} />
+                <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => confirmReject(acc)} />
+              </View>
+            </View>
+          );
+        })
+      )}
     </ScrollView>
   );
 }
