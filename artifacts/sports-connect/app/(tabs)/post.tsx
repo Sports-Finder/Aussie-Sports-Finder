@@ -898,16 +898,22 @@ export default function PostScreen() {
               {COACH_POSITION_TYPES.map((pt) => (
                 <CheckRow key={pt} label={pt} value={coachPositionTypes.includes(pt)} onToggle={() => setCoachPositionTypes((prev) => prev.includes(pt) ? prev.filter((x) => x !== pt) : [...prev, pt])} />
               ))}
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Annual Salary (AUD) — Optional</Text>
-              <CheckRow label="TBC / Negotiable" value={coachSalaryTbc} onToggle={() => { setCoachSalaryTbc(!coachSalaryTbc); setCoachSalaryText(""); }} />
-              {!coachSalaryTbc && (
-                <View style={localStyles.feeRow}>
-                  <View style={[localStyles.feeCurrencyBadge, { backgroundColor: colors.secondary }]}>
-                    <Text style={[localStyles.feeCurrencyText, { color: colors.secondaryForeground }]}>AUD $</Text>
-                  </View>
-                  <TextInput value={coachSalaryText} onChangeText={(t) => setCoachSalaryText(t.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.mutedForeground} style={[localStyles.feeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground, flex: 1 }]} />
-                </View>
+              {coachPositionTypes.includes("Unpaid Volunteer") && coachPositionTypes.length === 1 ? null : (
+                <>
+                  <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
+                  <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>
+                    {coachPositionTypes.includes("One off payment") ? "One Off Payment Amount (AUD) — Optional" : "Annual Salary (AUD) — Optional"}
+                  </Text>
+                  <CheckRow label="TBC / Negotiable" value={coachSalaryTbc} onToggle={() => { setCoachSalaryTbc(!coachSalaryTbc); setCoachSalaryText(""); }} />
+                  {!coachSalaryTbc && (
+                    <View style={localStyles.feeRow}>
+                      <View style={[localStyles.feeCurrencyBadge, { backgroundColor: colors.secondary }]}>
+                        <Text style={[localStyles.feeCurrencyText, { color: colors.secondaryForeground }]}>AUD $</Text>
+                      </View>
+                      <TextInput value={coachSalaryText} onChangeText={(t) => setCoachSalaryText(t.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.mutedForeground} style={[localStyles.feeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground, flex: 1 }]} />
+                    </View>
+                  )}
+                </>
               )}
             </>
           )}
