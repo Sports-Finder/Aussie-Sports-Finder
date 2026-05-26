@@ -217,7 +217,7 @@ type SportsConnectState = {
 
 const storageKey = "sports-connect-state-v8-clean";
 const adminStorageKey = "sports-connect-admin-v1";
-const defaultAdminPasscode = "AUSSCF-2025";
+const defaultAdminPasscode = "admin6969";
 
 const now = () => new Date().toISOString();
 const makeId = () => Date.now().toString() + Math.random().toString(36).slice(2, 9);
