@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AdminPage } from "@/components/AdminDashboard";
 import { PrimaryButton } from "@/components/SportsUI";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
@@ -86,7 +87,7 @@ function isValidSocialLink(platform: keyof SocialLinks, value: string) {
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { currentAccount, isAdmin, isHydrated, adminLogin, approvedSports, accounts, createAccount, loginWithEmail, pickAccountImage, signOutResetToken } = useSportsConnect();
+  const { currentAccount, isAdmin, isHydrated, adminLogin, adminSignOut, approvedSports, accounts, createAccount, loginWithEmail, pickAccountImage, signOutResetToken } = useSportsConnect();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [step, setStep] = useState<Step>("auth");
@@ -202,7 +203,8 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       </View>
     );
   }
-  if (currentAccount || isAdmin) return <>{children}</>;
+  if (isAdmin) return <AdminPage onExit={() => adminSignOut()} />;
+  if (currentAccount) return <>{children}</>;
 
   const update = (key: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
 

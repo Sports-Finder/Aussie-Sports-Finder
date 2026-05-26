@@ -53,67 +53,79 @@ const statusBadgeColor = (status?: AccountStatus | "active" | "closed") => {
   return { bg: "#DCFCE7", fg: "#166534" };
 };
 
-export function AdminDashboard({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function AdminContent({ onExit }: { onExit?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [section, setSection] = useState<Section>("overview");
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.shell, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
-          <View style={[styles.adminBadge, { backgroundColor: colors.primary }]}>
-            <Feather name="shield" size={16} color={colors.primaryForeground} />
-            <Text style={[styles.adminBadgeText, { color: colors.primaryForeground }]}>ADMIN</Text>
-          </View>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: colors.foreground }]}>Admin dashboard</Text>
-            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Manage adverts, chats, accounts and approvals.</Text>
-          </View>
-          <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.secondary }]}>
-            <Feather name="x" size={20} color={colors.foreground} />
+    <View style={[styles.shell, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
+        <View style={[styles.adminBadge, { backgroundColor: colors.primary }]}>
+          <Feather name="shield" size={16} color={colors.primaryForeground} />
+          <Text style={[styles.adminBadgeText, { color: colors.primaryForeground }]}>ADMIN</Text>
+        </View>
+        <View style={styles.headerCopy}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Admin dashboard</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Manage adverts, chats, accounts and approvals.</Text>
+        </View>
+        {onExit ? (
+          <Pressable onPress={onExit} style={[styles.closeBtn, { backgroundColor: "#EF4444" }]}>
+            <Feather name="log-out" size={18} color="#FFF" />
           </Pressable>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsRow}
-          style={{ flexGrow: 0 }}
-        >
-          {sections.map((s) => {
-            const active = section === s.key;
-            return (
-              <Pressable
-                key={s.key}
-                onPress={() => setSection(s.key)}
-                style={({ pressed }) => [
-                  styles.tab,
-                  {
-                    backgroundColor: active ? colors.primary : colors.card,
-                    borderColor: active ? colors.primary : colors.border,
-                    opacity: pressed ? 0.8 : 1,
-                  },
-                ]}
-              >
-                <Feather name={s.icon} size={15} color={active ? colors.primaryForeground : colors.foreground} />
-                <Text style={[styles.tabLabel, { color: active ? colors.primaryForeground : colors.foreground }]}>{s.label}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        <View style={styles.body}>
-          {section === "overview" && <OverviewSection setSection={setSection} />}
-          {section === "adverts" && <AdvertsSection />}
-          {section === "chats" && <ChatsSection />}
-          {section === "accounts" && <AccountsSection />}
-          {section === "moderation" && <ModerationSection />}
-          {section === "settings" && <SettingsSection onClose={onClose} />}
-        </View>
+        ) : null}
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabsRow}
+        style={{ flexGrow: 0 }}
+      >
+        {sections.map((s) => {
+          const active = section === s.key;
+          return (
+            <Pressable
+              key={s.key}
+              onPress={() => setSection(s.key)}
+              style={({ pressed }) => [
+                styles.tab,
+                {
+                  backgroundColor: active ? colors.primary : colors.card,
+                  borderColor: active ? colors.primary : colors.border,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <Feather name={s.icon} size={15} color={active ? colors.primaryForeground : colors.foreground} />
+              <Text style={[styles.tabLabel, { color: active ? colors.primaryForeground : colors.foreground }]}>{s.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      <View style={styles.body}>
+        {section === "overview" && <OverviewSection setSection={setSection} />}
+        {section === "adverts" && <AdvertsSection />}
+        {section === "chats" && <ChatsSection />}
+        {section === "accounts" && <AccountsSection />}
+        {section === "moderation" && <ModerationSection />}
+        {section === "settings" && <SettingsSection onClose={onExit} />}
+      </View>
+    </View>
+  );
+}
+
+export function AdminDashboard({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <AdminContent />
     </Modal>
   );
+}
+
+export function AdminPage({ onExit }: { onExit: () => void }) {
+  return <AdminContent onExit={onExit} />;
 }
 
 function StatCard({ label, value, icon, color, onPress }: { label: string; value: number; icon: keyof typeof Feather.glyphMap; color: string; onPress?: () => void }) {
@@ -622,7 +634,7 @@ function ModerationSection() {
   );
 }
 
-function SettingsSection({ onClose }: { onClose: () => void }) {
+function SettingsSection({ onClose }: { onClose?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { changeAdminPasscode, adminSignOut, bannedEmails, adminUnbanEmail, clearAllData } = useSportsConnect();
@@ -689,7 +701,7 @@ function SettingsSection({ onClose }: { onClose: () => void }) {
           <ActionButton icon="trash-2" label="Wipe all data" color="#EF4444" onPress={() => {
             Alert.alert("Wipe everything?", "This deletes all database records, local cache, and resets the app to a clean state. It cannot be undone.", [
               { text: "Cancel", style: "cancel" },
-              { text: "Wipe all data", style: "destructive", onPress: () => { clearAllData(); onClose(); } },
+              { text: "Wipe all data", style: "destructive", onPress: () => { clearAllData(); onClose?.(); } },
             ]);
           }} />
         </View>
@@ -699,7 +711,7 @@ function SettingsSection({ onClose }: { onClose: () => void }) {
       <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Sign out of admin to return to standard app permissions.</Text>
         <View style={styles.actionRow}>
-          <ActionButton icon="log-out" label="Sign out of admin" color="#EF4444" onPress={() => { adminSignOut(); onClose(); }} />
+          <ActionButton icon="log-out" label="Sign out of admin" color="#EF4444" onPress={() => { adminSignOut(); onClose?.(); }} />
         </View>
       </View>
     </ScrollView>

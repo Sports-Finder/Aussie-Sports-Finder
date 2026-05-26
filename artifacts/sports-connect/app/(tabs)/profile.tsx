@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AdminDashboard } from "@/components/AdminDashboard";
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
 import { SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
@@ -96,14 +95,12 @@ export default function ProfileScreen() {
     approvedSports,
     currentAccount,
     signOut,
-    isAdmin,
     updateAccount,
   } = useSportsConnect();
 
   const [mode, setMode] = useState<Mode>("view");
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [draftDob, setDraftDob] = useState("");
-  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
 
   const [playerBio, setPlayerBio] = useState(playerProfile.bio ?? "");
   const [guardianBio, setGuardianBio] = useState(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
@@ -280,22 +277,11 @@ export default function ProfileScreen() {
         <View>
           <Text style={[styles.kicker, { color: colors.primary }]}>My profile</Text>
           <Text style={[styles.title, { color: colors.foreground }]}>
-            {isAdmin ? "Admin profile" : isClub ? "Club profile" : isGuardian ? "Player profile" : isCoach ? "Coach profile" : "Player profile"}
+            {isClub ? "Club profile" : isGuardian ? "Player profile" : isCoach ? "Coach profile" : "Player profile"}
           </Text>
         </View>
 
-        {isAdmin ? (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.accountTop}>
-              <ProfileAvatar uri={undefined} fallback={require("@/assets/images/icon.png")} size={52} />
-              <View style={styles.accountCopy}>
-                <Text style={[styles.accountName, { color: colors.foreground }]}>Admin</Text>
-                <Text style={[styles.accountRole, { color: colors.mutedForeground }]}>Administrator</Text>
-                <Text style={[styles.accountRole, { color: colors.mutedForeground }]}>Full app access</Text>
-              </View>
-            </View>
-          </View>
-        ) : currentAccount ? (
+        {currentAccount ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.accountTop}>
               <View style={[styles.accountIcon, { backgroundColor: colors.pitchSoft }]}>
@@ -320,16 +306,16 @@ export default function ProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.profileTop}>
               <ProfileAvatar
-                uri={isAdmin ? undefined : isClub ? clubImage : playerImage}
-                fallback={isAdmin ? require("@/assets/images/icon.png") : fallbackImage}
+                uri={isClub ? clubImage : playerImage}
+                fallback={fallbackImage}
                 size={72}
               />
               <View style={styles.profileCopy}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-                  {isAdmin ? "Admin profile" : isClub ? "Club profile" : isCoach ? "Coach profile" : "Player profile"}
+                  {isClub ? "Club profile" : isCoach ? "Coach profile" : "Player profile"}
                 </Text>
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
-                  {isAdmin ? "Administrator account with full app access." : isClub ? "Club details shown below." : isGuardian ? `${currentAccount?.parentGuardianName ?? "Parent/Guardian"} (Parent/Guardian) is managing this Player.` : "Profile details shown below."}
+                  {isClub ? "Club details shown below." : isGuardian ? `${currentAccount?.parentGuardianName ?? "Parent/Guardian"} (Parent/Guardian) is managing this Player.` : "Profile details shown below."}
                 </Text>
               </View>
             </View>
@@ -564,28 +550,7 @@ export default function ProfileScreen() {
 
         {mode === "edit" ? <PrimaryButton label="Save profile" icon="check" onPress={save} /> : null}
 
-        {isAdmin ? (
-          <>
-            <SectionTitle title="Admin" action="Full access" />
-            <Pressable
-              onPress={() => setShowAdminDashboard(true)}
-              style={({ pressed }) => [styles.adminLauncher, { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 }]}
-            >
-              <View style={[styles.adminLauncherIcon, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-                <Feather name="shield" size={22} color={colors.primaryForeground} />
-              </View>
-              <View style={styles.adminLauncherCopy}>
-                <Text style={[styles.adminLauncherTitle, { color: colors.primaryForeground }]}>Open admin dashboard</Text>
-                <Text style={[styles.adminLauncherText, { color: colors.primaryForeground }]}>Adverts, chats, accounts, moderation & settings.</Text>
-              </View>
-              <Feather name="arrow-right" size={20} color={colors.primaryForeground} />
-            </Pressable>
-          </>
-        ) : null}
       </ScrollView>
-      {isAdmin ? (
-        <AdminDashboard visible={showAdminDashboard} onClose={() => setShowAdminDashboard(false)} />
-      ) : null}
     </View>
   );
 }
