@@ -187,7 +187,6 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
   const age = calculateAge(form.dateOfBirth);
   const isClub = role === "club";
-  const primaryEmail = isClub ? form.clubContactEmail || email : email;
 
   const socialLinksValid = useMemo(() => (
     isValidSocialLink("instagram", form.instagram) &&
@@ -197,7 +196,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   ), [form.facebook, form.instagram, form.tiktok, form.x]);
 
   const requiredDetailsValid = useMemo(() => {
-    if (!humanChecked || !primaryEmail.includes("@")) return false;
+    if (!humanChecked || !email.includes("@")) return false;
     if (isClub) {
       return Boolean(form.clubName.trim() && defaultSport && isAustralianLocation(form.clubAddress) && form.clubContactEmail.includes("@") && form.clubContactMobile.trim());
     }
@@ -205,7 +204,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     const guardianAgeValid = role === "guardian" ? Boolean(age && Number(age) <= 17) : true;
     const playerAgeValid = role === "player" ? Boolean(age && Number(age) >= 18) : true;
     return Boolean(nameValid && form.gender && form.dateOfBirth && guardianAgeValid && playerAgeValid && form.mobile.trim() && selectedSports.length && defaultSport && form.agreed);
-  }, [age, defaultSport, form, humanChecked, isClub, primaryEmail, role, selectedSports.length]);
+  }, [age, defaultSport, email, form, humanChecked, isClub, role, selectedSports.length]);
 
   if (!isHydrated) {
     return (
@@ -297,7 +296,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     const created = createAccount({
       role,
       authMethod,
-      email: primaryEmail,
+      email: email.toLowerCase().trim(),
       fullName: form.fullName,
       parentGuardianName: form.parentGuardianName,
       playerName: form.playerName,

@@ -505,20 +505,27 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         if (cancelled) return;
         apiOk = true;
         setAdverts(fetchedAdverts.map((advert: any) => ({ ...advert, type: normalizeAdvertType(advert.type) })));
-        setAccounts(fetchedAccounts);
         setConversations(fetchedConversations);
         setProfileImages(fetchedProfileImages);
         setPendingSportRequests(fetchedSportRequests);
         setBannedEmails(fetchedBannedEmails);
         // Restore local-only state (currentAccount, clubProfile, playerProfile, selectedSport, activeProfile)
-        // from AsyncStorage so profile pics and settings survive across reloads
+        // from AsyncStorage so profile pics and settings survive across reloads.
+        // Also merge passwords back from local accounts — passwords are never sent to/returned from the API.
         try {
           const stored = await AsyncStorage.getItem(storageKey);
           if (stored) {
             const parsed = JSON.parse(stored) as typeof defaultState;
+            const localAccounts: UserAccount[] = parsed.accounts ?? [];
+            // Merge API accounts with local passwords so loginWithEmail still works
+            const mergedAccounts = (fetchedAccounts as UserAccount[]).map((acc) => {
+              const local = localAccounts.find((la) => la.id === acc.id);
+              return local?.password ? { ...acc, password: local.password } : acc;
+            });
+            setAccounts(mergedAccounts);
             if (parsed.currentAccount) {
               // Merge with fetched account data so profileImageId etc stays current
-              const fresh = fetchedAccounts.find((a: UserAccount) => a.id === parsed.currentAccount?.id);
+              const fresh = mergedAccounts.find((a) => a.id === parsed.currentAccount?.id);
               setCurrentAccount(fresh ? {
                 ...parsed.currentAccount,
                 ...fresh,
@@ -532,8 +539,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
             if (parsed.activeProfile) setActiveProfile(parsed.activeProfile);
             if (parsed.notificationSettings) setNotificationSettings(parsed.notificationSettings);
             if (parsed.pendingHighlightLinks?.length) setPendingHighlightLinks(parsed.pendingHighlightLinks);
+          } else {
+            setAccounts(fetchedAccounts);
           }
-        } catch (_) { /* ignore */ }
+        } catch (_) {
+          setAccounts(fetchedAccounts);
+        }
       } catch (e) {
         // API unreachable, will fall back to AsyncStorage below
         if (cancelled) return;
