@@ -81,7 +81,7 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
 
 function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void }) {
   const colors = useColors();
-  const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount } = useSportsConnect();
+  const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount, accounts } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert.createdAt);
   const isOwnAdvert = !!(currentAccount?.id && advert.ownerAccountId && advert.ownerAccountId === currentAccount.id);

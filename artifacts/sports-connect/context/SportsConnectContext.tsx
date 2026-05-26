@@ -37,6 +37,7 @@ export type HighlightLink = {
 };
 
 export type AccountStatus = "active" | "closed" | "banned";
+export type ClubApprovalStatus = "pending" | "approved" | "rejected";
 
 export type UserAccount = {
   id: string;
@@ -70,6 +71,7 @@ export type UserAccount = {
   bio?: string;
   socialId?: string;
   profileImageDeclines?: number;
+  clubApprovalStatus?: ClubApprovalStatus;
 };
 
 export type Advert = {
@@ -217,6 +219,9 @@ type SportsConnectState = {
   adminUnbanEmail: (email: string) => Promise<void>;
   adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string) => Promise<void>;
   adminSendMessage: (conversationId: string, body: string) => Promise<void>;
+  adminApproveClub: (accountId: string) => Promise<void>;
+  adminRejectClub: (accountId: string) => Promise<void>;
+  resetClubApprovalAfterEdit: () => void;
   createAdvert: (draft: DraftAdvert) => Promise<void>;
   updateAdvert: (id: string, patch: Partial<DraftAdvert>) => Promise<void>;
   deleteAdvert: (id: string) => Promise<void>;
@@ -617,6 +622,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       createdAt: now(),
       approved: true,
       status: "active",
+      ...(draft.role === "club" ? { clubApprovalStatus: "pending" as ClubApprovalStatus } : {}),
     };
     setAccounts((current) => [...current, account]);
     setCurrentAccount(account);
@@ -852,6 +858,37 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setAdverts((current) => current.map((a) => a.id === advertId ? { ...a, status, closedAt: status === "closed" ? now() : undefined, closedReason: status === "closed" ? reason : undefined } : a));
     try { await api.updateAdvert(advertId, { status, ...(status === "closed" ? { closedAt: now(), closedReason: reason } : { closedAt: undefined, closedReason: undefined }) }); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  };
+
+  const adminApproveClub = async (accountId: string) => {
+    setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, clubApprovalStatus: "approved" as ClubApprovalStatus } : acc));
+    setCurrentAccount((current) => (current && current.id === accountId ? { ...current, clubApprovalStatus: "approved" as ClubApprovalStatus } : current));
+    try { await api.updateAccount(accountId, { clubApprovalStatus: "approved" }); } catch (_) { /* silent */ }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const adminRejectClub = async (accountId: string) => {
+    setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, clubApprovalStatus: "rejected" as ClubApprovalStatus } : acc));
+    setCurrentAccount((current) => (current && current.id === accountId ? { ...current, clubApprovalStatus: "rejected" as ClubApprovalStatus } : current));
+    try { await api.updateAccount(accountId, { clubApprovalStatus: "rejected" }); } catch (_) { /* silent */ }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+  };
+
+  const resetClubApprovalAfterEdit = () => {
+    if (!currentAccount || currentAccount.role !== "club") return;
+    const clubAccountId = currentAccount.id;
+    setCurrentAccount((c) => c ? { ...c, clubApprovalStatus: "pending" as ClubApprovalStatus } : c);
+    setAccounts((current) => current.map((a) => a.id === clubAccountId ? { ...a, clubApprovalStatus: "pending" as ClubApprovalStatus } : a));
+    const clubAdvertIds = adverts
+      .filter((a) => a.ownerAccountId === clubAccountId && a.status === "active")
+      .map((a) => a.id);
+    if (clubAdvertIds.length > 0) {
+      const closedAt = now();
+      setAdverts((current) => current.map((a) => clubAdvertIds.includes(a.id) ? { ...a, status: "closed", closedAt, closedReason: "Club profile under re-approval" } : a));
+      setConversations((current) => current.map((c) => clubAdvertIds.includes(c.advertId ?? "") && (c.status === "pending" || c.status === "connected") ? { ...c, status: "denied" } : c));
+      clubAdvertIds.forEach((id) => { api.updateAdvert(id, { status: "closed" }).catch(() => undefined); });
+    }
+    api.updateAccount(clubAccountId, { clubApprovalStatus: "pending" }).catch(() => undefined);
   };
 
   const adminSendMessage = async (conversationId: string, body: string) => {
@@ -1228,6 +1265,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     adminUnbanEmail,
     adminSetAdvertStatus,
     adminSendMessage,
+    adminApproveClub,
+    adminRejectClub,
+    resetClubApprovalAfterEdit,
     createAdvert,
     updateAdvert,
     deleteAdvert,

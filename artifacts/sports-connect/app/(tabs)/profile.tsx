@@ -97,6 +97,7 @@ export default function ProfileScreen() {
     currentAccount,
     signOut,
     updateAccount,
+    resetClubApprovalAfterEdit,
   } = useSportsConnect();
 
   const [mode, setMode] = useState<Mode>("view");
