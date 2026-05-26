@@ -296,7 +296,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                 <Text style={[styles.connectedText, { color: "#D9534F" }]}>Your connection request was not accepted</Text>
               </View>
             ) : myRequest?.status === "connected" ? null : (
-              <PrimaryButton label="Agree to connect privately" icon="message-circle" onPress={connect} />
+              <PrimaryButton label="Request to connect privately" icon="message-circle" onPress={connect} />
             )}
           </ScrollView>
         </View>
