@@ -45,8 +45,8 @@ function anonymousLabel(
   conversation: Conversation,
   currentAccountId?: string,
 ): { title: string; subtitle: string } {
-  const isPending = conversation.status === "pending";
-  if (!isPending) {
+  const isAnonymous = conversation.status === "pending" || conversation.status === "denied";
+  if (!isAnonymous) {
     return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${conversation.playerName}` };
   }
   const isInitiator = currentAccountId === conversation.initiatorAccountId;

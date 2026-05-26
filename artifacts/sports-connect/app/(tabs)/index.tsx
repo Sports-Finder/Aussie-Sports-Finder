@@ -35,6 +35,27 @@ function typeLabel(type: Advert["type"]) {
     : "";
 }
 
+function canRequestConnection(viewerRole: AccountRole, advert: Advert): boolean {
+  const viewerIsPlayerOrParent = viewerRole === "player" || viewerRole === "guardian";
+  const viewerIsCoach = viewerRole === "coach";
+  const viewerIsClub = viewerRole === "club";
+
+  switch (advert.type) {
+    case "players-wanted":
+      return viewerIsPlayerOrParent;
+    case "club-trials":
+      return viewerIsPlayerOrParent;
+    case "coach-wanted":
+      return viewerIsCoach;
+    case "player-looking":
+      return viewerIsClub;
+    case "coach-looking":
+      return viewerIsClub;
+    default:
+      return false;
+  }
+}
+
 function requesterTypeLabel(type?: AccountRole, count = 1): string {
   const base = type === "club" ? "Club" : type === "coach" ? "Coach" : "Player";
   return count === 1 ? base : `${base}s`;
@@ -296,7 +317,14 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                 <Text style={[styles.connectedText, { color: "#D9534F" }]}>Your connection request was not accepted</Text>
               </View>
             ) : myRequest?.status === "connected" ? null : (
-              <PrimaryButton label="Request to connect privately" icon="message-circle" onPress={connect} />
+              canRequestConnection(currentAccount?.role ?? "player", advert) ? (
+                <PrimaryButton label="Request to connect privately" icon="message-circle" onPress={connect} />
+              ) : (
+                <View style={[styles.connectedBadge, { backgroundColor: colors.secondary }]}>
+                  <Feather name="lock" color={colors.mutedForeground} size={18} />
+                  <Text style={[styles.connectedText, { color: colors.mutedForeground }]}>You cannot connect with this advert type</Text>
+                </View>
+              )
             )}
           </ScrollView>
         </View>

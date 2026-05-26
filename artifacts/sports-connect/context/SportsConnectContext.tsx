@@ -1030,21 +1030,21 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const denyConnection = (conversationId: string) => {
     const conv = conversations.find((c) => c.id === conversationId);
     if (!conv) return;
-    const relatedAdvert = adverts.find((a) => a.id === conv.advertId);
-    const posterType = relatedAdvert?.postedByType ?? "club";
-    const posterLabel = posterType === "player" ? "player" : "club";
+    const ownerAccount = accounts.find((a) => a.id === conv.ownerAccountId);
+    const ownerRole = ownerAccount?.role;
+    const ownerTypeLabel = ownerRole === "club" ? "a Club" : ownerRole === "coach" ? "a Coach" : "a Player";
     const denyMsg: Message = {
       id: makeId(),
       sender: "them",
-      senderAccountId: conv.ownerAccountId,
-      body: `Sorry. Connection wasn\'t agreed by the ${posterLabel}. Try to connect with another ${posterLabel}.`,
+      isAdmin: true,
+      body: `Sorry. Connection wasn't agreed by ${ownerTypeLabel}. Keep looking.`,
       createdAt: now(),
     };
     setConversations((current) =>
       current.map((c) => c.id === conversationId ? { ...c, status: "denied", hasUnread: false, messages: [denyMsg] } : c)
     );
     api.updateConversation(conversationId, { status: "denied" }).catch(() => undefined);
-    api.createMessage(conversationId, { sender: "them", body: denyMsg.body }).catch(() => undefined);
+    api.createMessage(conversationId, { sender: "them", isAdmin: true, body: denyMsg.body }).catch(() => undefined);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
   const sendMessage = async (conversationId: string, body: string) => {
