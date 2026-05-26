@@ -92,6 +92,7 @@ export default function ProfileScreen() {
     updateClubProfile,
     pickProfileImage,
     getImageUri,
+    getImageStatus,
     approvedSports,
     currentAccount,
     signOut,
@@ -121,6 +122,8 @@ export default function ProfileScreen() {
 
   const playerImage = getImageUri(playerProfile.imageId, true);
   const clubImage = getImageUri(clubProfile.imageId, true);
+  const playerImagePending = getImageStatus(playerProfile.imageId) === "pending";
+  const clubImagePending = getImageStatus(clubProfile.imageId) === "pending";
   const clubMapQuery = `${currentAccount?.clubName ?? ""} ${clubMapAddress || currentAccount?.clubAddress || currentAccount?.location || ""}`;
 
   const role = currentAccount?.role ?? "player";
@@ -309,6 +312,7 @@ export default function ProfileScreen() {
                 uri={isClub ? clubImage : playerImage}
                 fallback={fallbackImage}
                 size={72}
+                pending={isClub ? clubImagePending : playerImagePending}
               />
               <View style={styles.profileCopy}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>
@@ -319,6 +323,11 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </View>
+            {isClub ? clubImagePending : playerImagePending ? (
+              <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
+                Your Profile Pic is awaiting approval
+              </Text>
+            ) : null}
             {currentAccount && currentAccount.profileImageDeclines ? (
               <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
                 Admin did not approve your profile pic. Please upload another.
@@ -357,12 +366,17 @@ export default function ProfileScreen() {
         ) : isClub ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.profileTop}>
-              <ProfileAvatar uri={clubImage} fallback={fallbackImage} size={72} />
+              <ProfileAvatar uri={clubImage} fallback={fallbackImage} size={72} pending={clubImagePending} />
               <View style={styles.profileCopy}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>Edit club profile</Text>
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Changes save back to your account profile.</Text>
               </View>
             </View>
+            {clubImagePending ? (
+              <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
+                Your Profile Pic is awaiting approval
+              </Text>
+            ) : null}
             {currentAccount && currentAccount.profileImageDeclines ? (
               <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
                 Admin did not approve your profile pic. Please upload another.
@@ -419,7 +433,7 @@ export default function ProfileScreen() {
         ) : (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.profileTop}>
-              <ProfileAvatar uri={playerImage} fallback={fallbackImage} size={72} />
+              <ProfileAvatar uri={playerImage} fallback={fallbackImage} size={72} pending={playerImagePending} />
               <View style={styles.profileCopy}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>
                   {isCoach ? "Edit coach profile" : isGuardian ? "Edit player profile" : "Edit player profile"}
@@ -429,6 +443,11 @@ export default function ProfileScreen() {
                 </Text>
               </View>
             </View>
+            {playerImagePending ? (
+              <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
+                Your Profile Pic is awaiting approval
+              </Text>
+            ) : null}
             {currentAccount && currentAccount.profileImageDeclines ? (
               <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>
                 Admin did not approve your profile pic. Please upload another.

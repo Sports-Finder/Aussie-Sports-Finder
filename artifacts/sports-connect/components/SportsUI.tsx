@@ -64,11 +64,16 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
   );
 }
 
-export function ProfileAvatar({ uri, fallback, size = 64 }: { uri?: string; fallback: ImageSourcePropType | ImageSource; size?: number }) {
+export function ProfileAvatar({ uri, fallback, size = 64, pending }: { uri?: string; fallback: ImageSourcePropType | ImageSource; size?: number; pending?: boolean }) {
   const colors = useColors();
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.pitchSoft, borderColor: colors.border }]}>
       <Image source={uri ? { uri } : fallback} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+      {pending ? (
+        <View style={[styles.avatarOverlay, { width: size, height: size, borderRadius: size / 2 }]}>
+          <Feather name="clock" size={size * 0.3} color="#FFF" />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -99,6 +104,7 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, minHeight: 48, fontWeight: "500", fontSize: 15 },
   multiline: { minHeight: 96, paddingTop: 14, textAlignVertical: "top" },
   avatar: { overflow: "hidden", borderWidth: 1 },
+  avatarOverlay: { position: "absolute", top: 0, left: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   empty: { borderWidth: 1, borderRadius: 24, padding: 24, alignItems: "center", gap: 8 },
   emptyTitle: { fontWeight: "700", fontSize: 17, marginTop: 4 },
   emptyText: { fontWeight: "400", fontSize: 14, lineHeight: 20, textAlign: "center" },

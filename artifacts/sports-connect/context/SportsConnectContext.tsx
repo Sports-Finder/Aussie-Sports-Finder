@@ -235,6 +235,7 @@ type SportsConnectState = {
   moderateImage: (imageId: string, status: ImageStatus) => Promise<void>;
   moderateHighlightLink: (linkId: string, status: ImageStatus) => void;
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
+  getImageStatus: (imageId?: string) => ImageStatus | undefined;
 };
 
 const storageKey = "sports-connect-state-v8-clean";
@@ -1137,6 +1138,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return undefined;
   };
 
+  const getImageStatus = (imageId?: string) => {
+    const image = profileImages.find((item) => item.id === imageId);
+    return image?.status;
+  };
+
   const value = useMemo<SportsConnectState>(() => {
     const myConversations = isAdmin
       ? conversations
@@ -1200,6 +1206,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     moderateImage,
     moderateHighlightLink,
     getImageUri,
+    getImageStatus,
     };
   }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminPasscode]);
 
