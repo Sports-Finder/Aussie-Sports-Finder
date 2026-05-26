@@ -74,8 +74,10 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
   const { connectOnAdvert, conversations, approvedSports, currentAccount } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert.createdAt);
-  const isConnected = conversations.some((c) => c.advertId === advert.id);
-  const isOwnAdvert = !!(currentAccount && advert.ownerAccountId === currentAccount.id);
+  const isConnected = conversations.some(
+    (c) => c.advertId === advert.id && (c.initiatorAccountId === currentAccount?.id || c.ownerAccountId === currentAccount?.id)
+  );
+  const isOwnAdvert = !!(currentAccount?.id && advert.ownerAccountId && advert.ownerAccountId === currentAccount.id);
 
   const posterLabel = isConnected
     ? advert.postedBy
