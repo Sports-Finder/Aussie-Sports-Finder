@@ -43,4 +43,5 @@ export const api = {
 
   banEmail: (email: string) => apiFetch("/banned-emails", { method: "POST", body: JSON.stringify({ email }) }),
   unbanEmail: (email: string) => apiFetch(`/banned-emails/${email}`, { method: "DELETE" }),
+  wipeAll: () => apiFetch("/wipe", { method: "DELETE" }),
 };

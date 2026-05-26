@@ -625,7 +625,7 @@ function ModerationSection() {
 function SettingsSection({ onClose }: { onClose: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { changeAdminPasscode, adminSignOut, bannedEmails, adminUnbanEmail } = useSportsConnect();
+  const { changeAdminPasscode, adminSignOut, bannedEmails, adminUnbanEmail, clearAllData } = useSportsConnect();
   const [showPass, setShowPass] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -680,6 +680,19 @@ function SettingsSection({ onClose }: { onClose: () => void }) {
         ) : (
           <ActionButton icon="key" label="Change passcode" color={colors.primary} onPress={() => setShowPass(true)} />
         )}
+      </View>
+
+      <SectionTitle title="Danger zone" />
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Wipe all database data and clear local storage. This cannot be undone.</Text>
+        <View style={styles.actionRow}>
+          <ActionButton icon="trash-2" label="Wipe all data" color="#EF4444" onPress={() => {
+            Alert.alert("Wipe everything?", "This deletes all database records, local cache, and resets the app to a clean state. It cannot be undone.", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Wipe all data", style: "destructive", onPress: () => { clearAllData(); onClose(); } },
+            ]);
+          }} />
+        </View>
       </View>
 
       <SectionTitle title="Admin session" />

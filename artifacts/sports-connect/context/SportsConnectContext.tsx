@@ -205,6 +205,7 @@ type SportsConnectState = {
   createAccount: (draft: DraftAccount) => boolean;
   signOut: () => void;
   signOutResetToken: number;
+  clearAllData: () => Promise<void>;
   adminLogin: (passcode: string) => boolean;
   adminSignOut: () => void;
   changeAdminPasscode: (current: string, next: string) => boolean;
@@ -482,6 +483,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     let cancelled = false;
     async function loadFromApi() {
+      let apiOk = false;
       try {
         const [fetchedAdverts, fetchedAccounts, fetchedConversations, fetchedProfileImages, fetchedSportRequests, fetchedBannedEmails] = await Promise.all([
           api.getAdverts(),
@@ -492,6 +494,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
           api.getBannedEmails(),
         ]);
         if (cancelled) return;
+        apiOk = true;
         setAdverts(fetchedAdverts.map((advert: any) => ({ ...advert, type: normalizeAdvertType(advert.type) })));
         setAccounts(fetchedAccounts);
         setConversations(fetchedConversations);
@@ -499,32 +502,34 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         setPendingSportRequests(fetchedSportRequests);
         setBannedEmails(fetchedBannedEmails);
       } catch (e) {
-        // Fall back to AsyncStorage if API is unreachable
+        // API unreachable, will fall back to AsyncStorage below
         if (cancelled) return;
       }
-      try {
-        const stored = await AsyncStorage.getItem(storageKey);
-        if (stored) {
-          const parsed = JSON.parse(stored) as typeof defaultState;
-          setAdverts((prev) => prev.length ? prev : (parsed.adverts ?? defaultState.adverts).map((advert) => ({
-            ...advert,
-            type: normalizeAdvertType(advert.type),
-          })));
-          setConversations((prev) => prev.length ? prev : (parsed.conversations ?? defaultState.conversations));
-          setProfileImages((prev) => prev.length ? prev : (parsed.profileImages ?? []));
-          setPendingHighlightLinks((prev) => prev.length ? prev : (parsed.pendingHighlightLinks ?? []));
-          setAccounts((prev) => prev.length ? prev : (parsed.accounts ?? []));
-          setCurrentAccount(parsed.currentAccount);
-          setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
-          setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
-          setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
-          setApprovedSports(parsed.approvedSports ?? defaultState.approvedSports);
-          setPendingSportRequests((prev) => prev.length ? prev : (parsed.pendingSportRequests ?? []));
-          setSelectedSport(parsed.selectedSport ?? defaultState.selectedSport);
-          setActiveProfile(parsed.activeProfile ?? "player");
+      if (!apiOk) {
+        try {
+          const stored = await AsyncStorage.getItem(storageKey);
+          if (stored) {
+            const parsed = JSON.parse(stored) as typeof defaultState;
+            setAdverts((parsed.adverts ?? defaultState.adverts).map((advert) => ({
+              ...advert,
+              type: normalizeAdvertType(advert.type),
+            })));
+            setConversations(parsed.conversations ?? defaultState.conversations);
+            setProfileImages(parsed.profileImages ?? []);
+            setPendingHighlightLinks(parsed.pendingHighlightLinks ?? []);
+            setAccounts(parsed.accounts ?? []);
+            setCurrentAccount(parsed.currentAccount);
+            setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
+            setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
+            setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
+            setApprovedSports(parsed.approvedSports ?? defaultState.approvedSports);
+            setPendingSportRequests(parsed.pendingSportRequests ?? []);
+            setSelectedSport(parsed.selectedSport ?? defaultState.selectedSport);
+            setActiveProfile(parsed.activeProfile ?? "player");
+          }
+        } catch (_) {
+          // ignore
         }
-      } catch (_) {
-        // ignore
       }
       if (!cancelled) setIsHydrated(true);
     }
@@ -625,6 +630,33 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setCurrentAccount(undefined);
     setSignOutResetToken((current) => current + 1);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const clearAllData = async () => {
+    try {
+      await api.wipeAll();
+    } catch (_) {
+      // Silent: DB may already be empty
+    }
+    await AsyncStorage.removeItem(storageKey);
+    await AsyncStorage.removeItem(adminStorageKey);
+    setAdverts(defaultState.adverts);
+    setAccounts(defaultState.accounts);
+    setConversations(defaultState.conversations);
+    setProfileImages(defaultState.profileImages);
+    setPendingHighlightLinks(defaultState.pendingHighlightLinks);
+    setCurrentAccount(undefined);
+    setClubProfile(defaultState.clubProfile);
+    setPlayerProfile(defaultState.playerProfile);
+    setNotificationSettings(defaultState.notificationSettings);
+    setApprovedSports(defaultState.approvedSports);
+    setPendingSportRequests(defaultState.pendingSportRequests);
+    setSelectedSport(defaultState.selectedSport);
+    setActiveProfile(defaultState.activeProfile);
+    setBannedEmails([]);
+    setIsAdmin(false);
+    setSignOutResetToken((t) => t + 1);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
   const loginWithEmail = (emailInput: string, passwordInput: string): boolean => {
@@ -1037,6 +1069,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     createAccount,
     signOut,
     signOutResetToken,
+    clearAllData,
     adminLogin,
     adminSignOut,
     changeAdminPasscode,

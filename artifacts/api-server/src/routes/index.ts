@@ -6,6 +6,7 @@ import conversationsRouter from "./conversations";
 import profileImagesRouter from "./profileImages";
 import sportRequestsRouter from "./sportRequests";
 import bannedEmailsRouter from "./bannedEmails";
+import wipeRouter from "./wipe";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(conversationsRouter);
 router.use(profileImagesRouter);
 router.use(sportRequestsRouter);
 router.use(bannedEmailsRouter);
+router.use(wipeRouter);
 
 export default router;
