@@ -71,10 +71,11 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
 
 function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void }) {
   const colors = useColors();
-  const { connectOnAdvert, conversations, approvedSports } = useSportsConnect();
+  const { connectOnAdvert, conversations, approvedSports, currentAccount } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert.createdAt);
   const isConnected = conversations.some((c) => c.advertId === advert.id);
+  const isOwnAdvert = !!(currentAccount && advert.ownerAccountId === currentAccount.id);
 
   const posterLabel = isConnected
     ? advert.postedBy
@@ -215,7 +216,12 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
             <View style={{ height: 16 }} />
 
             {/* ── Connect button ── */}
-            {isConnected ? (
+            {isOwnAdvert ? (
+              <View style={[styles.connectedBadge, { backgroundColor: colors.secondary }]}>
+                <Feather name="user" color={colors.mutedForeground} size={18} />
+                <Text style={[styles.connectedText, { color: colors.mutedForeground }]}>This is your advert — manage it in the Post tab</Text>
+              </View>
+            ) : isConnected ? (
               <View style={[styles.connectedBadge, { backgroundColor: colors.pitchSoft }]}>
                 <Feather name="check-circle" color={colors.primary} size={18} />
                 <Text style={[styles.connectedText, { color: colors.primary }]}>You are connected — message in the Messages tab</Text>
@@ -241,7 +247,6 @@ export default function DiscoverScreen() {
   const activeTheme = selectedSport === allSportsFilterName ? null : getSportTheme(selectedSport, approvedSports);
 
   const filtered = useMemo(() => adverts.filter((advert) => {
-    if (currentAccount && advert.ownerAccountId === currentAccount.id) return false;
     const matchesSport = selectedSport === allSportsFilterName || advert.sport === selectedSport;
     if (!matchesSport) return false;
     const matchesState = stateFilter === "All" || advert.location.includes(stateFilter);
