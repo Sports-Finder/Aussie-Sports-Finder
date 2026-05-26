@@ -823,11 +823,16 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const adminSetAccountStatus = async (accountId: string, status: AccountStatus, reason?: string) => {
+    const target = accounts.find((acc) => acc.id === accountId);
+    const isClub = target?.role === "club";
+    const needsRejection = isClub && target?.clubApprovalStatus !== "approved" && (status === "closed" || status === "banned");
     setAccounts((current) => current.map((acc) => {
       if (acc.id !== accountId) return acc;
-      return { ...acc, status, statusChangedAt: now(), statusReason: reason };
+      const patch: Partial<UserAccount> = { status, statusChangedAt: now(), statusReason: reason };
+      if (needsRejection) patch.clubApprovalStatus = "rejected";
+      return { ...acc, ...patch };
     }));
-    const target = accounts.find((acc) => acc.id === accountId);
+    setCurrentAccount((current) => (current && current.id === accountId && needsRejection ? { ...current, clubApprovalStatus: "rejected" } : current));
     if (target) {
       const email = target.email.toLowerCase().trim();
       if (status === "banned") {
@@ -842,7 +847,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         setSignOutResetToken((c) => c + 1);
       }
     }
-    try { await api.updateAccount(accountId, { status, statusChangedAt: now(), statusReason: reason }); } catch (_) { /* silent */ }
+    try { await api.updateAccount(accountId, { status, statusChangedAt: now(), statusReason: reason, ...(needsRejection ? { clubApprovalStatus: "rejected" } : {}) }); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 

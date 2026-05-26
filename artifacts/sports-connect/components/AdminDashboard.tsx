@@ -256,9 +256,136 @@ function AdvertsSection() {
                   <Feather name="map-pin" size={12} color={colors.mutedForeground} />
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{advert.location}</Text>
                 </View>
+                <View style={styles.metaRow}>
+                  <Feather name="trending-up" size={12} color={colors.mutedForeground} />
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{advert.level}</Text>
+                </View>
+                {advert.availability ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{advert.availability}</Text>
+                  </View>
+                ) : null}
+                {advert.ageGroup ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="users" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Age group: {advert.ageGroup}</Text>
+                  </View>
+                ) : null}
+                {advert.preferredAge !== undefined ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="user-check" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Preferred age: {advert.preferredAge}</Text>
+                  </View>
+                ) : null}
+                {advert.positions && advert.positions.length > 0 ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="target" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Positions: {advert.positions.join(", ")}</Text>
+                  </View>
+                ) : null}
+                {advert.playerDescription ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="info" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{advert.playerDescription}</Text>
+                  </View>
+                ) : null}
+                {advert.trainingDays && advert.trainingDays.length > 0 ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="clock" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Training: {advert.trainingDays.join(", ")} {advert.trainingTimeFrom}–{advert.trainingTimeTo}</Text>
+                  </View>
+                ) : advert.trainingTbd ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="clock" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Training: TBC</Text>
+                  </View>
+                ) : null}
+                {advert.gameDays && advert.gameDays.length > 0 ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="flag" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Games: {advert.gameDays.join(", ")} {advert.gameTimeFrom}–{advert.gameTimeTo}</Text>
+                  </View>
+                ) : advert.gameTbd ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="flag" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Games: TBC</Text>
+                  </View>
+                ) : null}
+                {advert.scheduleNote ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="file-text" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{advert.scheduleNote}</Text>
+                  </View>
+                ) : null}
+                {advert.trialSlots && advert.trialSlots.length > 0 ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Trial slots: {advert.trialSlots.map((t) => `${t.date} ${t.timeFrom}–${t.timeTo}`).join(", ")}</Text>
+                  </View>
+                ) : null}
+                {advert.trialRequired !== undefined ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="check-square" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Trial required: {advert.trialRequired ? "Yes" : "No"}</Text>
+                  </View>
+                ) : null}
+                {advert.coachRole ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="award" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Coach role: {advert.coachRole}</Text>
+                  </View>
+                ) : null}
+                {advert.coachExperienceLevel ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="bar-chart" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Exp level: {advert.coachExperienceLevel}</Text>
+                  </View>
+                ) : null}
+                {advert.coachPositionTypes && advert.coachPositionTypes.length > 0 ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="layers" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Position types: {advert.coachPositionTypes.join(", ")}</Text>
+                  </View>
+                ) : null}
+                {advert.coachSalaryTbc ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="dollar-sign" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Salary: TBC / Negotiable</Text>
+                  </View>
+                ) : advert.coachSalary !== undefined ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="dollar-sign" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Salary: AUD ${advert.coachSalary.toFixed(2)}</Text>
+                  </View>
+                ) : null}
+                {advert.feesFree ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="heart" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Fees: Free / Scholarship</Text>
+                  </View>
+                ) : advert.seasonFees !== undefined ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="dollar-sign" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Season fees: AUD ${advert.seasonFees.toFixed(2)}{advert.feesNegotiable ? " (negotiable)" : ""}</Text>
+                  </View>
+                ) : null}
                 {advert.description ? (
                   <Text style={[styles.itemBody, { color: colors.foreground }]} numberOfLines={3}>{advert.description}</Text>
                 ) : null}
+                {advert.needs ? (
+                  <Text style={[styles.itemBody, { color: colors.foreground }]} numberOfLines={3}>{advert.needs}</Text>
+                ) : null}
+                {advert.closedReason ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="x-circle" size={12} color="#EF4444" />
+                    <Text style={[styles.metaText, { color: "#EF4444" }]}>Closed: {advert.closedReason}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.metaRow}>
+                  <Feather name="clock" size={12} color={colors.mutedForeground} />
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Posted: {advert.createdAt.slice(0, 10)} · Distance: {advert.distanceKm} km</Text>
+                </View>
                 <View style={styles.actionRow}>
                   <ActionButton icon="edit-2" label="Edit" color={colors.primary} onPress={() => setEditing(advert)} />
                   {isClosed ? (
@@ -301,6 +428,26 @@ function AdvertEditModal({ advert, onClose, onSave }: { advert: Advert; onClose:
   const [level, setLevel] = useState(advert.level);
   const [availability, setAvailability] = useState(advert.availability);
   const [needs, setNeeds] = useState(advert.needs);
+  const [ageGroup, setAgeGroup] = useState(advert.ageGroup ?? "");
+  const [preferredAge, setPreferredAge] = useState(advert.preferredAge?.toString() ?? "");
+  const [positions, setPositions] = useState(advert.positions?.join(", ") ?? "");
+  const [playerDescription, setPlayerDescription] = useState(advert.playerDescription ?? "");
+  const [trainingDays, setTrainingDays] = useState(advert.trainingDays?.join(", ") ?? "");
+  const [trainingTimeFrom, setTrainingTimeFrom] = useState(advert.trainingTimeFrom ?? "");
+  const [trainingTimeTo, setTrainingTimeTo] = useState(advert.trainingTimeTo ?? "");
+  const [gameDays, setGameDays] = useState(advert.gameDays?.join(", ") ?? "");
+  const [gameTimeFrom, setGameTimeFrom] = useState(advert.gameTimeFrom ?? "");
+  const [gameTimeTo, setGameTimeTo] = useState(advert.gameTimeTo ?? "");
+  const [scheduleNote, setScheduleNote] = useState(advert.scheduleNote ?? "");
+  const [coachRole, setCoachRole] = useState(advert.coachRole ?? "");
+  const [coachExperienceLevel, setCoachExperienceLevel] = useState(advert.coachExperienceLevel ?? "");
+  const [coachPositionTypes, setCoachPositionTypes] = useState(advert.coachPositionTypes?.join(", ") ?? "");
+  const [coachSalary, setCoachSalary] = useState(advert.coachSalary?.toString() ?? "");
+  const [coachSalaryTbc, setCoachSalaryTbc] = useState(advert.coachSalaryTbc ?? false);
+  const [seasonFees, setSeasonFees] = useState(advert.seasonFees?.toString() ?? "");
+  const [feesNegotiable, setFeesNegotiable] = useState(advert.feesNegotiable ?? false);
+  const [feesFree, setFeesFree] = useState(advert.feesFree ?? false);
+  const [trialRequired, setTrialRequired] = useState(advert.trialRequired ?? false);
 
   return (
     <Modal visible animationType="slide" onRequestClose={onClose}>
@@ -318,13 +465,90 @@ function AdvertEditModal({ advert, onClose, onSave }: { advert: Advert; onClose:
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+          <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Core details</Text>
           <Field label="Title" value={title} onChangeText={setTitle} />
           <Field label="Description" value={description} onChangeText={setDescription} multiline />
           <Field label="Location" value={location} onChangeText={setLocation} />
           <Field label="Level" value={level} onChangeText={setLevel} />
           <Field label="Availability" value={availability} onChangeText={setAvailability} />
           <Field label="Needs / requirements" value={needs} onChangeText={setNeeds} multiline />
-          <PrimaryButton label="Save changes" icon="check" onPress={() => onSave({ title, description, location, level, availability, needs })} />
+
+          <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Player / position info</Text>
+          <Field label="Age group" value={ageGroup} onChangeText={setAgeGroup} />
+          <Field label="Preferred age" value={preferredAge} onChangeText={setPreferredAge} keyboardType="number-pad" />
+          <Field label="Positions (comma-separated)" value={positions} onChangeText={setPositions} />
+          <Field label="Player description" value={playerDescription} onChangeText={setPlayerDescription} multiline />
+
+          <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Training & games</Text>
+          <Field label="Training days (comma-separated)" value={trainingDays} onChangeText={setTrainingDays} />
+          <Field label="Training time from" value={trainingTimeFrom} onChangeText={setTrainingTimeFrom} />
+          <Field label="Training time to" value={trainingTimeTo} onChangeText={setTrainingTimeTo} />
+          <Field label="Game days (comma-separated)" value={gameDays} onChangeText={setGameDays} />
+          <Field label="Game time from" value={gameTimeFrom} onChangeText={setGameTimeFrom} />
+          <Field label="Game time to" value={gameTimeTo} onChangeText={setGameTimeTo} />
+          <Field label="Schedule note" value={scheduleNote} onChangeText={setScheduleNote} multiline />
+
+          <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Coach role info</Text>
+          <Field label="Coach role" value={coachRole} onChangeText={setCoachRole} />
+          <Field label="Coach experience level" value={coachExperienceLevel} onChangeText={setCoachExperienceLevel} />
+          <Field label="Position types (comma-separated)" value={coachPositionTypes} onChangeText={setCoachPositionTypes} />
+          <Field label="Coach salary" value={coachSalary} onChangeText={setCoachSalary} keyboardType="decimal-pad" />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+            <Pressable onPress={() => setCoachSalaryTbc((v) => !v)} style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: colors.primary, backgroundColor: coachSalaryTbc ? colors.primary : "transparent", alignItems: "center", justifyContent: "center" }}>
+              {coachSalaryTbc && <Feather name="check" size={14} color="#FFF" />}
+            </Pressable>
+            <Text style={{ color: colors.foreground, fontSize: 14 }}>Salary TBC / Negotiable</Text>
+          </View>
+
+          <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Fees</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+            <Pressable onPress={() => setFeesFree((v) => !v)} style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: colors.primary, backgroundColor: feesFree ? colors.primary : "transparent", alignItems: "center", justifyContent: "center" }}>
+              {feesFree && <Feather name="check" size={14} color="#FFF" />}
+            </Pressable>
+            <Text style={{ color: colors.foreground, fontSize: 14 }}>Free / Scholarship</Text>
+          </View>
+          {!feesFree && (
+            <>
+              <Field label="Season fees" value={seasonFees} onChangeText={setSeasonFees} keyboardType="decimal-pad" />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+                <Pressable onPress={() => setFeesNegotiable((v) => !v)} style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: colors.primary, backgroundColor: feesNegotiable ? colors.primary : "transparent", alignItems: "center", justifyContent: "center" }}>
+                  {feesNegotiable && <Feather name="check" size={14} color="#FFF" />}
+                </Pressable>
+                <Text style={{ color: colors.foreground, fontSize: 14 }}>Negotiable</Text>
+              </View>
+            </>
+          )}
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+            <Pressable onPress={() => setTrialRequired((v) => !v)} style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 2, borderColor: colors.primary, backgroundColor: trialRequired ? colors.primary : "transparent", alignItems: "center", justifyContent: "center" }}>
+              {trialRequired && <Feather name="check" size={14} color="#FFF" />}
+            </Pressable>
+            <Text style={{ color: colors.foreground, fontSize: 14 }}>Trial required</Text>
+          </View>
+
+          <PrimaryButton label="Save changes" icon="check" onPress={() => onSave({
+            title, description, location, level, availability, needs,
+            ageGroup: ageGroup.trim() || undefined,
+            preferredAge: preferredAge.trim() ? parseInt(preferredAge, 10) : undefined,
+            positions: positions.split(",").map((s) => s.trim()).filter(Boolean),
+            playerDescription: playerDescription.trim() || undefined,
+            trainingDays: trainingDays.split(",").map((s) => s.trim()).filter(Boolean),
+            trainingTimeFrom: trainingTimeFrom.trim() || undefined,
+            trainingTimeTo: trainingTimeTo.trim() || undefined,
+            gameDays: gameDays.split(",").map((s) => s.trim()).filter(Boolean),
+            gameTimeFrom: gameTimeFrom.trim() || undefined,
+            gameTimeTo: gameTimeTo.trim() || undefined,
+            scheduleNote: scheduleNote.trim() || undefined,
+            coachRole: coachRole.trim() || undefined,
+            coachExperienceLevel: coachExperienceLevel.trim() || undefined,
+            coachPositionTypes: coachPositionTypes.split(",").map((s) => s.trim()).filter(Boolean),
+            coachSalary: coachSalary.trim() ? parseFloat(coachSalary) : undefined,
+            coachSalaryTbc,
+            seasonFees: seasonFees.trim() ? parseFloat(seasonFees) : undefined,
+            feesNegotiable,
+            feesFree,
+            trialRequired,
+          })} />
         </ScrollView>
       </View>
     </Modal>
@@ -396,7 +620,7 @@ function ChatsSection() {
 function AccountsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { accounts, bannedEmails } = useSportsConnect();
+  const { accounts, bannedEmails, adminApproveClub, adminRejectClub } = useSportsConnect();
   const [role, setRole] = useState<AccountRole>("player");
   const [editing, setEditing] = useState<UserAccount | null>(null);
 
@@ -420,16 +644,26 @@ function AccountsSection() {
           list.map((acc) => {
             const status = acc.status ?? "active";
             const badge = statusBadgeColor(status);
+            const clubApproval = acc.role === "club" ? (acc.clubApprovalStatus ?? "pending") : null;
             return (
               <Pressable
                 key={acc.id}
                 onPress={() => setEditing(acc)}
-                style={({ pressed }) => [styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [styles.itemCard, { backgroundColor: colors.card, borderColor: clubApproval === "pending" ? "#FDE68A" : colors.border, borderWidth: clubApproval === "pending" ? 1.5 : 1, opacity: pressed ? 0.85 : 1 }]}
               >
                 <View style={styles.itemHeader}>
                   <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{displayName(acc)}</Text>
-                  <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                    <Text style={[styles.badgeText, { color: badge.fg }]}>{status[0].toUpperCase() + status.slice(1)}</Text>
+                  <View style={{ flexDirection: "row", gap: 6 }}>
+                    {clubApproval && (
+                      <View style={[styles.badge, { backgroundColor: clubApproval === "approved" ? "#D1FAE5" : clubApproval === "rejected" ? "#FEE2E2" : "#FEF3C7" }]}>
+                        <Text style={[styles.badgeText, { color: clubApproval === "approved" ? "#065F46" : clubApproval === "rejected" ? "#991B1B" : "#92400E", fontSize: 11 }]}>
+                          {clubApproval === "approved" ? "Approved" : clubApproval === "rejected" ? "Rejected" : "Waiting Approval"}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                      <Text style={[styles.badgeText, { color: badge.fg }]}>{status[0].toUpperCase() + status.slice(1)}</Text>
+                    </View>
                   </View>
                 </View>
                 <View style={styles.metaRow}>
@@ -446,6 +680,22 @@ function AccountsSection() {
                   <Feather name="activity" size={12} color={colors.mutedForeground} />
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Default sport: {acc.defaultSport}</Text>
                 </View>
+                {acc.role === "club" && clubApproval !== "approved" && (
+                  <View style={styles.actionRow}>
+                    <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => {
+                      Alert.alert("Approve Club", `Approve "${acc.clubName ?? acc.email}"?`, [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Approve", onPress: () => adminApproveClub(acc.id) },
+                      ]);
+                    }} />
+                    <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => {
+                      Alert.alert("Reject Club", `Reject "${acc.clubName ?? acc.email}"?`, [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Reject", style: "destructive", onPress: () => adminRejectClub(acc.id) },
+                      ]);
+                    }} />
+                  </View>
+                )}
                 <View style={styles.actionRow}>
                   <ActionButton icon="edit-2" label="View / Edit" color={colors.primary} onPress={() => setEditing(acc)} />
                 </View>
@@ -469,7 +719,8 @@ function AccountsSection() {
 function AccountEditModal({ account, onClose }: { account: UserAccount; onClose: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { adminUpdateAccount, adminSetAccountStatus } = useSportsConnect();
+  const { adminUpdateAccount, adminSetAccountStatus, adminApproveClub, adminRejectClub } = useSportsConnect();
+
   const [fullName, setFullName] = useState(account.fullName ?? "");
   const [playerName, setPlayerName] = useState(account.playerName ?? "");
   const [parentGuardianName, setParentGuardianName] = useState(account.parentGuardianName ?? "");
@@ -477,7 +728,23 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
   const [email, setEmail] = useState(account.email);
   const [mobile, setMobile] = useState(account.mobile ?? "");
   const [location, setLocation] = useState(account.location ?? "");
+  const [gender, setGender] = useState(account.gender ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(account.dateOfBirth ?? "");
+  const [defaultSport, setDefaultSport] = useState(account.defaultSport ?? "");
+  const [sports, setSports] = useState(account.sports.join(", ") ?? "");
+  const [clubWebsite, setClubWebsite] = useState(account.clubWebsite ?? "");
+  const [clubAddress, setClubAddress] = useState(account.clubAddress ?? "");
+  const [clubContactEmail, setClubContactEmail] = useState(account.clubContactEmail ?? "");
+  const [clubContactMobile, setClubContactMobile] = useState(account.clubContactMobile ?? "");
+  const [bio, setBio] = useState(account.bio ?? "");
+  const [instagram, setInstagram] = useState(account.socialLinks.instagram ?? "");
+  const [facebook, setFacebook] = useState(account.socialLinks.facebook ?? "");
+  const [x, setX] = useState(account.socialLinks.x ?? "");
+  const [tiktok, setTiktok] = useState(account.socialLinks.tiktok ?? "");
+  const [highlightReelUrl, setHighlightReelUrl] = useState(account.highlightReelUrl ?? "");
+
   const status = account.status ?? "active";
+  const clubApproval = account.role === "club" ? (account.clubApprovalStatus ?? "pending") : null;
 
   const save = () => {
     adminUpdateAccount(account.id, {
@@ -488,6 +755,17 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
       email: email.trim(),
       mobile: mobile.trim() || undefined,
       location: location.trim() || undefined,
+      gender: gender.trim() || undefined,
+      dateOfBirth: dateOfBirth.trim() || undefined,
+      defaultSport: defaultSport.trim() || undefined,
+      sports: sports.split(",").map((s) => s.trim()).filter(Boolean),
+      clubWebsite: clubWebsite.trim() || undefined,
+      clubAddress: clubAddress.trim() || undefined,
+      clubContactEmail: clubContactEmail.trim() || undefined,
+      clubContactMobile: clubContactMobile.trim() || undefined,
+      bio: bio.trim() || undefined,
+      socialLinks: { instagram: instagram.trim(), facebook: facebook.trim(), x: x.trim(), tiktok: tiktok.trim() },
+      highlightReelUrl: highlightReelUrl.trim() || undefined,
     });
     Alert.alert("Account updated", "Changes have been saved.");
     onClose();
@@ -522,29 +800,85 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
           </View>
           <View style={styles.headerCopy}>
             <Text style={[styles.title, { color: colors.foreground }]}>{roleLabels[account.role]} account</Text>
-            <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>Status: {status}</Text>
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>Status: {status}{clubApproval ? ` · ${clubApproval === "approved" ? "Approved" : clubApproval === "rejected" ? "Rejected" : "Waiting Approval"}` : ""}</Text>
           </View>
           <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.secondary }]}>
             <Feather name="x" size={20} color={colors.foreground} />
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+          <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Basic info</Text>
           {account.role === "club" ? (
-            <Field label="Club name" value={clubName} onChangeText={setClubName} />
+            <>
+              <Field label="Club name" value={clubName} onChangeText={setClubName} />
+              <Field label="Club website" value={clubWebsite} onChangeText={setClubWebsite} autoCapitalize="none" />
+              <Field label="Club address" value={clubAddress} onChangeText={setClubAddress} />
+              <Field label="Club contact email" value={clubContactEmail} onChangeText={setClubContactEmail} autoCapitalize="none" keyboardType="email-address" />
+              <Field label="Club contact mobile" value={clubContactMobile} onChangeText={setClubContactMobile} />
+            </>
           ) : (
             <>
               {account.role === "guardian" ? (
                 <Field label="Parent / guardian name" value={parentGuardianName} onChangeText={setParentGuardianName} />
               ) : null}
               <Field label="Full name" value={fullName} onChangeText={setFullName} />
-              <Field label="Player name" value={playerName} onChangeText={setPlayerName} />
+              {account.role === "guardian" || account.role === "player" ? (
+                <Field label="Player name" value={playerName} onChangeText={setPlayerName} />
+              ) : null}
+              <Field label="Gender" value={gender} onChangeText={setGender} />
+              <Field label="Date of birth (DD-MM-YYYY)" value={dateOfBirth} onChangeText={setDateOfBirth} />
+              <Field label="Bio" value={bio} onChangeText={setBio} multiline />
             </>
           )}
           <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
           <Field label="Mobile" value={mobile} onChangeText={setMobile} />
           <Field label="Location" value={location} onChangeText={setLocation} />
+          <Field label="Default sport" value={defaultSport} onChangeText={setDefaultSport} />
+          <Field label="Sports (comma-separated)" value={sports} onChangeText={setSports} />
+
+          <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Social & extras</Text>
+          <Field label="Instagram" value={instagram} onChangeText={setInstagram} autoCapitalize="none" />
+          <Field label="Facebook" value={facebook} onChangeText={setFacebook} autoCapitalize="none" />
+          <Field label="X / Twitter" value={x} onChangeText={setX} autoCapitalize="none" />
+          <Field label="TikTok" value={tiktok} onChangeText={setTiktok} autoCapitalize="none" />
+          <Field label="Highlight reel URL" value={highlightReelUrl} onChangeText={setHighlightReelUrl} autoCapitalize="none" />
 
           <PrimaryButton label="Save changes" icon="check" onPress={save} />
+
+          {account.role === "club" && (
+            <View style={styles.dangerZone}>
+              <Text style={[styles.dangerTitle, { color: colors.foreground }]}>Club approval</Text>
+              <Text style={[styles.dangerText, { color: colors.mutedForeground }]}>
+                Unapproved clubs cannot post adverts, browse listings, or use messaging.{clubApproval !== "approved" ? " This club is currently awaiting admin approval." : ""}
+              </Text>
+              <View style={styles.actionRow}>
+                {clubApproval !== "approved" && (
+                  <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => {
+                    Alert.alert("Approve Club", `Approve "${account.clubName ?? account.email}"?`, [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Approve", onPress: () => { adminApproveClub(account.id); onClose(); } },
+                    ]);
+                  }} />
+                )}
+                {clubApproval !== "rejected" && (
+                  <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => {
+                    Alert.alert("Reject Club", `Reject "${account.clubName ?? account.email}"?`, [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Reject", style: "destructive", onPress: () => { adminRejectClub(account.id); onClose(); } },
+                    ]);
+                  }} />
+                )}
+                {clubApproval === "rejected" && (
+                  <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => {
+                    Alert.alert("Approve Club", `Approve "${account.clubName ?? account.email}"?`, [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Approve", onPress: () => { adminApproveClub(account.id); onClose(); } },
+                    ]);
+                  }} />
+                )}
+              </View>
+            </View>
+          )}
 
           <View style={styles.dangerZone}>
             <Text style={[styles.dangerTitle, { color: colors.foreground }]}>Account status</Text>
@@ -906,4 +1240,5 @@ const styles = StyleSheet.create({
   dangerZone: { marginTop: 18, gap: 8 },
   dangerTitle: { fontWeight: "700", fontSize: 16 },
   dangerText: { fontWeight: "500", fontSize: 13, lineHeight: 19 },
+  sectionHeader: { fontWeight: "700", fontSize: 14, marginTop: 20, marginBottom: 8, letterSpacing: 0.2, textTransform: "uppercase" as const },
 });
