@@ -41,7 +41,28 @@ const avatarStyles = StyleSheet.create({
   initials: { color: "#FFFFFF", fontWeight: "800" },
 });
 
-function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversation; onPress: () => void; boxWidth: number }) {
+function anonymousLabel(
+  conversation: Conversation,
+  currentAccountId?: string,
+): { title: string; subtitle: string } {
+  const isPending = conversation.status === "pending";
+  if (!isPending) {
+    return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${conversation.playerName}` };
+  }
+  const isInitiator = currentAccountId === conversation.initiatorAccountId;
+  const isOwner = currentAccountId === conversation.ownerAccountId;
+  if (isInitiator) {
+    const ownerType = conversation.advertPostedByType === "club" ? "Club" : "Player";
+    return { title: `A ${ownerType} (${conversation.advertLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
+  }
+  if (isOwner) {
+    const requesterType = conversation.requesterType === "club" ? "Club" : conversation.requesterType === "coach" ? "Coach" : "Player";
+    return { title: `A ${requesterType} (${conversation.requesterLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
+  }
+  return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${conversation.playerName}` };
+}
+
+function ChatBox({ conversation, onPress, boxWidth, currentAccountId }: { conversation: Conversation; onPress: () => void; boxWidth: number; currentAccountId?: string }) {
   const colors = useColors();
   const isPending = conversation.status === "pending";
   const isDenied = conversation.status === "denied";
@@ -52,6 +73,7 @@ function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversati
   const badgeColor = isPending ? "#F59E0B" : isUnread ? "#EF4444" : "transparent";
 
   const lastMsg = conversation.messages[0];
+  const { title } = anonymousLabel(conversation, currentAccountId);
 
   return (
     <Pressable
@@ -88,7 +110,7 @@ function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversati
         )}
 
         <Text style={[styles.chatBoxName, { color: colors.foreground }]} numberOfLines={2}>
-          {conversation.clubName}
+          {title}
         </Text>
 
         {conversation.sport ? (
@@ -113,6 +135,7 @@ export function ChatRoom({ conversation, onClose, asAdmin }: { conversation: Con
   const { sendMessage, adminSendMessage, markConversationRead, currentAccount, isAdmin } = useSportsConnect();
   const [draft, setDraft] = useState("");
   const adminMode = !!asAdmin && isAdmin;
+  const { title: roomTitle, subtitle: roomSubtitle } = anonymousLabel(conversation, currentAccount?.id);
 
   useEffect(() => {
     markConversationRead(conversation.id);
@@ -137,10 +160,10 @@ export function ChatRoom({ conversation, onClose, asAdmin }: { conversation: Con
             </Pressable>
             <View style={styles.chatRoomHeaderText}>
               <Text style={[styles.chatRoomTitle, { color: colors.foreground }]} numberOfLines={1}>
-                {conversation.clubName}
+                {roomTitle}
               </Text>
               <Text style={[styles.chatRoomSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
-                {conversation.sport} · {conversation.playerName}
+                {roomSubtitle}
               </Text>
             </View>
             <View style={[styles.onlineDot, {
@@ -357,7 +380,7 @@ export default function MessagesScreen() {
           <>
             <View style={styles.grid}>
               {paged.map((conv) => (
-                <ChatBox key={conv.id} conversation={conv} boxWidth={boxWidth} onPress={() => handleBoxPress(conv)} />
+                <ChatBox key={conv.id} conversation={conv} boxWidth={boxWidth} onPress={() => handleBoxPress(conv)} currentAccountId={currentAccount?.id} />
               ))}
             </View>
 

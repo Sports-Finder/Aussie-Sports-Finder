@@ -132,6 +132,8 @@ export type Conversation = {
   requesterLocation?: string;
   requesterType?: AccountRole;
   pendingRequest?: boolean;
+  advertLocation?: string;
+  advertPostedByType?: "player" | "club";
 };
 
 export type Message = {
@@ -977,6 +979,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       playerName: isClubAdvert ? playerProfile.name : advert.postedBy,
       sport: advert.sport,
       status: "pending",
+      advertLocation: advert.location,
+      advertPostedByType: advert.postedByType,
       hasUnread: false,
       messages: [],
       requesterLocation: currentAccount?.location,
