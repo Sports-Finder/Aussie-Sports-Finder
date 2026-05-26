@@ -110,11 +110,12 @@ export type Conversation = {
   initiatorAccountId?: string;
   clubName: string;
   playerName: string;
-  status: "connected";
+  status: "pending" | "connected" | "denied";
   messages: Message[];
-  pendingRequest?: boolean;
   hasUnread?: boolean;
   sport?: string;
+  requesterLocation?: string;
+  requesterType?: AccountRole;
 };
 
 export type Message = {
@@ -196,6 +197,8 @@ type SportsConnectState = {
   updateAdvert: (id: string, patch: Partial<DraftAdvert>) => void;
   deleteAdvert: (id: string) => void;
   connectOnAdvert: (advert: Advert) => string;
+  acceptConnection: (conversationId: string) => void;
+  denyConnection: (conversationId: string) => void;
   sendMessage: (conversationId: string, body: string) => void;
   markConversationRead: (conversationId: string) => void;
   toggleNotifications: () => Promise<void>;
@@ -340,9 +343,8 @@ const seedConversations: Conversation[] = [
     advertId: "ad-5",
     clubName: "Parklands Footy Club",
     playerName: "You",
-    status: "connected",
+    status: "pending",
     sport: "Aussie Rules Football",
-    pendingRequest: true,
     messages: [],
   },
   {
@@ -363,9 +365,8 @@ const seedConversations: Conversation[] = [
     advertId: "ad-2",
     clubName: "Brisbane Rovers FC",
     playerName: "You",
-    status: "connected",
+    status: "pending",
     sport: "Football (Soccer)",
-    pendingRequest: true,
     messages: [],
   },
   {
@@ -675,23 +676,52 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       clubName: isClubAdvert ? advert.postedBy : clubProfile.name,
       playerName: isClubAdvert ? playerProfile.name : advert.postedBy,
       sport: advert.sport,
-      status: "connected",
-      hasUnread: true,
-      messages: [
-        {
-          id: makeId(),
-          sender: "them",
-          senderAccountId: currentAccount?.id,
-          body: `Connection agreed for “${advert.title}”. Use this private chat to arrange training, trials and next steps.`,
-          createdAt: now(),
-        },
-      ],
+      status: "pending",
+      hasUnread: false,
+      messages: [],
+      requesterLocation: currentAccount?.location,
+      requesterType: currentAccount?.role,
     };
     setConversations((current) => [conversation, ...current]);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     return conversation.id;
   };
 
+  const acceptConnection = (conversationId: string) => {
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return;
+    const relatedAdvert = adverts.find((a) => a.id === conv.advertId);
+    const welcomeMsg: Message = {
+      id: makeId(),
+      sender: "them",
+      senderAccountId: conv.ownerAccountId,
+      body: `Connection agreed for "${relatedAdvert?.title ?? "this advert"}". Use this private chat to arrange training, trials and next steps.`,
+      createdAt: now(),
+    };
+    setConversations((current) =>
+      current.map((c) => c.id === conversationId ? { ...c, status: "connected", hasUnread: true, messages: [welcomeMsg] } : c)
+    );
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const denyConnection = (conversationId: string) => {
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return;
+    const relatedAdvert = adverts.find((a) => a.id === conv.advertId);
+    const posterType = relatedAdvert?.postedByType ?? "club";
+    const posterLabel = posterType === "player" ? "player" : "club";
+    const denyMsg: Message = {
+      id: makeId(),
+      sender: "them",
+      senderAccountId: conv.ownerAccountId,
+      body: `Sorry. Connection wasn\'t agreed by the ${posterLabel}. Try to connect with another ${posterLabel}.`,
+      createdAt: now(),
+    };
+    setConversations((current) =>
+      current.map((c) => c.id === conversationId ? { ...c, status: "denied", hasUnread: false, messages: [denyMsg] } : c)
+    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  };
   const sendMessage = (conversationId: string, body: string) => {
     const trimmed = body.trim();
     if (!trimmed) return;
@@ -843,6 +873,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     updateAdvert,
     deleteAdvert,
     connectOnAdvert,
+    acceptConnection,
+    denyConnection,
     sendMessage,
     markConversationRead,
     toggleNotifications,

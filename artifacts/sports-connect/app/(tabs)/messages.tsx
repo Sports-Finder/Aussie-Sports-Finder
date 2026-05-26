@@ -42,11 +42,12 @@ const avatarStyles = StyleSheet.create({
 
 function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversation; onPress: () => void; boxWidth: number }) {
   const colors = useColors();
-  const isPending = conversation.pendingRequest;
-  const isUnread = !isPending && conversation.hasUnread;
+  const isPending = conversation.status === "pending";
+  const isDenied = conversation.status === "denied";
+  const isUnread = !isPending && !isDenied && conversation.hasUnread;
 
-  const borderColor = isPending ? "#F59E0B" : isUnread ? "#EF4444" : colors.border;
-  const bgColor = isPending ? "rgba(245,158,11,0.12)" : isUnread ? "rgba(239,68,68,0.10)" : colors.card;
+  const borderColor = isDenied ? colors.border : isPending ? "#F59E0B" : isUnread ? "#EF4444" : colors.border;
+  const bgColor = isDenied ? colors.muted : isPending ? "rgba(245,158,11,0.12)" : isUnread ? "rgba(239,68,68,0.10)" : colors.card;
   const badgeColor = isPending ? "#F59E0B" : isUnread ? "#EF4444" : "transparent";
 
   const lastMsg = conversation.messages[0];
@@ -63,13 +64,20 @@ function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversati
         <View style={[styles.statusBar, { backgroundColor: badgeColor }]} />
       )}
 
-      <View style={styles.chatBoxInner}>
+      <View style={[styles.chatBoxInner, isDenied ? { opacity: 0.55 } : null]}>
         {isPending ? (
           <View style={styles.pendingIconWrap}>
             <View style={[styles.pendingIcon, { backgroundColor: "#F59E0B22" }]}>
               <Feather name="bell" size={22} color="#F59E0B" />
             </View>
             <Text style={[styles.chatBoxStatus, { color: "#F59E0B" }]}>Connect request</Text>
+          </View>
+        ) : isDenied ? (
+          <View style={styles.pendingIconWrap}>
+            <View style={[styles.pendingIcon, { backgroundColor: colors.secondary }]}>
+              <Feather name="x-circle" size={22} color={colors.mutedForeground} />
+            </View>
+            <Text style={[styles.chatBoxStatus, { color: colors.mutedForeground }]}>Not agreed</Text>
           </View>
         ) : (
           <View style={styles.avatarsRow}>
@@ -83,7 +91,7 @@ function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversati
         </Text>
 
         {conversation.sport ? (
-          <Text style={[styles.chatBoxSport, { color: isPending ? "#F59E0B" : isUnread ? "#EF4444" : colors.primary }]} numberOfLines={1}>
+          <Text style={[styles.chatBoxSport, { color: isPending ? "#F59E0B" : isDenied ? colors.mutedForeground : isUnread ? "#EF4444" : colors.primary }]} numberOfLines={1}>
             {conversation.sport}
           </Text>
         ) : null}
@@ -178,23 +186,32 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
             }
           />
 
-          <View style={[styles.composer, { borderTopColor: colors.border, paddingBottom: insets.bottom + 10 }]}>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Message privately…"
-              placeholderTextColor={colors.mutedForeground}
-              style={[styles.input, { backgroundColor: colors.muted, color: colors.foreground }]}
-              onSubmitEditing={submit}
-              returnKeyType="send"
-            />
-            <Pressable
-              onPress={submit}
-              style={({ pressed }) => [styles.send, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}
-            >
-              <Feather name="send" color={colors.primaryForeground} size={18} />
-            </Pressable>
-          </View>
+          {conversation.status === "denied" ? (
+            <View style={[styles.composer, { borderTopColor: colors.border, paddingBottom: insets.bottom + 10 }]}>
+              <View style={[styles.deniedBanner, { backgroundColor: colors.muted }]}>
+                <Feather name="x-circle" color={colors.mutedForeground} size={16} />
+                <Text style={[styles.deniedBannerText, { color: colors.mutedForeground }]}>Connection was not agreed — messaging disabled</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.composer, { borderTopColor: colors.border, paddingBottom: insets.bottom + 10 }]}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Message privately…"
+                placeholderTextColor={colors.mutedForeground}
+                style={[styles.input, { backgroundColor: colors.muted, color: colors.foreground }]}
+                onSubmitEditing={submit}
+                returnKeyType="send"
+              />
+              <Pressable
+                onPress={submit}
+                style={({ pressed }) => [styles.send, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}
+              >
+                <Feather name="send" color={colors.primaryForeground} size={18} />
+              </Pressable>
+            </View>
+          )}
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -214,7 +231,7 @@ export default function MessagesScreen() {
   const paged = conversations.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   const handleBoxPress = (conv: Conversation) => {
-    if (conv.pendingRequest) {
+    if (conv.status === "pending") {
       return;
     }
     if (conv.hasUnread) {
@@ -245,6 +262,10 @@ export default function MessagesScreen() {
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: "#EF4444" }]} />
             <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Unread messages</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: colors.border }]} />
+            <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Not agreed</Text>
           </View>
         </View>
 
@@ -385,4 +406,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  deniedBanner: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 14 },
+  deniedBannerText: { fontWeight: "600", fontSize: 13, flex: 1 },
 });

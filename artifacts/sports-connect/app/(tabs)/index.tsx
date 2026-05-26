@@ -1,10 +1,9 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { FlatList, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Advert, useSportsConnect } from "@/context/SportsConnectContext";
+import { AccountRole, Advert, Conversation, useSportsConnect } from "@/context/SportsConnectContext";
 import { IconButton, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
 import { allSportsFilterName, getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
@@ -34,6 +33,17 @@ function typeLabel(type: Advert["type"]) {
     : type === "coach-wanted" ? "Staff (Coach/TD) Wanted for Club"
     : type === "club-trials" ? "Club Trials Info"
     : "";
+}
+
+function requesterTypeLabel(type?: AccountRole, count = 1): string {
+  const base = type === "club" ? "Club" : type === "coach" ? "Coach" : "Player";
+  return count === 1 ? base : `${base}s`;
+}
+
+function convGroupLabel(convs: Pick<Conversation, "requesterType">[], singular = "Person", plural = "People"): string {
+  if (convs.length === 0) return plural;
+  const types = [...new Set(convs.map((c) => c.requesterType))];
+  return types.length === 1 ? requesterTypeLabel(types[0], convs.length) : convs.length === 1 ? singular : plural;
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -71,13 +81,16 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
 
 function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void }) {
   const colors = useColors();
-  const { connectOnAdvert, conversations, approvedSports, currentAccount } = useSportsConnect();
+  const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert.createdAt);
-  const isConnected = conversations.some(
-    (c) => c.advertId === advert.id && (c.initiatorAccountId === currentAccount?.id || c.ownerAccountId === currentAccount?.id)
-  );
   const isOwnAdvert = !!(currentAccount?.id && advert.ownerAccountId && advert.ownerAccountId === currentAccount.id);
+  const advertConvs = conversations.filter((c) => c.advertId === advert.id);
+  const connectedConvs = isOwnAdvert ? advertConvs.filter((c) => c.status === "connected") : [];
+  const pendingConvs = isOwnAdvert ? advertConvs.filter((c) => c.status === "pending") : [];
+  const firstPending = pendingConvs[0] ?? null;
+  const myRequest = !isOwnAdvert ? advertConvs.find((c) => c.initiatorAccountId === currentAccount?.id) : undefined;
+  const isConnected = !isOwnAdvert && myRequest?.status === "connected";
 
   const posterLabel = isConnected
     ? advert.postedBy
@@ -85,8 +98,6 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
 
   const connect = () => {
     connectOnAdvert(advert);
-    onClose();
-    router.push("/messages");
   };
 
   const trainingSchedule = (() => {
@@ -149,6 +160,21 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               {advert.trialRequired ? <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}><Text style={[styles.detailChipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
               {feesLabel ? <View style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}><Text style={[styles.detailChipText, { color: colors.primary }]}>{feesLabel}</Text></View> : null}
             </View>
+
+            {/* ── Connection notification ── */}
+            {isOwnAdvert && connectedConvs.length > 0 ? (
+              <View style={[styles.connectedBadge, { backgroundColor: colors.pitchSoft }]}>
+                <Feather name="check-circle" color={colors.primary} size={18} />
+                <Text style={[styles.connectedText, { color: colors.primary }]}>
+                  {`You are connected to ${connectedConvs.length} ${convGroupLabel(connectedConvs)} — message ${connectedConvs.length === 1 ? "this person" : "these people"} in the Messages tab`}
+                </Text>
+              </View>
+            ) : !isOwnAdvert && myRequest?.status === "connected" ? (
+              <View style={[styles.connectedBadge, { backgroundColor: colors.pitchSoft }]}>
+                <Feather name="check-circle" color={colors.primary} size={18} />
+                <Text style={[styles.connectedText, { color: colors.primary }]}>You are connected — message in the Messages tab</Text>
+              </View>
+            ) : null}
 
             {/* ── Positions ── */}
             {advert.positions && advert.positions.length > 0 ? (
@@ -222,18 +248,54 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
 
             <View style={{ height: 16 }} />
 
-            {/* ── Connect button ── */}
+            {/* ── Connection section ── */}
             {isOwnAdvert ? (
-              <View style={[styles.connectedBadge, { backgroundColor: colors.secondary }]}>
-                <Feather name="user" color={colors.mutedForeground} size={18} />
-                <Text style={[styles.connectedText, { color: colors.mutedForeground }]}>This is your advert — manage it in the Post tab</Text>
+              <>
+                {pendingConvs.length > 0 ? (
+                  <Text style={[styles.pendingCountText, { color: colors.foreground }]}>
+                    {`You have ${pendingConvs.length} ${convGroupLabel(pendingConvs, "Connection", "Connection")} Request${pendingConvs.length === 1 ? "" : "s"} for this advert.`}
+                  </Text>
+                ) : null}
+                {firstPending ? (
+                  <View style={[styles.pendingRequestCard, { backgroundColor: colors.amberSoft, borderColor: "#F59E0B" }]}>
+                    <Text style={[styles.pendingRequestText, { color: colors.foreground }]}>
+                      {`A ${requesterTypeLabel(firstPending.requesterType)} from ${firstPending.requesterLocation ?? "an unknown location"} wants to connect privately. Agree to connect?`}
+                    </Text>
+                    <View style={styles.acceptDenyRow}>
+                      <Pressable
+                        onPress={() => acceptConnection(firstPending.id)}
+                        style={({ pressed }) => [styles.acceptBtn, { opacity: pressed ? 0.8 : 1 }]}
+                      >
+                        <Feather name="check" color="#FFFFFF" size={20} />
+                        <Text style={styles.acceptDenyBtnText}>Accept</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => denyConnection(firstPending.id)}
+                        style={({ pressed }) => [styles.denyBtn, { opacity: pressed ? 0.8 : 1 }]}
+                      >
+                        <Feather name="x" color="#FFFFFF" size={20} />
+                        <Text style={styles.acceptDenyBtnText}>Deny</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={[styles.connectedBadge, { backgroundColor: colors.secondary }]}>
+                    <Feather name="inbox" color={colors.mutedForeground} size={18} />
+                    <Text style={[styles.connectedText, { color: colors.mutedForeground }]}>You have no New Connection Requests.</Text>
+                  </View>
+                )}
+              </>
+            ) : myRequest?.status === "pending" ? (
+              <View style={[styles.connectedBadge, { backgroundColor: colors.amberSoft }]}>
+                <Feather name="clock" color="#F59E0B" size={18} />
+                <Text style={[styles.connectedText, { color: "#F59E0B" }]}>Connection Request Sent — awaiting response</Text>
               </View>
-            ) : isConnected ? (
-              <View style={[styles.connectedBadge, { backgroundColor: colors.pitchSoft }]}>
-                <Feather name="check-circle" color={colors.primary} size={18} />
-                <Text style={[styles.connectedText, { color: colors.primary }]}>You are connected — message in the Messages tab</Text>
+            ) : myRequest?.status === "denied" ? (
+              <View style={[styles.connectedBadge, { backgroundColor: "#FDECEA" }]}>
+                <Feather name="x-circle" color="#D9534F" size={18} />
+                <Text style={[styles.connectedText, { color: "#D9534F" }]}>Your connection request was not accepted</Text>
               </View>
-            ) : (
+            ) : myRequest?.status === "connected" ? null : (
               <PrimaryButton label="Agree to connect privately" icon="message-circle" onPress={connect} />
             )}
           </ScrollView>
@@ -423,6 +485,13 @@ const styles = StyleSheet.create({
   tag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   tagText: { fontWeight: "600", fontSize: 12 },
   connectedBadge: { flexDirection: "row", alignItems: "center", gap: 10, padding: 16, borderRadius: 18 },
+  pendingCountText: { fontWeight: "700", fontSize: 14, marginBottom: 8 },
+  pendingRequestCard: { borderRadius: 18, borderWidth: 1.5, padding: 16, gap: 14 },
+  pendingRequestText: { fontWeight: "600", fontSize: 14, lineHeight: 20 },
+  acceptDenyRow: { flexDirection: "row", gap: 12 },
+  acceptBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#22C55E", borderRadius: 14, paddingVertical: 12 },
+  denyBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#EF4444", borderRadius: 14, paddingVertical: 12 },
+  acceptDenyBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
   connectedText: { fontWeight: "600", fontSize: 14, flex: 1 },
   emptyState: { borderWidth: 1, borderRadius: 24, padding: 22, alignItems: "center", gap: 8 },
   emptyTitle: { fontWeight: "800", fontSize: 17 },

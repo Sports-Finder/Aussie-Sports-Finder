@@ -40,6 +40,7 @@ export function useColors() {
     border: sportTheme.soft,
     input: sportTheme.soft,
     pitchSoft: sportTheme.soft,
+    amberSoft: palette.amberSoft,
     accent: sportTheme.soft,
     accentForeground: sportTheme.text,
     tint: sportTheme.button,

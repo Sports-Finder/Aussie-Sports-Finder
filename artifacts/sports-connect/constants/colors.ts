@@ -20,7 +20,7 @@ const colors = {
     input: "#D8CA8F",
     pitch: "#043B18",
     pitchSoft: "#D8F09B",
-    amberSoft: "#F4B14B",
+    amberSoft: "#FEF3C7",
     navy: "#1C211E",
   },
   radius: 18,
