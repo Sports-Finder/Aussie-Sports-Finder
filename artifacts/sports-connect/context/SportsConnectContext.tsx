@@ -505,6 +505,30 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         setProfileImages(fetchedProfileImages);
         setPendingSportRequests(fetchedSportRequests);
         setBannedEmails(fetchedBannedEmails);
+        // Restore local-only state (currentAccount, clubProfile, playerProfile, selectedSport, activeProfile)
+        // from AsyncStorage so profile pics and settings survive across reloads
+        try {
+          const stored = await AsyncStorage.getItem(storageKey);
+          if (stored) {
+            const parsed = JSON.parse(stored) as typeof defaultState;
+            if (parsed.currentAccount) {
+              // Merge with fetched account data so profileImageId etc stays current
+              const fresh = fetchedAccounts.find((a: UserAccount) => a.id === parsed.currentAccount?.id);
+              setCurrentAccount(fresh ? {
+                ...parsed.currentAccount,
+                ...fresh,
+                profileImageId: fresh.profileImageId ?? parsed.currentAccount.profileImageId,
+                profileImageDeclines: fresh.profileImageDeclines ?? parsed.currentAccount.profileImageDeclines,
+              } : parsed.currentAccount);
+            }
+            if (parsed.clubProfile) setClubProfile(parsed.clubProfile);
+            if (parsed.playerProfile) setPlayerProfile(parsed.playerProfile);
+            if (parsed.selectedSport) setSelectedSport(parsed.selectedSport);
+            if (parsed.activeProfile) setActiveProfile(parsed.activeProfile);
+            if (parsed.notificationSettings) setNotificationSettings(parsed.notificationSettings);
+            if (parsed.pendingHighlightLinks?.length) setPendingHighlightLinks(parsed.pendingHighlightLinks);
+          }
+        } catch (_) { /* ignore */ }
       } catch (e) {
         // API unreachable, will fall back to AsyncStorage below
         if (cancelled) return;
@@ -1039,11 +1063,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       Alert.alert("Image not accepted", validationError);
       return;
     }
-    const image: ProfileImage = { id: makeId(), owner, uri: asset.uri, status: "pending", submittedAt: now() };
+    const displayName = currentAccount?.role === "club"
+      ? (currentAccount.clubName || "Club")
+      : currentAccount?.role === "guardian"
+        ? (currentAccount.playerName || currentAccount.parentGuardianName || "Player")
+        : (currentAccount?.fullName || currentAccount?.playerName || "Player");
+    const image: ProfileImage = { id: makeId(), owner: displayName, uri: asset.uri, status: "pending", submittedAt: now() };
     setProfileImages((current) => [image, ...current]);
     if (owner === "club") setClubProfile((current) => ({ ...current, imageId: image.id }));
     if (owner === "player") setPlayerProfile((current) => ({ ...current, imageId: image.id }));
     updateAccount({ profileImageId: image.id });
+    if (currentAccount) {
+      api.updateAccount(currentAccount.id, { profileImageId: image.id }).catch(() => undefined);
+    }
     api.createProfileImage({ ...image, publicId: image.id }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
@@ -1067,8 +1099,16 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       Alert.alert("Image not accepted", validationError);
       return undefined;
     }
-    const image: ProfileImage = { id: makeId(), owner, uri: asset.uri, status: "pending", submittedAt: now() };
+    const displayName = currentAccount?.role === "club"
+      ? (currentAccount.clubName || "Club")
+      : currentAccount?.role === "guardian"
+        ? (currentAccount.playerName || currentAccount.parentGuardianName || "Player")
+        : (currentAccount?.fullName || currentAccount?.playerName || "Player");
+    const image: ProfileImage = { id: makeId(), owner: displayName, uri: asset.uri, status: "pending", submittedAt: now() };
     setProfileImages((current) => [image, ...current]);
+    if (currentAccount) {
+      api.updateAccount(currentAccount.id, { profileImageId: image.id }).catch(() => undefined);
+    }
     api.createProfileImage({ ...image, publicId: image.id }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return image.id;

@@ -591,7 +591,9 @@ function ModerationSection() {
         return (
           <View key={img.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.itemHeader}>
-              <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{img.owner}</Text>
+              <Pressable onPress={() => { if (account) Alert.alert(account.role === "club" ? account.clubName || "Club" : account.fullName || account.playerName || "Player", `Role: ${account.role}\nEmail: ${account.email}\nStatus: ${account.status}`); }} style={{ flex: 1 }}>
+                <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{img.owner}</Text>
+              </Pressable>
               <View style={[styles.badge, { backgroundColor: "#FEF3C7" }]}>
                 <Text style={[styles.badgeText, { color: "#92400E" }]}>Pending</Text>
               </View>
@@ -610,7 +612,11 @@ function ModerationSection() {
               <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
                 Previous declines: {account.profileImageDeclines ?? 0}
               </Text>
-            ) : null}
+            ) : (
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                Account not linked — image may be orphaned
+              </Text>
+            )}
             <View style={styles.actionRow}>
               <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => moderateImage(img.id, "approved")} />
               <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => moderateImage(img.id, "rejected")} />
