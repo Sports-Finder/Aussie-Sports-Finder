@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import {
   FlatList,
@@ -168,12 +169,18 @@ export function ChatRoom({ conversation, onClose, asAdmin }: { conversation: Con
               }
               if (item.isAdmin) {
                 return (
-                  <View style={[styles.bubble, styles.adminBubble, { backgroundColor: "#7C2D12", borderColor: "#FCD34D" }]}>
-                    <View style={styles.adminTagRow}>
-                      <Feather name="shield" size={12} color="#FCD34D" />
-                      <Text style={styles.adminTag}>ADMIN WARNING</Text>
+                  <View style={styles.adminBubbleWrap}>
+                    <View style={styles.adminSenderRow}>
+                      <Image source={require("@/assets/images/icon.png")} style={styles.adminAvatar} contentFit="cover" />
+                      <Text style={styles.adminSenderName}>Admin</Text>
                     </View>
-                    <Text style={[styles.bubbleText, { color: "#FFF" }]}>{item.body}</Text>
+                    <View style={[styles.bubble, styles.adminBubble, { backgroundColor: "#7C2D12", borderColor: "#FCD34D" }]}>
+                      <View style={styles.adminTagRow}>
+                        <Feather name="shield" size={12} color="#FCD34D" />
+                        <Text style={styles.adminTag}>ADMIN WARNING</Text>
+                      </View>
+                      <Text style={[styles.bubbleText, { color: "#FFF" }]}>{item.body}</Text>
+                    </View>
                   </View>
                 );
               }
@@ -457,7 +464,11 @@ const styles = StyleSheet.create({
   deniedBannerText: { fontWeight: "600", fontSize: 13, flex: 1 },
   systemBubble: { alignSelf: "center", flexDirection: "row", alignItems: "flex-start", gap: 6, marginVertical: 4, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, maxWidth: "92%" },
   systemBubbleText: { fontWeight: "500", fontSize: 13, lineHeight: 19, flex: 1, fontStyle: "italic" },
-  adminBubble: { alignSelf: "center", borderWidth: 1, maxWidth: "92%", gap: 6 },
+  adminBubbleWrap: { alignSelf: "center", maxWidth: "92%", gap: 6 },
+  adminSenderRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 2 },
+  adminAvatar: { width: 22, height: 22, borderRadius: 11 },
+  adminSenderName: { color: "#FCD34D", fontWeight: "800", fontSize: 12, letterSpacing: 0.3 },
+  adminBubble: { borderWidth: 1, gap: 6 },
   adminTagRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   adminTag: { color: "#FCD34D", fontWeight: "800", fontSize: 11, letterSpacing: 0.8 },
 });

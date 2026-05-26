@@ -280,11 +280,22 @@ export default function ProfileScreen() {
         <View>
           <Text style={[styles.kicker, { color: colors.primary }]}>My profile</Text>
           <Text style={[styles.title, { color: colors.foreground }]}>
-            {isClub ? "Club profile" : isGuardian ? "Player profile" : isCoach ? "Coach profile" : "Player profile"}
+            {isAdmin ? "Admin profile" : isClub ? "Club profile" : isGuardian ? "Player profile" : isCoach ? "Coach profile" : "Player profile"}
           </Text>
         </View>
 
-        {currentAccount ? (
+        {isAdmin ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.accountTop}>
+              <ProfileAvatar uri={undefined} fallback={require("@/assets/images/icon.png")} size={52} />
+              <View style={styles.accountCopy}>
+                <Text style={[styles.accountName, { color: colors.foreground }]}>Admin</Text>
+                <Text style={[styles.accountRole, { color: colors.mutedForeground }]}>Administrator</Text>
+                <Text style={[styles.accountRole, { color: colors.mutedForeground }]}>Full app access</Text>
+              </View>
+            </View>
+          </View>
+        ) : currentAccount ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.accountTop}>
               <View style={[styles.accountIcon, { backgroundColor: colors.pitchSoft }]}>
@@ -308,13 +319,17 @@ export default function ProfileScreen() {
         {mode === "view" ? (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.profileTop}>
-              <ProfileAvatar uri={isClub ? clubImage : playerImage} fallback={fallbackImage} size={72} />
+              <ProfileAvatar
+                uri={isAdmin ? undefined : isClub ? clubImage : playerImage}
+                fallback={isAdmin ? require("@/assets/images/icon.png") : fallbackImage}
+                size={72}
+              />
               <View style={styles.profileCopy}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-                  {isClub ? "Club profile" : isCoach ? "Coach profile" : "Player profile"}
+                  {isAdmin ? "Admin profile" : isClub ? "Club profile" : isCoach ? "Coach profile" : "Player profile"}
                 </Text>
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
-                  {isClub ? "Club details shown below." : isGuardian ? `${currentAccount?.parentGuardianName ?? "Parent/Guardian"} (Parent/Guardian) is managing this Player.` : "Profile details shown below."}
+                  {isAdmin ? "Administrator account with full app access." : isClub ? "Club details shown below." : isGuardian ? `${currentAccount?.parentGuardianName ?? "Parent/Guardian"} (Parent/Guardian) is managing this Player.` : "Profile details shown below."}
                 </Text>
               </View>
             </View>
