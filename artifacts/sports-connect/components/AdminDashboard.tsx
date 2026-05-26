@@ -612,7 +612,7 @@ function ChatsSection() {
           })
         )}
       </ScrollView>
-      {opened && <ChatRoom conversation={opened} onClose={() => setOpenedId(null)} asAdmin />}
+      {openedId && <ChatRoom conversationId={openedId} onClose={() => setOpenedId(null)} asAdmin />}
     </>
   );
 }

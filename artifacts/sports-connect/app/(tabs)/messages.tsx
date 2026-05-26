@@ -129,24 +129,47 @@ function ChatBox({ conversation, onPress, boxWidth, currentAccountId }: { conver
   );
 }
 
-export function ChatRoom({ conversation, onClose, asAdmin }: { conversation: Conversation; onClose: () => void; asAdmin?: boolean }) {
+function MessageSender({ accountId, isMe }: { accountId?: string; isMe: boolean }) {
+  const colors = useColors();
+  const { accounts, currentAccount, getImageUri } = useSportsConnect();
+  const account = isMe ? currentAccount : accounts.find((a) => a.id === accountId);
+  const name = isMe
+    ? (account?.clubName || account?.fullName || account?.playerName || "You")
+    : (account?.clubName || account?.fullName || account?.playerName || "User");
+  const uri = getImageUri(account?.profileImageId);
+  return (
+    <View style={[styles.senderRow, { alignSelf: isMe ? "flex-end" : "flex-start" }]}>
+      {uri ? (
+        <Image source={{ uri }} style={styles.senderAvatar} contentFit="cover" />
+      ) : (
+        <View style={[styles.senderAvatar, { backgroundColor: isMe ? colors.primary : colors.mutedForeground, alignItems: "center", justifyContent: "center" }]}>
+          <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 10 }}>{name.slice(0, 1).toUpperCase()}</Text>
+        </View>
+      )}
+      <Text style={[styles.senderName, { color: colors.foreground }]}>{name}</Text>
+    </View>
+  );
+}
+
+export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId: string; onClose: () => void; asAdmin?: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { sendMessage, adminSendMessage, markConversationRead, currentAccount, isAdmin } = useSportsConnect();
+  const { conversations, sendMessage, adminSendMessage, markConversationRead, currentAccount, isAdmin } = useSportsConnect();
+  const conversation = conversations.find((c) => c.id === conversationId)!;
   const [draft, setDraft] = useState("");
   const adminMode = !!asAdmin && isAdmin;
   const { title: roomTitle, subtitle: roomSubtitle } = anonymousLabel(conversation, currentAccount?.id);
 
   useEffect(() => {
-    markConversationRead(conversation.id);
+    markConversationRead(conversationId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversation.id]);
+  }, [conversationId]);
 
   const submit = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    if (adminMode) adminSendMessage(conversation.id, trimmed);
-    else sendMessage(conversation.id, trimmed);
+    if (adminMode) adminSendMessage(conversationId, trimmed);
+    else sendMessage(conversationId, trimmed);
     setDraft("");
   };
 
@@ -213,21 +236,24 @@ export function ChatRoom({ conversation, onClose, asAdmin }: { conversation: Con
                 ? item.senderAccountId === currentAccount?.id
                 : item.sender === "me";
               return (
-                <View
-                  style={[
-                    styles.bubble,
-                    isMyMessage ? styles.mine : styles.theirs,
-                    { backgroundColor: isMyMessage ? colors.primary : colors.secondary },
-                  ]}
-                >
-                  <Text
+                <View style={{ alignSelf: isMyMessage ? "flex-end" : "flex-start", maxWidth: "84%", gap: 4 }}>
+                  <MessageSender accountId={item.senderAccountId} isMe={isMyMessage} />
+                  <View
                     style={[
-                      styles.bubbleText,
-                      { color: isMyMessage ? colors.primaryForeground : colors.secondaryForeground },
+                      styles.bubble,
+                      isMyMessage ? styles.mine : styles.theirs,
+                      { backgroundColor: isMyMessage ? colors.primary : colors.secondary },
                     ]}
                   >
-                    {item.body}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.bubbleText,
+                        { color: isMyMessage ? colors.primaryForeground : colors.secondaryForeground },
+                      ]}
+                    >
+                      {item.body}
+                    </Text>
+                  </View>
                 </View>
               );
             }}
@@ -421,7 +447,7 @@ export default function MessagesScreen() {
         )}
       </ScrollView>
 
-      {openConv && <ChatRoom conversation={openConv} onClose={() => setOpenConv(null)} />}
+      {openConv && <ChatRoom conversationId={openConv.id} onClose={() => setOpenConv(null)} />}
     </ScreenShell>
   );
 }
@@ -513,6 +539,9 @@ const styles = StyleSheet.create({
   systemBubbleText: { fontWeight: "500", fontSize: 13, lineHeight: 19, flex: 1, fontStyle: "italic" },
   adminBubbleWrap: { alignSelf: "center", maxWidth: "92%", gap: 6 },
   adminSenderRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 2 },
+  senderRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 2 },
+  senderAvatar: { width: 22, height: 22, borderRadius: 11, overflow: "hidden" },
+  senderName: { color: "#000", fontWeight: "700", fontSize: 12, letterSpacing: 0.2 },
   adminAvatar: { width: 22, height: 22, borderRadius: 11 },
   adminSenderName: { color: "#FCD34D", fontWeight: "800", fontSize: 12, letterSpacing: 0.3 },
   adminBubble: { borderWidth: 1, gap: 6 },
