@@ -9,6 +9,16 @@ import { getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
 
 type AgeGroup = { label: string; min: number; max: number };
+type TrialSlot = { date: string; timeFrom: string; timeTo: string };
+
+const COACH_ROLES = ["Head Coach", "Assistant Coach", "Trainer", "Technical Director"];
+const COACH_EXPERIENCE_LEVELS = [
+  { value: "Level 1", label: "Beginner / Trainee / Community / Non-Competitive (Level 1)" },
+  { value: "Level 2", label: "Development Focused (Level 2)" },
+  { value: "Level 3", label: "Performance / Club Pro / Competitive (Level 3)" },
+  { value: "Level 4", label: "High Performance / Senior (Level 4)" },
+];
+const COACH_POSITION_TYPES = ["Paid Full-time", "Paid Part-time", "One off payment", "Unpaid Volunteer"];
 const AGE_GROUPS: AgeGroup[] = [
   { label: "Tiny Tots / Minis (Ages 3–6)", min: 3, max: 6 },
   { label: "Junior (Ages 7–11)", min: 7, max: 11 },
@@ -431,6 +441,12 @@ export default function PostScreen() {
   const [seasonFeesText, setSeasonFeesText] = useState("");
   const [trialRequired, setTrialRequired] = useState(false);
   const [scheduleNote, setScheduleNote] = useState("");
+  const [trialSlots, setTrialSlots] = useState<TrialSlot[]>([{ date: "", timeFrom: "", timeTo: "" }]);
+  const [coachRole, setCoachRole] = useState("");
+  const [coachExperienceLevel, setCoachExperienceLevel] = useState("");
+  const [coachPositionTypes, setCoachPositionTypes] = useState<string[]>([]);
+  const [coachSalaryText, setCoachSalaryText] = useState("");
+  const [coachSalaryTbc, setCoachSalaryTbc] = useState(false);
   const [title, setTitle] = useState("");
 
   useEffect(() => {
@@ -502,6 +518,12 @@ export default function PostScreen() {
     setSeasonFeesText(advert.seasonFees ? String(advert.seasonFees) : "");
     setTrialRequired(advert.trialRequired ?? false);
     setScheduleNote(advert.scheduleNote || "");
+    setTrialSlots(advert.trialSlots?.length ? advert.trialSlots : [{ date: "", timeFrom: "", timeTo: "" }]);
+    setCoachRole(advert.coachRole || "");
+    setCoachExperienceLevel(advert.coachExperienceLevel || "");
+    setCoachPositionTypes(advert.coachPositionTypes ?? []);
+    setCoachSalaryText(advert.coachSalary ? String(advert.coachSalary) : "");
+    setCoachSalaryTbc(advert.coachSalaryTbc ?? false);
     setSubmitted(false);
     setSelectedMyAdvert(null);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -528,6 +550,12 @@ export default function PostScreen() {
     setSeasonFeesText("");
     setTrialRequired(false);
     setScheduleNote("");
+    setTrialSlots([{ date: "", timeFrom: "", timeTo: "" }]);
+    setCoachRole("");
+    setCoachExperienceLevel("");
+    setCoachPositionTypes([]);
+    setCoachSalaryText("");
+    setCoachSalaryTbc(false);
     setSubmitted(false);
     setShowErrors(false);
   };
@@ -545,14 +573,36 @@ export default function PostScreen() {
   const isClubTrials = type === "club-trials";
   const isCoachWanted = type === "coach-wanted";
   const showPlayerDesc = isPlayerLooking || isCoachLooking;
-  const showClubDesc = isPlayersWanted || isClubTrials || isCoachWanted;
   const showCoachTitle = isCoachLooking;
   const showSchedule = isPlayerLooking || isPlayersWanted;
   const showClubFees = isPlayersWanted;
   const trainingDaysOk = trainingTbd || trainingDays.length > 0;
   const gameDaysOk = gameTbd || gameDays.length > 0;
   const scheduleOk = !showSchedule || (trainingDaysOk && gameDaysOk);
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && ageGroup !== null && scheduleOk;
+
+  function parseTrialDate(s: string): string | null {
+    const parts = s.trim().split("/");
+    if (parts.length !== 3 || parts[2].length !== 4) return null;
+    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  const trialSlotOrderErrors: boolean[] = trialSlots.map((slot, i) => {
+    if (i === 0) return false;
+    const prev = trialSlots[i - 1];
+    const pd = parseTrialDate(prev.date);
+    const cd = parseTrialDate(slot.date);
+    if (!pd || !cd) return false;
+    if (cd < pd) return true;
+    if (cd === pd && slot.timeFrom.trim() !== "" && prev.timeFrom.trim() !== "" && slot.timeFrom.trim() <= prev.timeFrom.trim()) return true;
+    return false;
+  });
+  const trialSlotDuplicates: boolean[] = trialSlots.map((slot, i) =>
+    trialSlots.some((other, j) => j < i && other.date.trim() !== "" && other.date.trim() === slot.date.trim() && other.timeFrom.trim() === slot.timeFrom.trim())
+  );
+  const hasTrialSlotErrors = trialSlotOrderErrors.some(Boolean) || trialSlotDuplicates.some(Boolean);
+  const trialSlotsOk = !isClubTrials || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors);
+  const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && coachExperienceLevel.trim().length > 0 && coachPositionTypes.length > 0);
+
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && ageGroup !== null && scheduleOk && trialSlotsOk && coachWantedOk;
 
   const validationErrors: string[] = [];
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb or town) is required");
@@ -561,6 +611,11 @@ export default function PostScreen() {
   if (description.trim().length <= 10) validationErrors.push("Additional Details must be at least 10 characters");
   if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick TBD)");
   if (showSchedule && !gameDaysOk) validationErrors.push("Game days must be selected (or tick TBD)");
+  if (isClubTrials && trialSlots[0].date.trim().length === 0) validationErrors.push("At least one trial date is required");
+  if (isClubTrials && hasTrialSlotErrors) validationErrors.push("Trial dates must be in chronological order with no duplicates");
+  if (isCoachWanted && !coachRole) validationErrors.push("Coach role must be selected");
+  if (isCoachWanted && !coachExperienceLevel) validationErrors.push("Experience level must be selected");
+  if (isCoachWanted && coachPositionTypes.length === 0) validationErrors.push("Position type must be selected");
 
   function toggleDay(list: string[], day: string): string[] {
     return list.includes(day) ? list.filter((d) => d !== day) : [...list, day];
@@ -580,7 +635,9 @@ export default function PostScreen() {
       sport,
       location: suburb.trim(),
       level,
-      availability: trainingTbd && gameTbd ? "TBD" : [trainingDays.join("/") || "TBD", gameDays.join("/") || "TBD"].join(" | "),
+      availability: isClubTrials
+        ? trialSlots.filter((s) => s.date.trim()).map((s) => s.date).join(", ") || "TBD"
+        : trainingTbd && gameTbd ? "TBD" : [trainingDays.join("/") || "TBD", gameDays.join("/") || "TBD"].join(" | "),
       description,
       needs: isPlayersWanted ? "Players wanted" : isClubTrials ? "Club trials" : isCoachWanted ? "Coach wanted" : "Player looking",
       ageGroup: ageGroup.label,
@@ -597,6 +654,12 @@ export default function PostScreen() {
       gameTimeTo: gameTo.trim() || undefined,
       gameTbd,
       scheduleNote: isPlayerLooking ? scheduleNote.trim() || undefined : undefined,
+      trialSlots: isClubTrials ? trialSlots.filter((s) => s.date.trim()) : undefined,
+      coachRole: isCoachWanted ? coachRole || undefined : undefined,
+      coachExperienceLevel: isCoachWanted ? coachExperienceLevel || undefined : undefined,
+      coachPositionTypes: isCoachWanted ? coachPositionTypes : undefined,
+      coachSalary: isCoachWanted && !coachSalaryTbc && coachSalaryText.trim() ? parseFloat(coachSalaryText.replace(/[^0-9.]/g, "")) : undefined,
+      coachSalaryTbc: isCoachWanted ? coachSalaryTbc : undefined,
       seasonFees,
       feesNegotiable,
       feesFree,
@@ -627,6 +690,12 @@ export default function PostScreen() {
     setSeasonFeesText("");
     setTrialRequired(false);
     setScheduleNote("");
+    setTrialSlots([{ date: "", timeFrom: "", timeTo: "" }]);
+    setCoachRole("");
+    setCoachExperienceLevel("");
+    setCoachPositionTypes([]);
+    setCoachSalaryText("");
+    setCoachSalaryTbc(false);
     setSubmitted(true);
     setShowErrors(false);
   };
@@ -710,7 +779,7 @@ export default function PostScreen() {
                 {coachTitles.map((item) => <Pill key={item} label={item} active={coachTitle === item} onPress={() => setCoachTitle(item)} />)}
               </View>
             </>
-          ) : (
+          ) : !isCoachWanted ? (
             <>
               <FormLabel text="Position(s)" />
               <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select all that apply.</Text>
@@ -718,7 +787,7 @@ export default function PostScreen() {
                 {positionOptions.map((p) => <Pill key={p} label={p} active={positions.includes(p)} onPress={() => togglePosition(p)} />)}
               </View>
             </>
-          )}
+          ) : null}
 
           <Field label="Advert title" value={title} editable={false} placeholder="Auto-generated from your selections" />
           <Field label="Location *" value={suburb} onChangeText={setSuburb} placeholder="Suburb or town" />
@@ -742,12 +811,105 @@ export default function PostScreen() {
           </View>
           <Field label="Level" value={level} onChangeText={setLevel} placeholder="Beginner, amateur, semi-pro, elite" />
 
+          {isClubTrials && (
+            <>
+              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Trial Dates & Times</Text>
+              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Add the date(s) and times for your club trials. Dates must be in chronological order with no duplicates.</Text>
+              {trialSlots.map((slot, i) => {
+                const hasOrderError = trialSlotOrderErrors[i];
+                const hasDupError = trialSlotDuplicates[i];
+                return (
+                  <View key={i} style={{ gap: 6, marginTop: 10 }}>
+                    {i > 0 && (
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <FormLabel text={`Trial Date ${i + 1}`} />
+                        <Pressable onPress={() => setTrialSlots((prev) => prev.filter((_, j) => j !== i))} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+                          <Feather name="x-circle" size={18} color="#D9534F" />
+                        </Pressable>
+                      </View>
+                    )}
+                    {i === 0 && <FormLabel text="Trial Date 1" required />}
+                    <TextInput
+                      value={slot.date}
+                      onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, date: v } : s))}
+                      placeholder="DD/MM/YYYY"
+                      placeholderTextColor={colors.mutedForeground}
+                      style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: (hasOrderError || hasDupError) ? "#D9534F" : colors.border, color: colors.foreground, flex: 1, paddingHorizontal: 12, paddingVertical: 10 }]}
+                    />
+                    <View style={localStyles.timeRowInner}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>FROM</Text>
+                        <TextInput value={slot.timeFrom} onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeFrom: v } : s))} placeholder="e.g. 9:00 AM" placeholderTextColor={colors.mutedForeground} style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>TO</Text>
+                        <TextInput value={slot.timeTo} onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeTo: v } : s))} placeholder="e.g. 11:00 AM" placeholderTextColor={colors.mutedForeground} style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]} />
+                      </View>
+                    </View>
+                    {(hasOrderError || hasDupError) && (
+                      <Text style={{ color: "#D9534F", fontSize: 13, marginTop: 2 }}>
+                        {hasDupError ? "This date and time is a duplicate of a previous slot." : "Please change the date or times of your trials so they are in chronological order."}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
+              {trialSlots.length < 6 && (
+                <Pressable onPress={() => setTrialSlots((prev) => [...prev, { date: "", timeFrom: "", timeTo: "" }])} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, opacity: pressed ? 0.7 : 1 }]}>
+                  <Feather name="plus-circle" size={18} color={colors.primary} />
+                  <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 14 }}>Add another date and time</Text>
+                </Pressable>
+              )}
+            </>
+          )}
+
           {showPlayerDesc && (
             <Field label="In 100 words or less, describe what type of player you are" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe your style, strengths and what you bring to a team…" multiline />
           )}
-
-          {showClubDesc && (
+          {isPlayersWanted && (
             <Field label="In 100 words or less, describe what type of player you are looking for" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe the player profile, attitude and skills required…" multiline />
+          )}
+          {isClubTrials && (
+            <Field label="In 100 words or less, describe what type of Player/s you are looking for" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe the player profile, attitude and skills required…" multiline />
+          )}
+          {isCoachWanted && (
+            <>
+              <Field label="In 100 words or less, describe what type of Coach or TD you are looking for" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe the ideal coaching candidate, qualifications and philosophy…" multiline />
+              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Coach Role</Text>
+              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select the role you are advertising for.</Text>
+              {COACH_ROLES.map((role) => (
+                <CheckRow key={role} label={role} value={coachRole === role} onToggle={() => setCoachRole((prev) => prev === role ? "" : role)} />
+              ))}
+              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Experience Required</Text>
+              <View style={{ gap: 6, marginBottom: 8 }}>
+                {COACH_EXPERIENCE_LEVELS.map((lvl) => (
+                  <Pressable key={lvl.value} onPress={() => setCoachExperienceLevel(lvl.value)} style={[localStyles.ageGroupRow, { backgroundColor: coachExperienceLevel === lvl.value ? colors.primary : colors.secondary, borderColor: coachExperienceLevel === lvl.value ? colors.primary : colors.border }]}>
+                    <Text style={[localStyles.ageGroupText, { color: coachExperienceLevel === lvl.value ? "#FFF" : colors.secondaryForeground }]}>{lvl.label}</Text>
+                    {coachExperienceLevel === lvl.value ? <Feather name="check" color="#FFF" size={14} /> : null}
+                  </Pressable>
+                ))}
+              </View>
+              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>What Type of Position Is This Role?</Text>
+              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select all that apply.</Text>
+              {COACH_POSITION_TYPES.map((pt) => (
+                <CheckRow key={pt} label={pt} value={coachPositionTypes.includes(pt)} onToggle={() => setCoachPositionTypes((prev) => prev.includes(pt) ? prev.filter((x) => x !== pt) : [...prev, pt])} />
+              ))}
+              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Annual Salary (AUD) — Optional</Text>
+              <CheckRow label="TBC / Negotiable" value={coachSalaryTbc} onToggle={() => { setCoachSalaryTbc(!coachSalaryTbc); setCoachSalaryText(""); }} />
+              {!coachSalaryTbc && (
+                <View style={localStyles.feeRow}>
+                  <View style={[localStyles.feeCurrencyBadge, { backgroundColor: colors.secondary }]}>
+                    <Text style={[localStyles.feeCurrencyText, { color: colors.secondaryForeground }]}>AUD $</Text>
+                  </View>
+                  <TextInput value={coachSalaryText} onChangeText={(t) => setCoachSalaryText(t.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.mutedForeground} style={[localStyles.feeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground, flex: 1 }]} />
+                </View>
+              )}
+            </>
           )}
 
           <Field label="Additional Details" value={description} onChangeText={setDescription} placeholder="Describe the opportunity, player, club culture or requirements" multiline />
