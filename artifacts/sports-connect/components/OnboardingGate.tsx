@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React, { useMemo, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "@/components/SportsUI";
@@ -86,7 +86,7 @@ function isValidSocialLink(platform: keyof SocialLinks, value: string) {
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { currentAccount, isAdmin, adminLogin, approvedSports, accounts, createAccount, loginWithEmail, pickAccountImage, signOutResetToken } = useSportsConnect();
+  const { currentAccount, isAdmin, isHydrated, adminLogin, approvedSports, accounts, createAccount, loginWithEmail, pickAccountImage, signOutResetToken } = useSportsConnect();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [step, setStep] = useState<Step>("auth");
@@ -98,6 +98,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [recaptchaPassed, setRecaptchaPassed] = useState(false);
   const [loginError, setLoginError] = useState<"no_account" | "wrong_password" | null>(null);
+  const [signupEmailExists, setSignupEmailExists] = useState(false);
   const [humanChecked, setHumanChecked] = useState(false);
   const [role, setRole] = useState<AccountRole>("player");
   const [profileImageId, setProfileImageId] = useState<string | undefined>();
@@ -191,6 +192,16 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     return Boolean(nameValid && form.gender && form.dateOfBirth && guardianAgeValid && playerAgeValid && form.mobile.trim() && selectedSports.length && defaultSport && form.agreed);
   }, [age, defaultSport, form, humanChecked, isClub, primaryEmail, role, selectedSports.length]);
 
+  if (!isHydrated) {
+    return (
+      <View style={[styles.shell, { backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }]}>
+        <Image source={logo} style={styles.logo} contentFit="contain" />
+        <Text style={[styles.brandTitle, { color: colors.foreground, marginTop: 20, textAlign: "center" }]}>Aussie Sports Club Finder</Text>
+        <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: 28 }} />
+        <Text style={[styles.brandText, { color: colors.mutedForeground, marginTop: 12, textAlign: "center" }]}>Loading your session…</Text>
+      </View>
+    );
+  }
   if (currentAccount || isAdmin) return <>{children}</>;
 
   const update = (key: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
@@ -215,6 +226,12 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const signupValid = email.includes("@") && password.length >= 8 && password === confirmPassword && recaptchaPassed;
 
   const handleEmailSignup = () => {
+    const emailLower = email.toLowerCase().trim();
+    if (accounts.some((acc) => acc.email.toLowerCase() === emailLower)) {
+      setSignupEmailExists(true);
+      return;
+    }
+    setSignupEmailExists(false);
     setHumanChecked(true);
     setStep("type");
   };
@@ -365,7 +382,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
               <Text style={[styles.backBtnText, { color: colors.primary }]}>Back to email accounts</Text>
             </Pressable>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Sign Up with Email</Text>
-            <Input label="Email Address (required)" value={email} onChangeText={setEmail} keyboardType="email-address" />
+            <Input label="Email Address (required)" value={email} onChangeText={(v) => { setEmail(v); setSignupEmailExists(false); }} keyboardType="email-address" />
             <View style={styles.passwordWrap}>
               <View style={styles.passwordRow}>
                 <View style={styles.passwordFlex}>
@@ -388,6 +405,17 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
               ) : null}
             </View>
             <CheckRow active={recaptchaPassed} label="I am not a robot (reCAPTCHA)" onPress={() => setRecaptchaPassed(!recaptchaPassed)} />
+            {signupEmailExists ? (
+              <View style={{ gap: 8 }}>
+                <Text style={[styles.errorText, { color: "#EF4444" }]}>An account is already registered with this email address.</Text>
+                <Pressable
+                  onPress={() => { setSignupEmailExists(false); setPassword(""); setConfirmPassword(""); setStep("email-login"); }}
+                  style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
+                >
+                  <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 14 }}>Go to Login instead →</Text>
+                </Pressable>
+              </View>
+            ) : null}
             <PrimaryButton label="Continue to Account Set Up" icon="arrow-right" onPress={handleEmailSignup} disabled={!signupValid} />
           </View>
         ) : null}

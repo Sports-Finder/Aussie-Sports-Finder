@@ -179,6 +179,7 @@ type SportsConnectState = {
   selectedSport: string;
   activeProfile: ProfileType;
   isAdmin: boolean;
+  isHydrated: boolean;
   setSelectedSport: (sport: string) => void;
   setActiveProfile: (profile: ProfileType) => void;
   requestSport: (name: string) => void;
@@ -441,6 +442,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
   const [signOutResetToken, setSignOutResetToken] = useState(0);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(adminStorageKey).then((stored) => {
@@ -456,25 +458,29 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     AsyncStorage.getItem(storageKey).then((stored) => {
-      if (!stored) return;
-      const parsed = JSON.parse(stored) as typeof defaultState;
-      setAdverts((parsed.adverts ?? defaultState.adverts).map((advert) => ({
-        ...advert,
-        type: normalizeAdvertType(advert.type),
-      })));
-      setConversations(parsed.conversations ?? defaultState.conversations);
-      setProfileImages(parsed.profileImages ?? []);
-      setPendingHighlightLinks(parsed.pendingHighlightLinks ?? []);
-      setAccounts(parsed.accounts ?? []);
-      setCurrentAccount(parsed.currentAccount);
-      setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
-      setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
-      setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
-      setApprovedSports(parsed.approvedSports ?? defaultState.approvedSports);
-      setPendingSportRequests(parsed.pendingSportRequests ?? []);
-      setSelectedSport(parsed.selectedSport ?? defaultState.selectedSport);
-      setActiveProfile(parsed.activeProfile ?? "player");
-    }).catch(() => undefined);
+      if (stored) {
+        const parsed = JSON.parse(stored) as typeof defaultState;
+        setAdverts((parsed.adverts ?? defaultState.adverts).map((advert) => ({
+          ...advert,
+          type: normalizeAdvertType(advert.type),
+        })));
+        setConversations(parsed.conversations ?? defaultState.conversations);
+        setProfileImages(parsed.profileImages ?? []);
+        setPendingHighlightLinks(parsed.pendingHighlightLinks ?? []);
+        setAccounts(parsed.accounts ?? []);
+        setCurrentAccount(parsed.currentAccount);
+        setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
+        setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
+        setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
+        setApprovedSports(parsed.approvedSports ?? defaultState.approvedSports);
+        setPendingSportRequests(parsed.pendingSportRequests ?? []);
+        setSelectedSport(parsed.selectedSport ?? defaultState.selectedSport);
+        setActiveProfile(parsed.activeProfile ?? "player");
+      }
+      setIsHydrated(true);
+    }).catch(() => {
+      setIsHydrated(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -820,6 +826,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     selectedSport,
     activeProfile,
     isAdmin,
+    isHydrated,
     setSelectedSport,
     setActiveProfile,
     requestSport,
