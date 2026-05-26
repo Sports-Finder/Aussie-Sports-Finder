@@ -67,7 +67,7 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowLaunch(false), 5000);
+    const timer = setTimeout(() => setShowLaunch(false), 1200);
     return () => clearTimeout(timer);
   }, []);
 

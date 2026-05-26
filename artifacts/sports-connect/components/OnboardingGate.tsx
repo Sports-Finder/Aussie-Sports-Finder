@@ -341,7 +341,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
         <View style={styles.brand}>
           <Image source={logo} style={styles.logo} contentFit="contain" />
           <Text style={[styles.brandTitle, { color: colors.foreground }]}>Aussie Sports Club Finder</Text>
-          <Text style={[styles.brandText, { color: colors.mutedForeground }]}>Sign up, choose your account type, then create the profile clubs and players see after a connection is accepted.</Text>
+          <Text style={[styles.brandText, { color: colors.mutedForeground }]}>Welcome to the ultimate Player, Coach & Club Portal for Aussie Sports Nationwide, both community & competitive for all age groups. Sign Up, choose your Account Type & create your profile, and make a connection today!</Text>
         </View>
 
         {step === "auth" ? (
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
   shell: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 18 },
   brand: { alignItems: "center", gap: 10 },
-  logo: { width: 118, height: 118, borderRadius: 28 },
+  logo: { width: 236, height: 236, borderRadius: 56 },
   brandTitle: { fontWeight: "800", fontSize: 28, textAlign: "center", letterSpacing: -0.7 },
   brandText: { fontWeight: "500", fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 340 },
   card: { borderWidth: 1, borderRadius: 30, padding: 18, gap: 14 },
