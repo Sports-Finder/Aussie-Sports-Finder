@@ -70,7 +70,7 @@ function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversati
             <View style={[styles.pendingIcon, { backgroundColor: "#F59E0B22" }]}>
               <Feather name="bell" size={22} color="#F59E0B" />
             </View>
-            <Text style={[styles.chatBoxStatus, { color: "#F59E0B" }]}>Connect request</Text>
+            <Text style={[styles.chatBoxStatus, { color: "#F59E0B" }]}>Awaiting response</Text>
           </View>
         ) : isDenied ? (
           <View style={styles.pendingIconWrap}>
@@ -96,13 +96,9 @@ function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversati
           </Text>
         ) : null}
 
-        {lastMsg && !isPending ? (
-          <Text style={[styles.chatBoxPreview, { color: colors.mutedForeground }]} numberOfLines={2}>
+        {lastMsg ? (
+          <Text style={[styles.chatBoxPreview, { color: isPending ? "#F59E0B" : colors.mutedForeground }]} numberOfLines={2}>
             {lastMsg.body}
-          </Text>
-        ) : isPending ? (
-          <Text style={[styles.chatBoxPreview, { color: "#F59E0B" }]} numberOfLines={2}>
-            Tap to review request
           </Text>
         ) : null}
       </View>
@@ -144,7 +140,11 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
                 {conversation.sport} · {conversation.playerName}
               </Text>
             </View>
-            <View style={[styles.onlineDot, { backgroundColor: colors.primary }]} />
+            <View style={[styles.onlineDot, {
+              backgroundColor: conversation.status === "pending" ? "#F59E0B"
+                : conversation.status === "denied" ? colors.mutedForeground
+                : colors.primary,
+            }]} />
           </View>
 
           <FlatList
@@ -154,6 +154,16 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
             style={styles.flex}
             contentContainerStyle={[styles.messageContent, { paddingBottom: insets.bottom + 20 }]}
             renderItem={({ item }) => {
+              if (item.isSystem) {
+                return (
+                  <View style={[styles.systemBubble, { backgroundColor: colors.muted }]}>
+                    <Feather name="info" size={13} color={colors.mutedForeground} />
+                    <Text style={[styles.systemBubbleText, { color: colors.mutedForeground }]}>
+                      {item.body}
+                    </Text>
+                  </View>
+                );
+              }
               const isMyMessage = item.senderAccountId
                 ? item.senderAccountId === currentAccount?.id
                 : item.sender === "me";
@@ -186,7 +196,14 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
             }
           />
 
-          {conversation.status === "denied" ? (
+          {conversation.status === "pending" ? (
+            <View style={[styles.composer, { borderTopColor: "#F59E0B", paddingBottom: insets.bottom + 10, borderTopWidth: 2 }]}>
+              <View style={[styles.deniedBanner, { backgroundColor: colors.amberSoft }]}>
+                <Feather name="clock" color="#B45309" size={16} />
+                <Text style={[styles.deniedBannerText, { color: "#B45309" }]}>Chat inactive — awaiting acceptance of your connection request</Text>
+              </View>
+            </View>
+          ) : conversation.status === "denied" ? (
             <View style={[styles.composer, { borderTopColor: colors.border, paddingBottom: insets.bottom + 10 }]}>
               <View style={[styles.deniedBanner, { backgroundColor: colors.muted }]}>
                 <Feather name="x-circle" color={colors.mutedForeground} size={16} />
@@ -231,10 +248,7 @@ export default function MessagesScreen() {
   const paged = conversations.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   const handleBoxPress = (conv: Conversation) => {
-    if (conv.status === "pending") {
-      return;
-    }
-    if (conv.hasUnread) {
+    if (conv.hasUnread && conv.status !== "pending") {
       markConversationRead(conv.id);
     }
     setOpenConv(conv);
@@ -408,4 +422,6 @@ const styles = StyleSheet.create({
   },
   deniedBanner: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 14 },
   deniedBannerText: { fontWeight: "600", fontSize: 13, flex: 1 },
+  systemBubble: { alignSelf: "center", flexDirection: "row", alignItems: "flex-start", gap: 6, marginVertical: 4, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, maxWidth: "92%" },
+  systemBubbleText: { fontWeight: "500", fontSize: 13, lineHeight: 19, flex: 1, fontStyle: "italic" },
 });

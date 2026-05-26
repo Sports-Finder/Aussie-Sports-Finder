@@ -106,6 +106,7 @@ export type Advert = {
 export type Conversation = {
   id: string;
   advertId: string;
+  advertTitle?: string;
   ownerAccountId?: string;
   initiatorAccountId?: string;
   clubName: string;
@@ -124,6 +125,7 @@ export type Message = {
   senderAccountId?: string;
   body: string;
   createdAt: string;
+  isSystem?: boolean;
 };
 
 type ProfileImage = {
@@ -668,9 +670,18 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     const existing = conversations.find((c) => c.advertId === advert.id && c.initiatorAccountId === currentAccount?.id);
     if (existing) return existing.id;
     const isClubAdvert = advert.postedByType === "club";
-    const conversation: Conversation = {
+    const convId = makeId();
+    const inactiveMsg: Message = {
       id: makeId(),
+      sender: "them",
+      isSystem: true,
+      body: `This chat is currently inactive until your request to connect for "${advert.title}" is accepted by the author.`,
+      createdAt: now(),
+    };
+    const conversation: Conversation = {
+      id: convId,
       advertId: advert.id,
+      advertTitle: advert.title,
       ownerAccountId: advert.ownerAccountId,
       initiatorAccountId: currentAccount?.id,
       clubName: isClubAdvert ? advert.postedBy : clubProfile.name,
@@ -678,28 +689,30 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       sport: advert.sport,
       status: "pending",
       hasUnread: false,
-      messages: [],
+      messages: [inactiveMsg],
       requesterLocation: currentAccount?.location,
       requesterType: currentAccount?.role,
     };
     setConversations((current) => [conversation, ...current]);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-    return conversation.id;
+    return convId;
   };
 
   const acceptConnection = (conversationId: string) => {
     const conv = conversations.find((c) => c.id === conversationId);
     if (!conv) return;
     const relatedAdvert = adverts.find((a) => a.id === conv.advertId);
-    const welcomeMsg: Message = {
+    const title = conv.advertTitle ?? relatedAdvert?.title ?? "this advert";
+    const activeMsg: Message = {
       id: makeId(),
       sender: "them",
       senderAccountId: conv.ownerAccountId,
-      body: `Connection agreed for "${relatedAdvert?.title ?? "this advert"}". Use this private chat to arrange training, trials and next steps.`,
+      isSystem: true,
+      body: `This chat is now active to discuss "${title}" between ${conv.clubName} & ${conv.playerName}. Please do not share any sensitive information such as credit card, home address etc. All chats are closely monitored and will be closed immediately at any signs or evidence of misuse or abuse from either party.`,
       createdAt: now(),
     };
     setConversations((current) =>
-      current.map((c) => c.id === conversationId ? { ...c, status: "connected", hasUnread: true, messages: [welcomeMsg] } : c)
+      current.map((c) => c.id === conversationId ? { ...c, status: "connected", hasUnread: true, messages: [activeMsg] } : c)
     );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
