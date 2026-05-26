@@ -68,6 +68,7 @@ export type UserAccount = {
   statusChangedAt?: string;
   statusReason?: string;
   bio?: string;
+  socialId?: string;
 };
 
 export type Advert = {
@@ -174,7 +175,7 @@ type NotificationSettings = {
 };
 
 type DraftAdvert = Omit<Advert, "id" | "createdAt" | "distanceKm" | "postedBy" | "postedByType">;
-type DraftAccount = Omit<UserAccount, "id" | "createdAt" | "approved">;
+type DraftAccount = Omit<UserAccount, "id" | "createdAt" | "approved"> & { socialId?: string };
 const normalizeAdvertType = (type: Advert["type"]): Advert["type"] => {
   if (type === "player-looking") return "coach-looking";
   return type;
@@ -202,6 +203,7 @@ type SportsConnectState = {
   accounts: UserAccount[];
   bannedEmails: string[];
   loginWithEmail: (email: string, password: string) => boolean;
+  loginWithSocial: (authMethod: AuthMethod, socialId: string) => boolean;
   createAccount: (draft: DraftAccount) => boolean;
   signOut: () => void;
   signOutResetToken: number;
@@ -580,8 +582,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       return false;
     }
     const publicId = makeId();
+    const { socialId, ...rest } = draft;
     const account: UserAccount = {
-      ...draft,
+      ...rest,
+      socialId,
       id: publicId,
       createdAt: now(),
       approved: true,
@@ -681,6 +685,44 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     if (match.status === "closed") {
       Alert.alert("Account closed", "This account has been closed by an administrator.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+      return false;
+    }
+    setCurrentAccount(match);
+    setSelectedSport(match.defaultSport);
+    setActiveProfile(match.role === "club" ? "club" : "player");
+    if (match.role === "club") {
+      setClubProfile((current) => ({
+        ...current,
+        name: match.clubName || current.name,
+        sport: match.defaultSport,
+        location: match.location || current.location,
+        mapAddress: match.clubAddress || current.mapAddress,
+        imageId: match.profileImageId,
+      }));
+    } else {
+      setPlayerProfile((current) => ({
+        ...current,
+        name: match.role === "guardian" ? match.playerName || current.name : match.fullName || match.playerName || current.name,
+        sports: match.sports.join(", "),
+        location: match.location || current.location,
+        imageId: match.profileImageId,
+      }));
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    return true;
+  };
+
+  const loginWithSocial = (authMethod: AuthMethod, socialId: string): boolean => {
+    const match = accounts.find(
+      (acc) => acc.authMethod === authMethod && acc.socialId === socialId
+    );
+    if (!match) return false;
+    if (match.status === "banned") {
+      Alert.alert("Account banned", "This account has been banned by an administrator.");
+      return false;
+    }
+    if (match.status === "closed") {
+      Alert.alert("Account closed", "This account has been closed by an administrator.");
       return false;
     }
     setCurrentAccount(match);
@@ -1066,6 +1108,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     accounts,
     bannedEmails,
     loginWithEmail,
+    loginWithSocial,
     createAccount,
     signOut,
     signOutResetToken,

@@ -1,6 +1,7 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -13,6 +14,17 @@ import { useColors } from "@/hooks/useColors";
 const logo = require("@/assets/images/icon.png");
 const states = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
 const genders = ["Male", "Female", "Pref Not to Say"];
+
+function generateSocialId(prefix: string) {
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `${prefix}_${ts}_${rand}`;
+}
+
+function getSimulatedEmail(authMethod: AuthMethod, socialId: string) {
+  if (authMethod === "apple") return `apple_${socialId.slice(6)}@privaterelay.appleid.com`;
+  return `google_${socialId.slice(7)}@gmail.com`;
+}
 
 type Step = "auth" | "verify" | "email-signup" | "email-login" | "type" | "details";
 
@@ -87,11 +99,12 @@ function isValidSocialLink(platform: keyof SocialLinks, value: string) {
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { currentAccount, isAdmin, isHydrated, adminLogin, adminSignOut, approvedSports, accounts, createAccount, loginWithEmail, pickAccountImage, signOutResetToken } = useSportsConnect();
+  const { currentAccount, isAdmin, isHydrated, adminLogin, adminSignOut, approvedSports, accounts, createAccount, loginWithEmail, loginWithSocial, pickAccountImage, signOutResetToken } = useSportsConnect();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [step, setStep] = useState<Step>("auth");
   const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
+  const [socialId, setSocialId] = useState<string>("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -133,6 +146,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     setStep("auth");
     setAuthMethod("email");
+    setSocialId("");
     setEmail("");
     setPassword("");
     setConfirmPassword("");
@@ -208,17 +222,29 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
   const update = (key: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
 
-  const beginAuth = (method: AuthMethod) => {
+  const beginAuth = async (method: AuthMethod) => {
     setAuthMethod(method);
-    if (method === "apple") {
-      setEmail("apple.user@privaterelay.appleid.com");
+    if (method === "apple" || method === "google") {
+      const storageKey = `social-id-${method}`;
+      let storedId: string | null = null;
+      try {
+        storedId = await AsyncStorage.getItem(storageKey);
+      } catch (_) { /* ignore */ }
+      if (!storedId) {
+        storedId = generateSocialId(method);
+        try {
+          await AsyncStorage.setItem(storageKey, storedId);
+        } catch (_) { /* ignore */ }
+      }
+      setSocialId(storedId);
+      setEmail(getSimulatedEmail(method, storedId));
       setHumanChecked(true);
-      setStep("type");
-      return;
-    }
-    if (method === "google") {
-      setEmail("google.user@gmail.com");
-      setHumanChecked(true);
+      // Check if this user already has an account and log them in directly
+      const existing = accounts.find((a) => a.authMethod === method && a.socialId === storedId);
+      if (existing) {
+        loginWithSocial(method, storedId);
+        return;
+      }
       setStep("type");
       return;
     }
@@ -290,6 +316,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       clubAddress: form.clubAddress,
       clubContactEmail: form.clubContactEmail,
       clubContactMobile: form.clubContactMobile,
+      socialId: authMethod !== "email" ? socialId : undefined,
       password: authMethod === "email" ? password : undefined,
     });
     if (!created) return;

@@ -4,6 +4,7 @@ export function mapAccount(row: Record<string, unknown>) {
     role: row.role as string,
     authMethod: row.authMethod as string,
     email: row.email as string,
+    socialId: row.socialId as string | undefined,
     fullName: row.fullName as string | undefined,
     parentGuardianName: row.parentGuardianName as string | undefined,
     playerName: row.playerName as string | undefined,

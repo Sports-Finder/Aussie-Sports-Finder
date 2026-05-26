@@ -8,6 +8,7 @@ export const accountsTable = pgTable("accounts", {
   role: varchar("role", { length: 20 }).notNull(), // player, guardian, coach, club
   authMethod: varchar("auth_method", { length: 20 }).notNull(), // apple, google, email
   email: text("email").notNull().unique(),
+  socialId: text("social_id"),
   passwordHash: text("password_hash"),
   fullName: text("full_name"),
   parentGuardianName: text("parent_guardian_name"),
