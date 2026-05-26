@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, sportRequestsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapSportRequest } from "../lib/mapDbToApi";
+import { normalizeDates } from "../lib/normalizeDates";
 
 const router: IRouter = Router();
 
@@ -29,9 +30,10 @@ router.post("/sport-requests", async (req, res) => {
 router.put("/sport-requests/:publicId", async (req, res) => {
   try {
     const publicId = req.params.publicId;
+    const body = normalizeDates(req.body, ["requestedAt"]);
     const [updated] = await db
       .update(sportRequestsTable)
-      .set(req.body)
+      .set(body)
       .where(eq(sportRequestsTable.publicId, publicId))
       .returning();
     if (!updated) {

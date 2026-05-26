@@ -199,7 +199,7 @@ type SportsConnectState = {
   setSelectedSport: (sport: string) => void;
   setActiveProfile: (profile: ProfileType) => void;
   requestSport: (name: string) => void;
-  moderateSportRequest: (requestId: string, status: "approved" | "rejected") => void;
+  moderateSportRequest: (requestId: string, status: "approved" | "rejected") => Promise<void>;
   accounts: UserAccount[];
   bannedEmails: string[];
   loginWithEmail: (email: string, password: string) => boolean;
@@ -211,14 +211,14 @@ type SportsConnectState = {
   adminLogin: (passcode: string) => boolean;
   adminSignOut: () => void;
   changeAdminPasscode: (current: string, next: string) => boolean;
-  adminUpdateAccount: (accountId: string, patch: Partial<UserAccount>) => void;
+  adminUpdateAccount: (accountId: string, patch: Partial<UserAccount>) => Promise<void>;
   adminSetAccountStatus: (accountId: string, status: AccountStatus, reason?: string) => Promise<void>;
   adminUnbanEmail: (email: string) => Promise<void>;
   adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string) => Promise<void>;
   adminSendMessage: (conversationId: string, body: string) => Promise<void>;
   createAdvert: (draft: DraftAdvert) => Promise<void>;
-  updateAdvert: (id: string, patch: Partial<DraftAdvert>) => void;
-  deleteAdvert: (id: string) => void;
+  updateAdvert: (id: string, patch: Partial<DraftAdvert>) => Promise<void>;
+  deleteAdvert: (id: string) => Promise<void>;
   connectOnAdvert: (advert: Advert) => Promise<string>;
   acceptConnection: (conversationId: string) => void;
   denyConnection: (conversationId: string) => void;
@@ -560,7 +560,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
-  const moderateSportRequest = (requestId: string, status: "approved" | "rejected") => {
+  const moderateSportRequest = async (requestId: string, status: "approved" | "rejected") => {
     const request = pendingSportRequests.find((item) => item.id === requestId);
     if (!request) return;
     if (status === "approved") {
@@ -570,7 +570,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       });
     }
     setPendingSportRequests((current) => current.map((item) => item.id === requestId ? { ...item, status } : item));
-    api.updateSportRequest(requestId, { status }).catch(() => undefined);
+    try { await api.updateSportRequest(requestId, { status }); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
@@ -782,9 +782,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return true;
   };
 
-  const adminUpdateAccount = (accountId: string, patch: Partial<UserAccount>) => {
+  const adminUpdateAccount = async (accountId: string, patch: Partial<UserAccount>) => {
     setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, ...patch } : acc));
     setCurrentAccount((current) => (current && current.id === accountId ? { ...current, ...patch } : current));
+    try { await api.updateAccount(accountId, patch); } catch (_) { /* silent */ }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
@@ -858,13 +859,15 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
-  const updateAdvert = (id: string, patch: Partial<DraftAdvert>) => {
+  const updateAdvert = async (id: string, patch: Partial<DraftAdvert>) => {
     setAdverts((current) => current.map((a) => a.id === id ? { ...a, ...patch } : a));
+    try { await api.updateAdvert(id, patch); } catch (_) { /* silent */ }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
-  const deleteAdvert = (id: string) => {
+  const deleteAdvert = async (id: string) => {
     setAdverts((current) => current.filter((a) => a.id !== id));
+    try { await api.deleteAdvert(id); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 

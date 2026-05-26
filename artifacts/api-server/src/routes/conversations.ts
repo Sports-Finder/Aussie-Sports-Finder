@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, conversationsTable, messagesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapConversation, mapMessage } from "../lib/mapDbToApi";
+import { normalizeDates } from "../lib/normalizeDates";
 
 const router: IRouter = Router();
 
@@ -37,9 +38,10 @@ router.post("/conversations", async (req, res) => {
 router.put("/conversations/:publicId", async (req, res) => {
   try {
     const { publicId } = req.params;
+    const body = normalizeDates(req.body, ["createdAt"]);
     const [updated] = await db
       .update(conversationsTable)
-      .set(req.body)
+      .set(body)
       .where(eq(conversationsTable.publicId, publicId))
       .returning();
     if (!updated) {

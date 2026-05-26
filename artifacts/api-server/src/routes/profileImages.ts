@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, profileImagesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapProfileImage } from "../lib/mapDbToApi";
+import { normalizeDates } from "../lib/normalizeDates";
 
 const router: IRouter = Router();
 
@@ -29,9 +30,10 @@ router.post("/profile-images", async (req, res) => {
 router.put("/profile-images/:publicId", async (req, res) => {
   try {
     const publicId = req.params.publicId;
+    const body = normalizeDates(req.body, ["submittedAt"]);
     const [updated] = await db
       .update(profileImagesTable)
-      .set(req.body)
+      .set(body)
       .where(eq(profileImagesTable.publicId, publicId))
       .returning();
     if (!updated) {
