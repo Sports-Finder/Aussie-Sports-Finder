@@ -894,9 +894,9 @@ export default function PostScreen() {
               </View>
               <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
               <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>What Type of Position Is This Role?</Text>
-              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select all that apply.</Text>
+              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select one option only.</Text>
               {COACH_POSITION_TYPES.map((pt) => (
-                <CheckRow key={pt} label={pt} value={coachPositionTypes.includes(pt)} onToggle={() => setCoachPositionTypes((prev) => prev.includes(pt) ? prev.filter((x) => x !== pt) : [...prev, pt])} />
+                <CheckRow key={pt} label={pt} value={coachPositionTypes.includes(pt)} onToggle={() => setCoachPositionTypes((prev) => prev.includes(pt) ? [] : [pt])} />
               ))}
               {coachPositionTypes.includes("Unpaid Volunteer") && coachPositionTypes.length === 1 ? null : (
                 <>
