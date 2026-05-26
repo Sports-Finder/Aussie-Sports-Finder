@@ -412,6 +412,7 @@ export default function PostScreen() {
   const [level, setLevel] = useState("Competitive amateur");
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
   const [ageGroup, setAgeGroup] = useState<AgeGroup | null>(null);
   const [preferredAge, setPreferredAge] = useState<number | null>(null);
   const [positions, setPositions] = useState<string[]>([]);
@@ -525,6 +526,7 @@ export default function PostScreen() {
     setSeasonFeesText("");
     setTrialRequired(false);
     setSubmitted(false);
+    setShowErrors(false);
   };
 
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
@@ -548,6 +550,14 @@ export default function PostScreen() {
   const gameDaysOk = gameTbd || gameDays.length > 0;
   const scheduleOk = !showSchedule || (trainingDaysOk && gameDaysOk);
   const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && ageGroup !== null && scheduleOk;
+
+  const validationErrors: string[] = [];
+  if (suburb.trim().length <= 1) validationErrors.push("Location (suburb or town) is required");
+  if (state.trim().length <= 1) validationErrors.push("State must be selected");
+  if (ageGroup === null) validationErrors.push("Age Group must be selected");
+  if (description.trim().length <= 10) validationErrors.push("Additional Details must be at least 10 characters");
+  if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick TBD)");
+  if (showSchedule && !gameDaysOk) validationErrors.push("Game days must be selected (or tick TBD)");
 
   function toggleDay(list: string[], day: string): string[] {
     return list.includes(day) ? list.filter((d) => d !== day) : [...list, day];
@@ -613,6 +623,7 @@ export default function PostScreen() {
     setSeasonFeesText("");
     setTrialRequired(false);
     setSubmitted(true);
+    setShowErrors(false);
   };
 
   return (
@@ -779,10 +790,24 @@ export default function PostScreen() {
 
           <View style={{ marginTop: 12 }}>
             {submitted ? <Text style={[localStyles.success, { color: colors.primary }]}>{editingId ? "Advert updated." : "Advert posted and visible in Discover."}</Text> : null}
-            {!ageGroup && <Text style={[localStyles.formHint, { color: "#D9534F", marginBottom: 6 }]}>* Age Group is required</Text>}
-            {showSchedule && !trainingDaysOk && <Text style={[localStyles.formHint, { color: "#D9534F", marginBottom: 6 }]}>* Select training days or mark as TBD</Text>}
-            {showSchedule && !gameDaysOk && <Text style={[localStyles.formHint, { color: "#D9534F", marginBottom: 6 }]}>* Select game days or mark as TBD</Text>}
-            <PrimaryButton label={editingId ? "Save changes" : "Publish advert"} icon={editingId ? "check" : "send"} onPress={submit} disabled={!canSubmit} />
+            <PrimaryButton
+              label={editingId ? "Save changes" : "Publish advert"}
+              icon={editingId ? "check" : "send"}
+              onPress={submit}
+              onPressWhenDisabled={() => setShowErrors(true)}
+              disabled={!canSubmit}
+            />
+            {showErrors && validationErrors.length > 0 && (
+              <View style={{ marginTop: 10, gap: 5 }}>
+                <Text style={{ color: "#D9534F", fontSize: 13, fontWeight: "700", marginBottom: 2 }}>Please complete the following before publishing:</Text>
+                {validationErrors.map((err, i) => (
+                  <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
+                    <Text style={{ color: "#D9534F", fontSize: 13, lineHeight: 20 }}>•</Text>
+                    <Text style={{ color: "#D9534F", fontSize: 13, lineHeight: 20, flex: 1 }}>{err}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
             {editingId ? (
               <Pressable onPress={cancelEdit} style={({ pressed }) => [localStyles.cancelEditBtn, { opacity: pressed ? 0.7 : 1 }]}>
                 <Text style={[localStyles.cancelEditText, { color: colors.mutedForeground }]}>Cancel edit</Text>

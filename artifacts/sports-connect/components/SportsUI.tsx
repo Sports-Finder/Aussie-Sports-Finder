@@ -29,10 +29,11 @@ export function Pill({ label, active, onPress }: { label: string; active?: boole
   );
 }
 
-export function PrimaryButton({ label, icon, onPress, disabled }: { label: string; icon?: keyof typeof Feather.glyphMap; onPress: () => void; disabled?: boolean }) {
+export function PrimaryButton({ label, icon, onPress, onPressWhenDisabled, disabled }: { label: string; icon?: keyof typeof Feather.glyphMap; onPress: () => void; onPressWhenDisabled?: () => void; disabled?: boolean }) {
   const colors = useColors();
+  const handlePress = disabled ? (onPressWhenDisabled ?? undefined) : onPress;
   return (
-    <Pressable onPress={onPress} disabled={disabled} style={({ pressed }) => [styles.button, { backgroundColor: disabled ? colors.mutedForeground : colors.primary, opacity: pressed ? 0.82 : 1 }]}>
+    <Pressable onPress={handlePress} style={({ pressed }) => [styles.button, { backgroundColor: disabled ? colors.mutedForeground : colors.primary, opacity: pressed ? 0.82 : 1 }]}>
       {icon ? <Feather name={icon} color={colors.primaryForeground} size={18} /> : null}
       <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{label}</Text>
     </Pressable>
