@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AdminDashboard } from "@/components/AdminDashboard";
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
 import { SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
@@ -91,28 +92,18 @@ export default function ProfileScreen() {
     updatePlayerProfile,
     updateClubProfile,
     pickProfileImage,
-    profileImages,
-    moderateImage,
     getImageUri,
     approvedSports,
-    pendingSportRequests,
-    moderateSportRequest,
     currentAccount,
     signOut,
-    pendingHighlightLinks,
-    moderateHighlightLink,
     isAdmin,
-    adminSignOut,
-    changeAdminPasscode,
     updateAccount,
   } = useSportsConnect();
 
   const [mode, setMode] = useState<Mode>("view");
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [draftDob, setDraftDob] = useState("");
-  const [showChangePasscode, setShowChangePasscode] = useState(false);
-  const [currentPasscodeInput, setCurrentPasscodeInput] = useState("");
-  const [newPasscodeInput, setNewPasscodeInput] = useState("");
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
 
   const [playerBio, setPlayerBio] = useState(playerProfile.bio ?? "");
   const [guardianBio, setGuardianBio] = useState(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
@@ -131,9 +122,6 @@ export default function ProfileScreen() {
     setSuburb(currentAccount?.location ?? "");
   }, [currentAccount?.bio, currentAccount?.role, clubProfile, playerProfile]);
 
-  const pendingImages = profileImages.filter((img) => img.status === "pending");
-  const pendingSports = pendingSportRequests.filter((r) => r.status === "pending");
-  const pendingHighlights = pendingHighlightLinks.filter((l) => l.status === "pending");
   const playerImage = getImageUri(playerProfile.imageId, true);
   const clubImage = getImageUri(clubProfile.imageId, true);
   const clubMapQuery = `${currentAccount?.clubName ?? ""} ${clubMapAddress || currentAccount?.clubAddress || currentAccount?.location || ""}`;
@@ -563,165 +551,26 @@ export default function ProfileScreen() {
 
         {isAdmin ? (
           <>
-            <SectionTitle title="Admin image moderation" action={`${pendingImages.length} pending`} />
-            <View style={[styles.adminCard, { backgroundColor: colors.navy, borderColor: colors.navy }]}>
-              <View style={styles.adminHeader}>
-                <View style={[styles.adminIcon, { backgroundColor: colors.accent }]}>
-                  <Feather name="lock" size={18} color={colors.accentForeground} />
-                </View>
-                <View style={styles.profileCopy}>
-                  <Text style={[styles.adminTitle, { color: "#FFF" }]}>Admin permissions</Text>
-                  <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Only approved profile images become public. Pending uploads appear here for review.</Text>
-                </View>
+            <SectionTitle title="Admin" action="Full access" />
+            <Pressable
+              onPress={() => setShowAdminDashboard(true)}
+              style={({ pressed }) => [styles.adminLauncher, { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 }]}
+            >
+              <View style={[styles.adminLauncherIcon, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                <Feather name="shield" size={22} color={colors.primaryForeground} />
               </View>
-              {pendingImages.length === 0 ? (
-                <Text style={[styles.adminText, { color: "#B9CBC4" }]}>No images need review right now.</Text>
-              ) : pendingImages.map((img) => (
-                <View key={img.id} style={[styles.reviewRow, { backgroundColor: "rgba(255,255,255,0.08)" }]}>
-                  <ProfileAvatar uri={img.uri} fallback={fallbackImage} size={54} />
-                  <View style={styles.reviewCopy}>
-                    <Text style={[styles.reviewTitle, { color: "#FFF" }]}>{img.owner} image</Text>
-                    <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Pending review</Text>
-                  </View>
-                  <Pressable onPress={() => moderateImage(img.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
-                    <Feather name="check" color="#FFF" size={18} />
-                  </Pressable>
-                  <Pressable onPress={() => moderateImage(img.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
-                    <Feather name="x" color="#FFF" size={18} />
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-
-            <SectionTitle title="Admin sport approvals" action={`${pendingSports.length} pending`} />
-            <View style={[styles.adminCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.adminHeader}>
-                <View style={[styles.adminIcon, { backgroundColor: colors.pitchSoft }]}>
-                  <Feather name="list" size={18} color={colors.primary} />
-                </View>
-                <View style={styles.profileCopy}>
-                  <Text style={[styles.cardTitle, { color: colors.foreground }]}>Requested sports</Text>
-                  <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Approved sports are added to the filter list and can be used in adverts.</Text>
-                </View>
+              <View style={styles.adminLauncherCopy}>
+                <Text style={[styles.adminLauncherTitle, { color: colors.primaryForeground }]}>Open admin dashboard</Text>
+                <Text style={[styles.adminLauncherText, { color: colors.primaryForeground }]}>Adverts, chats, accounts, moderation & settings.</Text>
               </View>
-              {pendingSports.length === 0 ? (
-                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>No sport requests need review right now.</Text>
-              ) : pendingSports.map((req) => (
-                <View key={req.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}>
-                  <View style={styles.reviewCopy}>
-                    <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{req.name}</Text>
-                    <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Pending admin approval</Text>
-                  </View>
-                  <Pressable onPress={() => moderateSportRequest(req.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
-                    <Feather name="check" color="#FFF" size={18} />
-                  </Pressable>
-                  <Pressable onPress={() => moderateSportRequest(req.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
-                    <Feather name="x" color="#FFF" size={18} />
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-
-            <SectionTitle title="Admin highlight reel approvals" action={`${pendingHighlights.length} pending`} />
-            <View style={[styles.adminCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.adminHeader}>
-                <View style={[styles.adminIcon, { backgroundColor: colors.pitchSoft }]}>
-                  <Feather name="video" size={18} color={colors.primary} />
-                </View>
-                <View style={styles.profileCopy}>
-                  <Text style={[styles.cardTitle, { color: colors.foreground }]}>Highlight links</Text>
-                  <Text style={[styles.cardText, { color: colors.mutedForeground }]}>Highlight reels stay pending until an admin approves them.</Text>
-                </View>
-              </View>
-              {pendingHighlights.length === 0 ? (
-                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>No highlight reels need review right now.</Text>
-              ) : pendingHighlights.map((link) => (
-                <View key={link.id} style={[styles.reviewRow, { backgroundColor: colors.secondary }]}>
-                  <View style={styles.reviewCopy}>
-                    <Text style={[styles.reviewTitle, { color: colors.foreground }]}>{link.owner}</Text>
-                    <Text style={[styles.cardText, { color: colors.mutedForeground }]} numberOfLines={1}>{link.url}</Text>
-                  </View>
-                  <Pressable onPress={() => moderateHighlightLink(link.id, "approved")} style={[styles.reviewBtn, { backgroundColor: colors.primary }]}>
-                    <Feather name="check" color="#FFF" size={18} />
-                  </Pressable>
-                  <Pressable onPress={() => moderateHighlightLink(link.id, "rejected")} style={[styles.reviewBtn, { backgroundColor: colors.destructive }]}>
-                    <Feather name="x" color="#FFF" size={18} />
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-
-            <SectionTitle title="Admin account" action="" />
-            <View style={[styles.adminCard, { backgroundColor: colors.navy, borderColor: colors.navy }]}>
-              <View style={styles.adminHeader}>
-                <View style={[styles.adminIcon, { backgroundColor: colors.accent }]}>
-                  <Feather name="settings" size={18} color={colors.accentForeground} />
-                </View>
-                <View style={styles.profileCopy}>
-                  <Text style={[styles.adminTitle, { color: "#FFF" }]}>Admin settings</Text>
-                  <Text style={[styles.adminText, { color: "#B9CBC4" }]}>Manage your admin passcode or sign out of admin mode.</Text>
-                </View>
-              </View>
-              {showChangePasscode ? (
-                <>
-                  <TextInput
-                    value={currentPasscodeInput}
-                    onChangeText={setCurrentPasscodeInput}
-                    placeholder="Current passcode"
-                    placeholderTextColor="#B9CBC4"
-                    secureTextEntry
-                    style={[styles.adminInput, { borderColor: "rgba(255,255,255,0.2)", color: "#FFF", backgroundColor: "rgba(255,255,255,0.08)" }]}
-                  />
-                  <TextInput
-                    value={newPasscodeInput}
-                    onChangeText={setNewPasscodeInput}
-                    placeholder="New passcode"
-                    placeholderTextColor="#B9CBC4"
-                    secureTextEntry
-                    style={[styles.adminInput, { borderColor: "rgba(255,255,255,0.2)", color: "#FFF", backgroundColor: "rgba(255,255,255,0.08)" }]}
-                  />
-                  <View style={styles.adminActions}>
-                    <Pressable
-                      onPress={() => { setShowChangePasscode(false); setCurrentPasscodeInput(""); setNewPasscodeInput(""); }}
-                      style={({ pressed }) => [styles.adminActionBtn, { backgroundColor: "rgba(255,255,255,0.12)", opacity: pressed ? 0.8 : 1 }]}
-                    >
-                      <Text style={[styles.adminActionText, { color: "#FFF" }]}>Cancel</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => {
-                        const ok = changeAdminPasscode(currentPasscodeInput, newPasscodeInput);
-                        if (ok) {
-                          setShowChangePasscode(false);
-                          setCurrentPasscodeInput("");
-                          setNewPasscodeInput("");
-                          Alert.alert("Passcode updated", "Your new admin passcode has been saved.");
-                        } else {
-                          Alert.alert("Incorrect passcode", "The current passcode you entered is incorrect.");
-                        }
-                      }}
-                      style={({ pressed }) => [styles.adminActionBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
-                    >
-                      <Text style={[styles.adminActionText, { color: "#FFF" }]}>Save new passcode</Text>
-                    </Pressable>
-                  </View>
-                </>
-              ) : (
-                <Pressable
-                  onPress={() => { setCurrentPasscodeInput(""); setNewPasscodeInput(""); setShowChangePasscode(true); }}
-                  style={({ pressed }) => [styles.adminActionBtn, { backgroundColor: "rgba(255,255,255,0.12)", opacity: pressed ? 0.8 : 1 }]}
-                >
-                  <Feather name="key" color="#FFF" size={15} />
-                  <Text style={[styles.adminActionText, { color: "#FFF" }]}>Change passcode</Text>
-                </Pressable>
-              )}
-              <Pressable onPress={adminSignOut} style={({ pressed }) => [styles.adminActionBtn, { backgroundColor: colors.destructive, opacity: pressed ? 0.8 : 1 }]}>
-                <Feather name="log-out" color="#FFF" size={15} />
-                <Text style={[styles.adminActionText, { color: "#FFF" }]}>Sign out of admin</Text>
-              </Pressable>
-            </View>
+              <Feather name="arrow-right" size={20} color={colors.primaryForeground} />
+            </Pressable>
           </>
         ) : null}
       </ScrollView>
+      {isAdmin ? (
+        <AdminDashboard visible={showAdminDashboard} onClose={() => setShowAdminDashboard(false)} />
+      ) : null}
     </View>
   );
 }
@@ -761,17 +610,9 @@ const styles = StyleSheet.create({
   modalButton: { flex: 1, minHeight: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   modalButtonText: { fontWeight: "700", fontSize: 15 },
   smallPrint: { fontWeight: "500", fontSize: 12, lineHeight: 17 },
-  adminCard: { borderWidth: 1, borderRadius: 28, padding: 18, gap: 14 },
-  adminHeader: { flexDirection: "row", gap: 12, alignItems: "center" },
-  adminIcon: { width: 42, height: 42, borderRadius: 15, alignItems: "center", justifyContent: "center" },
-  adminTitle: { fontWeight: "700", fontSize: 17 },
-  adminText: { fontWeight: "500", fontSize: 13, lineHeight: 19 },
-  reviewRow: { borderRadius: 18, padding: 10, flexDirection: "row", alignItems: "center", gap: 10 },
-  reviewCopy: { flex: 1 },
-  reviewTitle: { fontWeight: "700", fontSize: 15 },
-  reviewBtn: { width: 40, height: 40, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  adminInput: { borderWidth: 1, borderRadius: 14, minHeight: 46, paddingHorizontal: 14, fontWeight: "600", fontSize: 15 },
-  adminActions: { flexDirection: "row", gap: 10 },
-  adminActionBtn: { flex: 1, flexDirection: "row", gap: 8, minHeight: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  adminActionText: { fontWeight: "700", fontSize: 14 },
+  adminLauncher: { flexDirection: "row", alignItems: "center", gap: 14, borderRadius: 22, padding: 18 },
+  adminLauncherIcon: { width: 46, height: 46, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  adminLauncherCopy: { flex: 1 },
+  adminLauncherTitle: { fontWeight: "800", fontSize: 17 },
+  adminLauncherText: { fontWeight: "500", fontSize: 13, marginTop: 2, opacity: 0.9 },
 });

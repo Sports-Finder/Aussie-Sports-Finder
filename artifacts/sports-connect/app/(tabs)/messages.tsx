@@ -106,11 +106,12 @@ function ChatBox({ conversation, onPress, boxWidth }: { conversation: Conversati
   );
 }
 
-function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClose: () => void }) {
+export function ChatRoom({ conversation, onClose, asAdmin }: { conversation: Conversation; onClose: () => void; asAdmin?: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { sendMessage, markConversationRead, currentAccount } = useSportsConnect();
+  const { sendMessage, adminSendMessage, markConversationRead, currentAccount, isAdmin } = useSportsConnect();
   const [draft, setDraft] = useState("");
+  const adminMode = !!asAdmin && isAdmin;
 
   useEffect(() => {
     markConversationRead(conversation.id);
@@ -120,7 +121,8 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
   const submit = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    sendMessage(conversation.id, trimmed);
+    if (adminMode) adminSendMessage(conversation.id, trimmed);
+    else sendMessage(conversation.id, trimmed);
     setDraft("");
   };
 
@@ -164,7 +166,20 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
                   </View>
                 );
               }
-              const isMyMessage = item.senderAccountId
+              if (item.isAdmin) {
+                return (
+                  <View style={[styles.bubble, styles.adminBubble, { backgroundColor: "#7C2D12", borderColor: "#FCD34D" }]}>
+                    <View style={styles.adminTagRow}>
+                      <Feather name="shield" size={12} color="#FCD34D" />
+                      <Text style={styles.adminTag}>ADMIN WARNING</Text>
+                    </View>
+                    <Text style={[styles.bubbleText, { color: "#FFF" }]}>{item.body}</Text>
+                  </View>
+                );
+              }
+              const isMyMessage = adminMode
+                ? false
+                : item.senderAccountId
                 ? item.senderAccountId === currentAccount?.id
                 : item.sender === "me";
               return (
@@ -196,7 +211,25 @@ function ChatRoom({ conversation, onClose }: { conversation: Conversation; onClo
             }
           />
 
-          {conversation.status === "pending" ? (
+          {adminMode ? (
+            <View style={[styles.composer, { borderTopColor: "#FCD34D", paddingBottom: insets.bottom + 10, borderTopWidth: 2, backgroundColor: "rgba(252,211,77,0.08)" }]}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Send an admin warning…"
+                placeholderTextColor={colors.mutedForeground}
+                style={[styles.input, { backgroundColor: colors.muted, color: colors.foreground }]}
+                onSubmitEditing={submit}
+                returnKeyType="send"
+              />
+              <Pressable
+                onPress={submit}
+                style={({ pressed }) => [styles.send, { backgroundColor: "#7C2D12", opacity: pressed ? 0.75 : 1 }]}
+              >
+                <Feather name="shield" color="#FCD34D" size={18} />
+              </Pressable>
+            </View>
+          ) : conversation.status === "pending" ? (
             <View style={[styles.composer, { borderTopColor: "#F59E0B", paddingBottom: insets.bottom + 10, borderTopWidth: 2 }]}>
               <View style={[styles.deniedBanner, { backgroundColor: colors.amberSoft }]}>
                 <Feather name="clock" color="#B45309" size={16} />
@@ -424,4 +457,7 @@ const styles = StyleSheet.create({
   deniedBannerText: { fontWeight: "600", fontSize: 13, flex: 1 },
   systemBubble: { alignSelf: "center", flexDirection: "row", alignItems: "flex-start", gap: 6, marginVertical: 4, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, maxWidth: "92%" },
   systemBubbleText: { fontWeight: "500", fontSize: 13, lineHeight: 19, flex: 1, fontStyle: "italic" },
+  adminBubble: { alignSelf: "center", borderWidth: 1, maxWidth: "92%", gap: 6 },
+  adminTagRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  adminTag: { color: "#FCD34D", fontWeight: "800", fontSize: 11, letterSpacing: 0.8 },
 });

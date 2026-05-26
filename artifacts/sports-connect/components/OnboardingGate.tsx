@@ -266,7 +266,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       Alert.alert("Missing details", "Complete all required fields, Australian state details, sport selections and the agreement checkbox.");
       return;
     }
-    createAccount({
+    const created = createAccount({
       role,
       authMethod,
       email: primaryEmail,
@@ -290,6 +290,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       clubContactMobile: form.clubContactMobile,
       password: authMethod === "email" ? password : undefined,
     });
+    if (!created) return;
     Alert.alert("Account submitted", "A pop up notification will be sent out once approved.");
   };
 

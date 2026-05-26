@@ -35,6 +35,8 @@ export type HighlightLink = {
   submittedAt: string;
 };
 
+export type AccountStatus = "active" | "closed" | "banned";
+
 export type UserAccount = {
   id: string;
   role: AccountRole;
@@ -61,6 +63,9 @@ export type UserAccount = {
   password?: string;
   createdAt: string;
   approved: boolean;
+  status?: AccountStatus;
+  statusChangedAt?: string;
+  statusReason?: string;
 };
 
 export type Advert = {
@@ -101,6 +106,9 @@ export type Advert = {
   feesNegotiable?: boolean;
   feesFree?: boolean;
   trialRequired?: boolean;
+  status?: "active" | "closed";
+  closedAt?: string;
+  closedReason?: string;
 };
 
 export type Conversation = {
@@ -126,6 +134,7 @@ export type Message = {
   body: string;
   createdAt: string;
   isSystem?: boolean;
+  isAdmin?: boolean;
 };
 
 type ProfileImage = {
@@ -188,13 +197,19 @@ type SportsConnectState = {
   requestSport: (name: string) => void;
   moderateSportRequest: (requestId: string, status: "approved" | "rejected") => void;
   accounts: UserAccount[];
+  bannedEmails: string[];
   loginWithEmail: (email: string, password: string) => boolean;
-  createAccount: (draft: DraftAccount) => void;
+  createAccount: (draft: DraftAccount) => boolean;
   signOut: () => void;
   signOutResetToken: number;
   adminLogin: (passcode: string) => boolean;
   adminSignOut: () => void;
   changeAdminPasscode: (current: string, next: string) => boolean;
+  adminUpdateAccount: (accountId: string, patch: Partial<UserAccount>) => void;
+  adminSetAccountStatus: (accountId: string, status: AccountStatus, reason?: string) => void;
+  adminUnbanEmail: (email: string) => void;
+  adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string) => void;
+  adminSendMessage: (conversationId: string, body: string) => void;
   createAdvert: (draft: DraftAdvert) => void;
   updateAdvert: (id: string, patch: Partial<DraftAdvert>) => void;
   deleteAdvert: (id: string) => void;
@@ -444,20 +459,22 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [activeProfile, setActiveProfile] = useState<ProfileType>(defaultState.activeProfile);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
+  const [bannedEmails, setBannedEmails] = useState<string[]>([]);
   const [signOutResetToken, setSignOutResetToken] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(adminStorageKey).then((stored) => {
       if (!stored) return;
-      const parsed = JSON.parse(stored) as { adminPasscode?: string };
+      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[] };
       if (parsed.adminPasscode) setAdminPasscode(parsed.adminPasscode);
+      if (Array.isArray(parsed.bannedEmails)) setBannedEmails(parsed.bannedEmails);
     }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode })).catch(() => undefined);
-  }, [adminPasscode]);
+    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails })).catch(() => undefined);
+  }, [adminPasscode, bannedEmails]);
 
   useEffect(() => {
     AsyncStorage.getItem(storageKey).then((stored) => {
@@ -489,7 +506,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     const snapshot = { adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile };
     AsyncStorage.setItem(storageKey, JSON.stringify(snapshot)).catch(() => undefined);
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, bannedEmails]);
 
   const requestSport = (name: string) => {
     const trimmed = name.trim();
@@ -517,12 +534,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
-  const createAccount = (draft: DraftAccount) => {
+  const createAccount = (draft: DraftAccount): boolean => {
+    const normalizedEmail = draft.email.toLowerCase().trim();
+    if (bannedEmails.map((e) => e.toLowerCase()).includes(normalizedEmail)) {
+      Alert.alert("Account blocked", "This email address has been banned by an administrator and cannot be used to create a new account.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+      return false;
+    }
     const account: UserAccount = {
       ...draft,
       id: makeId(),
       createdAt: now(),
       approved: true,
+      status: "active",
     };
     setAccounts((current) => [...current, account]);
     setCurrentAccount(account);
@@ -557,6 +581,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       }, ...current]);
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    return true;
   };
 
   const signOut = () => {
@@ -566,10 +591,26 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const loginWithEmail = (emailInput: string, passwordInput: string): boolean => {
+    const normalizedEmail = emailInput.toLowerCase().trim();
+    if (bannedEmails.map((e) => e.toLowerCase()).includes(normalizedEmail)) {
+      Alert.alert("Account banned", "This email address has been banned by an administrator.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+      return false;
+    }
     const match = accounts.find(
-      (acc) => acc.email.toLowerCase() === emailInput.toLowerCase().trim() && acc.password === passwordInput
+      (acc) => acc.email.toLowerCase() === normalizedEmail && acc.password === passwordInput
     );
     if (!match) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+      return false;
+    }
+    if (match.status === "banned") {
+      Alert.alert("Account banned", "This account has been banned by an administrator.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+      return false;
+    }
+    if (match.status === "closed") {
+      Alert.alert("Account closed", "This account has been closed by an administrator.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       return false;
     }
@@ -628,6 +669,53 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setAdminPasscode(next.trim());
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return true;
+  };
+
+  const adminUpdateAccount = (accountId: string, patch: Partial<UserAccount>) => {
+    setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, ...patch } : acc));
+    setCurrentAccount((current) => (current && current.id === accountId ? { ...current, ...patch } : current));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const adminSetAccountStatus = (accountId: string, status: AccountStatus, reason?: string) => {
+    setAccounts((current) => current.map((acc) => {
+      if (acc.id !== accountId) return acc;
+      return { ...acc, status, statusChangedAt: now(), statusReason: reason };
+    }));
+    const target = accounts.find((acc) => acc.id === accountId);
+    if (target) {
+      const email = target.email.toLowerCase().trim();
+      if (status === "banned") {
+        setBannedEmails((current) => current.map((e) => e.toLowerCase()).includes(email) ? current : [...current, target.email.trim()]);
+      } else {
+        setBannedEmails((current) => current.filter((e) => e.toLowerCase() !== email));
+      }
+      if (currentAccount?.id === accountId && status !== "active") {
+        setCurrentAccount(undefined);
+        setSignOutResetToken((c) => c + 1);
+      }
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  };
+
+  const adminUnbanEmail = (email: string) => {
+    const normalized = email.toLowerCase().trim();
+    setBannedEmails((current) => current.filter((e) => e.toLowerCase().trim() !== normalized));
+    setAccounts((current) => current.map((acc) => acc.email.toLowerCase().trim() === normalized && acc.status === "banned" ? { ...acc, status: "active", statusChangedAt: now(), statusReason: "Unbanned by admin" } : acc));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const adminSetAdvertStatus = (advertId: string, status: "active" | "closed", reason?: string) => {
+    setAdverts((current) => current.map((a) => a.id === advertId ? { ...a, status, closedAt: status === "closed" ? now() : undefined, closedReason: status === "closed" ? reason : undefined } : a));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  };
+
+  const adminSendMessage = (conversationId: string, body: string) => {
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    const message: Message = { id: makeId(), sender: "them", body: trimmed, createdAt: now(), isAdmin: true };
+    setConversations((current) => current.map((conv) => conv.id === conversationId ? { ...conv, hasUnread: true, messages: [message, ...conv.messages] } : conv));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
   const createAdvert = (draft: DraftAdvert) => {
@@ -848,7 +936,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const value = useMemo<SportsConnectState>(() => {
-    const myConversations = currentAccount
+    const myConversations = isAdmin
+      ? conversations
+      : currentAccount
       ? conversations.filter((c) =>
           !c.initiatorAccountId ||
           c.initiatorAccountId === currentAccount.id ||
@@ -875,6 +965,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     requestSport,
     moderateSportRequest,
     accounts,
+    bannedEmails,
     loginWithEmail,
     createAccount,
     signOut,
@@ -882,6 +973,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     adminLogin,
     adminSignOut,
     changeAdminPasscode,
+    adminUpdateAccount,
+    adminSetAccountStatus,
+    adminUnbanEmail,
+    adminSetAdvertStatus,
+    adminSendMessage,
     createAdvert,
     updateAdvert,
     deleteAdvert,
@@ -901,7 +997,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     moderateHighlightLink,
     getImageUri,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminPasscode]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminPasscode]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }
