@@ -489,7 +489,13 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
             </Pressable>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Create an account</Text>
             {(Object.keys(roleCopy) as AccountRole[]).map((item) => (
-              <Pressable key={item} onPress={() => { setRole(item); setStep("details"); }} style={({ pressed }) => [styles.roleCard, { backgroundColor: colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
+              <Pressable key={item} onPress={() => {
+                setRole(item);
+                if (item === "club") {
+                  setForm((current) => ({ ...current, clubContactEmail: current.clubContactEmail || email.toLowerCase().trim() }));
+                }
+                setStep("details");
+              }} style={({ pressed }) => [styles.roleCard, { backgroundColor: colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
                 <Text style={[styles.roleTitle, { color: colors.secondaryForeground }]}>{roleCopy[item].title}</Text>
                 <Text style={[styles.roleText, { color: colors.mutedForeground }]}>{roleCopy[item].subtitle}</Text>
               </Pressable>
@@ -512,6 +518,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
                 <Input label="Full Address including Suburb, City and State (Australia only) (required)" value={form.clubAddress} onChangeText={(value) => update("clubAddress", value)} />
                 <Input label="Club Website Address (optional)" value={form.clubWebsite} onChangeText={(value) => update("clubWebsite", value)} />
                 <Input label="Club Contact Email Address (required)" value={form.clubContactEmail} onChangeText={(value) => update("clubContactEmail", value)} keyboardType="email-address" />
+                <Text style={[styles.infoNote, { color: colors.mutedForeground }]}>This defaults to your sign-up email. You can change it to a different public contact address — your login email will not be affected. To change your login email, contact admin.</Text>
                 <Input label="Club Contact Mobile Number (required)" value={form.clubContactMobile} onChangeText={(value) => update("clubContactMobile", value)} keyboardType="phone-pad" />
               </>
             ) : (
@@ -641,6 +648,7 @@ const styles = StyleSheet.create({
   roleCard: { borderRadius: 22, padding: 16, gap: 4 },
   roleTitle: { fontWeight: "800", fontSize: 15, lineHeight: 20 },
   roleText: { fontWeight: "500", fontSize: 13, lineHeight: 18 },
+  infoNote: { fontSize: 12, lineHeight: 17, fontStyle: "italic", marginTop: -4, marginBottom: 4 },
   inputWrap: { gap: 7 },
   label: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   input: { borderWidth: 1, borderRadius: 16, minHeight: 48, paddingHorizontal: 14, fontWeight: "600", fontSize: 15 },
