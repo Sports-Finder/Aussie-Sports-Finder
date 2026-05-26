@@ -128,7 +128,7 @@ const advertTypesByRole: Record<AccountRole, { value: Advert["type"]; label: str
   club: [
     { value: "players-wanted", label: "Players Wanted for Team" },
     { value: "club-trials", label: "Club Trials Info" },
-    { value: "coach-wanted", label: "Coach Wanted for Team" },
+    { value: "coach-wanted", label: "Staff (Coach/TD) Wanted for Club" },
   ],
 };
 
@@ -216,7 +216,7 @@ function advertTypeLabel(type: Advert["type"]) {
   return type === "players-wanted" ? "Players Wanted for Team"
     : type === "player-looking" ? "Player Looking for Club"
     : type === "coach-looking" ? "Coach Looking for Team/Club"
-    : type === "coach-wanted" ? "Coach Wanted for Team"
+    : type === "coach-wanted" ? "Staff (Coach/TD) Wanted for Club"
     : type === "club-trials" ? "Club Trials Info"
     : "Players Wanted for Team";
 }
@@ -442,7 +442,7 @@ export default function PostScreen() {
   const [trialRequired, setTrialRequired] = useState(false);
   const [scheduleNote, setScheduleNote] = useState("");
   const [trialSlots, setTrialSlots] = useState<TrialSlot[]>([{ date: "", timeFrom: "", timeTo: "" }]);
-  const [coachRole, setCoachRole] = useState("");
+  const [coachRole, setCoachRole] = useState("Head Coach");
   const [coachExperienceLevel, setCoachExperienceLevel] = useState("");
   const [coachPositionTypes, setCoachPositionTypes] = useState<string[]>([]);
   const [coachSalaryText, setCoachSalaryText] = useState("");
@@ -476,7 +476,7 @@ export default function PostScreen() {
     const roleLabel =
       type === "players-wanted" ? "Players wanted" :
       type === "club-trials" ? "Club trials" :
-      type === "coach-wanted" ? "Coach wanted" :
+      type === "coach-wanted" ? (coachRole || "Staff Wanted") :
       type === "coach-looking" ? "Coach seeking club" :
       "Player seeking club";
     const ageLabel = ageGroup ? ageGroup.label.replace(/\(.*\)/, "").trim() : "";
@@ -488,7 +488,7 @@ export default function PostScreen() {
     const parts = [ageLabel, coachTitleLabel, positionLabel, levelLabel, roleLabel, sportLabel].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" ");
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, coachTitle, positions, level, suburb, state]);
+  }, [sport, type, ageGroup, coachTitle, coachRole, positions, level, suburb, state]);
 
   const loadAdvertForEdit = (advert: Advert) => {
     setEditingId(advert.id);
@@ -551,7 +551,7 @@ export default function PostScreen() {
     setTrialRequired(false);
     setScheduleNote("");
     setTrialSlots([{ date: "", timeFrom: "", timeTo: "" }]);
-    setCoachRole("");
+    setCoachRole("Head Coach");
     setCoachExperienceLevel("");
     setCoachPositionTypes([]);
     setCoachSalaryText("");
@@ -691,7 +691,7 @@ export default function PostScreen() {
     setTrialRequired(false);
     setScheduleNote("");
     setTrialSlots([{ date: "", timeFrom: "", timeTo: "" }]);
-    setCoachRole("");
+    setCoachRole("Head Coach");
     setCoachExperienceLevel("");
     setCoachPositionTypes([]);
     setCoachSalaryText("");
@@ -877,7 +877,7 @@ export default function PostScreen() {
             <>
               <Field label="In 100 words or less, describe what type of Coach or TD you are looking for" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe the ideal coaching candidate, qualifications and philosophy…" multiline />
               <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Coach Role</Text>
+              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Club Role Available</Text>
               <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select the role you are advertising for.</Text>
               {COACH_ROLES.map((role) => (
                 <CheckRow key={role} label={role} value={coachRole === role} onToggle={() => setCoachRole((prev) => prev === role ? "" : role)} />

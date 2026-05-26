@@ -31,7 +31,7 @@ function typeLabel(type: Advert["type"]) {
   return type === "players-wanted" ? "Players Wanted for Team"
     : type === "player-looking" ? "Player Looking for Club"
     : type === "coach-looking" ? "Coach Looking for Team/Club"
-    : type === "coach-wanted" ? "Coach Wanted for Team"
+    : type === "coach-wanted" ? "Staff (Coach/TD) Wanted for Club"
     : type === "club-trials" ? "Club Trials Info"
     : "";
 }
