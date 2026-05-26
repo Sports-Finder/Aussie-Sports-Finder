@@ -616,6 +616,7 @@ const styles = StyleSheet.create({
   inputWrap: { gap: 7 },
   label: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   input: { borderWidth: 1, borderRadius: 16, minHeight: 48, paddingHorizontal: 14, fontWeight: "600", fontSize: 15 },
+  multiline: { minHeight: 96, textAlignVertical: "top", paddingTop: 12 },
   wrapRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   choice: { borderRadius: 999, paddingHorizontal: 13, paddingVertical: 9 },
   choiceText: { fontWeight: "800", fontSize: 12 },

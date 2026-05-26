@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React from "react";
 import { ImageSourcePropType, Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from "react-native";
+import { ImageSource } from "expo-image";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -63,7 +64,7 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
   );
 }
 
-export function ProfileAvatar({ uri, fallback, size = 64 }: { uri?: string; fallback: ImageSourcePropType; size?: number }) {
+export function ProfileAvatar({ uri, fallback, size = 64 }: { uri?: string; fallback: ImageSourcePropType | ImageSource; size?: number }) {
   const colors = useColors();
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.pitchSoft, borderColor: colors.border }]}>

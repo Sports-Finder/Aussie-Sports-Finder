@@ -1116,4 +1116,7 @@ const localStyles = StyleSheet.create({
   deleteConfirmYesText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },
   emptyMini: { borderRadius: 20, padding: 18 },
   emptyMiniText: { fontWeight: "600", textAlign: "center" },
+  choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  choice: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
+  choiceText: { fontWeight: "700", fontSize: 13 },
 });

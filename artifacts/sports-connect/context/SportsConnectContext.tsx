@@ -6,6 +6,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import { Alert, Platform } from "react-native";
 
 import { SportTheme, createCustomSportTheme, defaultSportThemes } from "@/constants/sports";
+import { api } from "@/utils/apiClient";
 
 type AdvertType = "player-looking" | "coach-looking" | "players-wanted" | "club-trials" | "coach-wanted";
 type ProfileType = "player" | "club";
@@ -66,6 +67,7 @@ export type UserAccount = {
   status?: AccountStatus;
   statusChangedAt?: string;
   statusReason?: string;
+  bio?: string;
 };
 
 export type Advert = {
@@ -125,6 +127,7 @@ export type Conversation = {
   sport?: string;
   requesterLocation?: string;
   requesterType?: AccountRole;
+  pendingRequest?: boolean;
 };
 
 export type Message = {
@@ -206,17 +209,17 @@ type SportsConnectState = {
   adminSignOut: () => void;
   changeAdminPasscode: (current: string, next: string) => boolean;
   adminUpdateAccount: (accountId: string, patch: Partial<UserAccount>) => void;
-  adminSetAccountStatus: (accountId: string, status: AccountStatus, reason?: string) => void;
-  adminUnbanEmail: (email: string) => void;
-  adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string) => void;
-  adminSendMessage: (conversationId: string, body: string) => void;
-  createAdvert: (draft: DraftAdvert) => void;
+  adminSetAccountStatus: (accountId: string, status: AccountStatus, reason?: string) => Promise<void>;
+  adminUnbanEmail: (email: string) => Promise<void>;
+  adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string) => Promise<void>;
+  adminSendMessage: (conversationId: string, body: string) => Promise<void>;
+  createAdvert: (draft: DraftAdvert) => Promise<void>;
   updateAdvert: (id: string, patch: Partial<DraftAdvert>) => void;
   deleteAdvert: (id: string) => void;
-  connectOnAdvert: (advert: Advert) => string;
+  connectOnAdvert: (advert: Advert) => Promise<string>;
   acceptConnection: (conversationId: string) => void;
   denyConnection: (conversationId: string) => void;
-  sendMessage: (conversationId: string, body: string) => void;
+  sendMessage: (conversationId: string, body: string) => Promise<void>;
   markConversationRead: (conversationId: string) => void;
   toggleNotifications: () => Promise<void>;
   setNotificationRadius: (radiusKm: number) => void;
@@ -225,7 +228,7 @@ type SportsConnectState = {
   updateAccount: (profile: Partial<UserAccount>) => void;
   pickProfileImage: (owner: "club" | "player") => Promise<void>;
   pickAccountImage: (owner: string) => Promise<string | undefined>;
-  moderateImage: (imageId: string, status: ImageStatus) => void;
+  moderateImage: (imageId: string, status: ImageStatus) => Promise<void>;
   moderateHighlightLink: (linkId: string, status: ImageStatus) => void;
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
 };
@@ -477,30 +480,56 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   }, [adminPasscode, bannedEmails]);
 
   useEffect(() => {
-    AsyncStorage.getItem(storageKey).then((stored) => {
-      if (stored) {
-        const parsed = JSON.parse(stored) as typeof defaultState;
-        setAdverts((parsed.adverts ?? defaultState.adverts).map((advert) => ({
-          ...advert,
-          type: normalizeAdvertType(advert.type),
-        })));
-        setConversations(parsed.conversations ?? defaultState.conversations);
-        setProfileImages(parsed.profileImages ?? []);
-        setPendingHighlightLinks(parsed.pendingHighlightLinks ?? []);
-        setAccounts(parsed.accounts ?? []);
-        setCurrentAccount(parsed.currentAccount);
-        setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
-        setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
-        setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
-        setApprovedSports(parsed.approvedSports ?? defaultState.approvedSports);
-        setPendingSportRequests(parsed.pendingSportRequests ?? []);
-        setSelectedSport(parsed.selectedSport ?? defaultState.selectedSport);
-        setActiveProfile(parsed.activeProfile ?? "player");
+    let cancelled = false;
+    async function loadFromApi() {
+      try {
+        const [fetchedAdverts, fetchedAccounts, fetchedConversations, fetchedProfileImages, fetchedSportRequests, fetchedBannedEmails] = await Promise.all([
+          api.getAdverts(),
+          api.getAccounts(),
+          api.getConversations(),
+          api.getProfileImages(),
+          api.getSportRequests(),
+          api.getBannedEmails(),
+        ]);
+        if (cancelled) return;
+        setAdverts(fetchedAdverts.map((advert: any) => ({ ...advert, type: normalizeAdvertType(advert.type) })));
+        setAccounts(fetchedAccounts);
+        setConversations(fetchedConversations);
+        setProfileImages(fetchedProfileImages);
+        setPendingSportRequests(fetchedSportRequests);
+        setBannedEmails(fetchedBannedEmails);
+      } catch (e) {
+        // Fall back to AsyncStorage if API is unreachable
+        if (cancelled) return;
       }
-      setIsHydrated(true);
-    }).catch(() => {
-      setIsHydrated(true);
-    });
+      try {
+        const stored = await AsyncStorage.getItem(storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored) as typeof defaultState;
+          setAdverts((prev) => prev.length ? prev : (parsed.adverts ?? defaultState.adverts).map((advert) => ({
+            ...advert,
+            type: normalizeAdvertType(advert.type),
+          })));
+          setConversations((prev) => prev.length ? prev : (parsed.conversations ?? defaultState.conversations));
+          setProfileImages((prev) => prev.length ? prev : (parsed.profileImages ?? []));
+          setPendingHighlightLinks((prev) => prev.length ? prev : (parsed.pendingHighlightLinks ?? []));
+          setAccounts((prev) => prev.length ? prev : (parsed.accounts ?? []));
+          setCurrentAccount(parsed.currentAccount);
+          setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
+          setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
+          setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
+          setApprovedSports(parsed.approvedSports ?? defaultState.approvedSports);
+          setPendingSportRequests((prev) => prev.length ? prev : (parsed.pendingSportRequests ?? []));
+          setSelectedSport(parsed.selectedSport ?? defaultState.selectedSport);
+          setActiveProfile(parsed.activeProfile ?? "player");
+        }
+      } catch (_) {
+        // ignore
+      }
+      if (!cancelled) setIsHydrated(true);
+    }
+    loadFromApi();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -517,7 +546,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       Alert.alert("Sport already exists", "This sport is already available or waiting for admin approval.");
       return;
     }
-    setPendingSportRequests((current) => [{ id: makeId(), name: trimmed, status: "pending", requestedAt: now() }, ...current]);
+    const publicId = makeId();
+    const request: SportRequest = { id: publicId, name: trimmed, status: "pending", requestedAt: now() };
+    setPendingSportRequests((current) => [request, ...current]);
+    api.createSportRequest({ ...request, publicId }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
@@ -531,6 +563,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       });
     }
     setPendingSportRequests((current) => current.map((item) => item.id === requestId ? { ...item, status } : item));
+    api.updateSportRequest(requestId, { status }).catch(() => undefined);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
@@ -541,9 +574,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       return false;
     }
+    const publicId = makeId();
     const account: UserAccount = {
       ...draft,
-      id: makeId(),
+      id: publicId,
       createdAt: now(),
       approved: true,
       status: "active",
@@ -572,14 +606,17 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       }));
     }
     if (account.highlightReelUrl) {
+      const url: string = account.highlightReelUrl;
       setPendingHighlightLinks((current) => [{
         id: makeId(),
         owner: account.role === "club" ? account.clubName || "Club" : account.playerName || account.fullName || "Player",
-        url: account.highlightReelUrl,
+        url,
         status: "pending",
         submittedAt: now(),
       }, ...current]);
     }
+    // Background sync to API
+    api.createAccount({ ...account, publicId }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return true;
   };
@@ -677,7 +714,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
-  const adminSetAccountStatus = (accountId: string, status: AccountStatus, reason?: string) => {
+  const adminSetAccountStatus = async (accountId: string, status: AccountStatus, reason?: string) => {
     setAccounts((current) => current.map((acc) => {
       if (acc.id !== accountId) return acc;
       return { ...acc, status, statusChangedAt: now(), statusReason: reason };
@@ -687,49 +724,63 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       const email = target.email.toLowerCase().trim();
       if (status === "banned") {
         setBannedEmails((current) => current.map((e) => e.toLowerCase()).includes(email) ? current : [...current, target.email.trim()]);
+        try { await api.banEmail(target.email.trim()); } catch (_) { /* silent */ }
       } else {
         setBannedEmails((current) => current.filter((e) => e.toLowerCase() !== email));
+        try { await api.unbanEmail(target.email.trim()); } catch (_) { /* silent */ }
       }
       if (currentAccount?.id === accountId && status !== "active") {
         setCurrentAccount(undefined);
         setSignOutResetToken((c) => c + 1);
       }
     }
+    try { await api.updateAccount(accountId, { status, statusChangedAt: now(), statusReason: reason }); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
-  const adminUnbanEmail = (email: string) => {
+  const adminUnbanEmail = async (email: string) => {
     const normalized = email.toLowerCase().trim();
     setBannedEmails((current) => current.filter((e) => e.toLowerCase().trim() !== normalized));
     setAccounts((current) => current.map((acc) => acc.email.toLowerCase().trim() === normalized && acc.status === "banned" ? { ...acc, status: "active", statusChangedAt: now(), statusReason: "Unbanned by admin" } : acc));
+    try { await api.unbanEmail(email.trim()); } catch (_) { /* silent */ }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
-  const adminSetAdvertStatus = (advertId: string, status: "active" | "closed", reason?: string) => {
+  const adminSetAdvertStatus = async (advertId: string, status: "active" | "closed", reason?: string) => {
     setAdverts((current) => current.map((a) => a.id === advertId ? { ...a, status, closedAt: status === "closed" ? now() : undefined, closedReason: status === "closed" ? reason : undefined } : a));
+    try { await api.updateAdvert(advertId, { status, ...(status === "closed" ? { closedAt: now(), closedReason: reason } : { closedAt: undefined, closedReason: undefined }) }); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
-  const adminSendMessage = (conversationId: string, body: string) => {
+  const adminSendMessage = async (conversationId: string, body: string) => {
     const trimmed = body.trim();
     if (!trimmed) return;
     const message: Message = { id: makeId(), sender: "them", body: trimmed, createdAt: now(), isAdmin: true };
     setConversations((current) => current.map((conv) => conv.id === conversationId ? { ...conv, hasUnread: true, messages: [message, ...conv.messages] } : conv));
+    try { await api.createMessage(conversationId, { senderAccountId: "admin", sender: "them", body: trimmed, isAdmin: true }); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
-  const createAdvert = (draft: DraftAdvert) => {
+  const createAdvert = async (draft: DraftAdvert) => {
     const owner = activeProfile === "club" ? clubProfile.name : playerProfile.name;
-    const advert: Advert = {
+    const body = {
       ...draft,
-      id: makeId(),
       ownerAccountId: currentAccount?.id,
       postedBy: owner,
       postedByType: activeProfile,
       distanceKm: Math.max(1, Math.floor(Math.random() * 32)),
       createdAt: now(),
+      status: "active",
+      publicId: makeId(),
     };
-    setAdverts((current) => [advert, ...current]);
+    try {
+      const created = await api.createAdvert(body);
+      setAdverts((current) => [created, ...current]);
+    } catch (_) {
+      // Fallback: keep local
+      const advert: Advert = { ...body, id: body.publicId, status: body.status as "active" | "closed" };
+      setAdverts((current) => [advert, ...current]);
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
@@ -754,18 +805,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return () => clearInterval(interval);
   }, []);
 
-  const connectOnAdvert = (advert: Advert) => {
+  const connectOnAdvert = async (advert: Advert) => {
     const existing = conversations.find((c) => c.advertId === advert.id && c.initiatorAccountId === currentAccount?.id);
     if (existing) return existing.id;
     const isClubAdvert = advert.postedByType === "club";
     const convId = makeId();
-    const inactiveMsg: Message = {
-      id: makeId(),
-      sender: "them",
-      isSystem: true,
-      body: `This chat is currently inactive until your request to connect for "${advert.title}" is accepted by the author.`,
-      createdAt: now(),
-    };
     const conversation: Conversation = {
       id: convId,
       advertId: advert.id,
@@ -777,11 +821,26 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       sport: advert.sport,
       status: "pending",
       hasUnread: false,
-      messages: [inactiveMsg],
+      messages: [],
       requesterLocation: currentAccount?.location,
       requesterType: currentAccount?.role,
     };
-    setConversations((current) => [conversation, ...current]);
+    try {
+      const created = await api.createConversation({ ...conversation, publicId: convId });
+      setConversations((current) => [created, ...current]);
+      // also create the system message
+      const inactiveMsg: Message = {
+        id: makeId(),
+        sender: "them",
+        isSystem: true,
+        body: `This chat is currently inactive until your request to connect for "${advert.title}" is accepted by the author.`,
+        createdAt: now(),
+      };
+      await api.createMessage(convId, { sender: "them", isSystem: true, body: inactiveMsg.body });
+      setConversations((current) => current.map((c) => c.id === convId ? { ...c, messages: [inactiveMsg, ...c.messages] } : c));
+    } catch (_) {
+      setConversations((current) => [conversation, ...current]);
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     return convId;
   };
@@ -802,6 +861,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setConversations((current) =>
       current.map((c) => c.id === conversationId ? { ...c, status: "connected", hasUnread: true, messages: [activeMsg] } : c)
     );
+    api.updateConversation(conversationId, { status: "connected" }).catch(() => undefined);
+    api.createMessage(conversationId, { sender: "them", isSystem: true, body: activeMsg.body }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
@@ -821,13 +882,16 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setConversations((current) =>
       current.map((c) => c.id === conversationId ? { ...c, status: "denied", hasUnread: false, messages: [denyMsg] } : c)
     );
+    api.updateConversation(conversationId, { status: "denied" }).catch(() => undefined);
+    api.createMessage(conversationId, { sender: "them", body: denyMsg.body }).catch(() => undefined);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
-  const sendMessage = (conversationId: string, body: string) => {
+  const sendMessage = async (conversationId: string, body: string) => {
     const trimmed = body.trim();
     if (!trimmed) return;
     const message: Message = { id: makeId(), sender: "me", senderAccountId: currentAccount?.id, body: trimmed, createdAt: now() };
     setConversations((current) => current.map((conversation) => conversation.id === conversationId ? { ...conversation, hasUnread: true, messages: [message, ...conversation.messages] } : conversation));
+    try { await api.createMessage(conversationId, { senderAccountId: currentAccount?.id, sender: "me", body: trimmed }); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
@@ -894,6 +958,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setProfileImages((current) => [image, ...current]);
     if (owner === "club") setClubProfile((current) => ({ ...current, imageId: image.id }));
     if (owner === "player") setPlayerProfile((current) => ({ ...current, imageId: image.id }));
+    api.createProfileImage({ ...image, publicId: image.id }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
@@ -913,12 +978,14 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     }
     const image: ProfileImage = { id: makeId(), owner, uri: asset.uri, status: "pending", submittedAt: now() };
     setProfileImages((current) => [image, ...current]);
+    api.createProfileImage({ ...image, publicId: image.id }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return image.id;
   };
 
-  const moderateImage = (imageId: string, status: ImageStatus) => {
+  const moderateImage = async (imageId: string, status: ImageStatus) => {
     setProfileImages((current) => current.map((image) => image.id === imageId ? { ...image, status } : image));
+    try { await api.updateProfileImage(imageId, { status }); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
