@@ -221,6 +221,7 @@ type SportsConnectState = {
   adminUnbanEmail: (email: string) => Promise<void>;
   adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string, deleteChats?: boolean) => Promise<void>;
   adminSendMessage: (conversationId: string, body: string) => Promise<void>;
+  adminDeleteConversation: (conversationId: string) => Promise<void>;
   adminApproveClub: (accountId: string) => Promise<void>;
   adminRejectClub: (accountId: string) => Promise<void>;
   resetClubApprovalAfterEdit: () => void;
@@ -928,6 +929,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
+  const adminDeleteConversation = async (conversationId: string) => {
+    setConversations((current) => current.filter((c) => c.id !== conversationId));
+    try { await api.deleteConversation(conversationId); } catch (_) { /* silent */ }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
+  };
+
   const createAdvert = async (draft: DraftAdvert) => {
     const owner = activeProfile === "club" ? clubProfile.name : playerProfile.name;
     const body = {
@@ -1320,6 +1327,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     adminUnbanEmail,
     adminSetAdvertStatus,
     adminSendMessage,
+    adminDeleteConversation,
     adminApproveClub,
     adminRejectClub,
     resetClubApprovalAfterEdit,

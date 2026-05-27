@@ -34,6 +34,8 @@ export const api = {
   createConversation: (body: any) => apiFetch("/conversations", { method: "POST", body: JSON.stringify(body) }),
   updateConversation: (convPublicId: string, body: any) =>
     apiFetch(`/conversations/${convPublicId}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteConversation: (convPublicId: string) =>
+    apiFetch(`/conversations/${convPublicId}`, { method: "DELETE" }),
   createMessage: (convPublicId: string, body: any) =>
     apiFetch(`/conversations/${convPublicId}/messages`, { method: "POST", body: JSON.stringify(body) }),
 

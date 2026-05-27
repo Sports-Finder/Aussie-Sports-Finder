@@ -567,7 +567,7 @@ function AdvertEditModal({ advert, onClose, onSave }: { advert: Advert; onClose:
 function ChatsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations } = useSportsConnect();
+  const { conversations, adminDeleteConversation } = useSportsConnect();
   const [openedId, setOpenedId] = useState<string | null>(null);
   const opened = openedId ? conversations.find((c) => c.id === openedId) ?? null : null;
 
@@ -615,6 +615,12 @@ function ChatsSection() {
                 ) : null}
                 <View style={styles.actionRow}>
                   <ActionButton icon="message-circle" label="Open as Admin" color={colors.primary} onPress={() => setOpenedId(conv.id)} />
+                  <ActionButton icon="trash-2" label="Delete chat" color="#EF4444" onPress={() => {
+                    Alert.alert("Delete chat?", `This will permanently remove the conversation and all ${conv.messages.length} message${conv.messages.length === 1 ? "" : "s"}.`, [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Delete", style: "destructive", onPress: () => { adminDeleteConversation(conv.id); } },
+                    ]);
+                  }} />
                 </View>
               </Pressable>
             );

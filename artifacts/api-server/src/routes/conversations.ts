@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, conversationsTable, messagesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapConversation, mapMessage } from "../lib/mapDbToApi";
@@ -52,6 +52,22 @@ router.put("/conversations/:publicId", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Failed to update conversation");
     res.status(500).json({ error: "Failed to update conversation" });
+  }
+});
+
+router.delete("/conversations/:publicId", async (req, res) => {
+  try {
+    const { publicId } = req.params;
+    await db.delete(messagesTable).where(eq(messagesTable.conversationId, publicId));
+    const deleted = await db.delete(conversationsTable).where(eq(conversationsTable.publicId, publicId)).returning();
+    if (deleted.length === 0) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+    res.status(204).send();
+  } catch (err) {
+    logger.error({ err }, "Failed to delete conversation");
+    res.status(500).json({ error: "Failed to delete conversation" });
   }
 });
 
