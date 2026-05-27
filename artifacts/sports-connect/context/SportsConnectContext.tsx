@@ -231,6 +231,7 @@ type SportsConnectState = {
   acceptConnection: (conversationId: string) => void;
   denyConnection: (conversationId: string) => void;
   sendMessage: (conversationId: string, body: string) => Promise<void>;
+  broadcastMessage: (advertId: string, body: string) => Promise<void>;
   markConversationRead: (conversationId: string) => void;
   toggleNotifications: () => Promise<void>;
   setNotificationRadius: (radiusKm: number) => void;
@@ -1056,6 +1057,25 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
+  const broadcastMessage = async (advertId: string, body: string) => {
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    const targets = conversations.filter((c) => c.advertId === advertId && c.status === "connected");
+    const senderId = currentAccount?.id;
+    const timestamp = now();
+    setConversations((current) =>
+      current.map((c) => {
+        if (c.advertId !== advertId || c.status !== "connected") return c;
+        const msg: Message = { id: makeId(), sender: "me", senderAccountId: senderId, body: trimmed, createdAt: timestamp };
+        return { ...c, hasUnread: true, messages: [msg, ...c.messages] };
+      })
+    );
+    for (const target of targets) {
+      try { await api.createMessage(target.id, { senderAccountId: senderId, sender: "me", body: trimmed }); } catch (_) { /* silent */ }
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
   const markConversationRead = (conversationId: string) => {
     setConversations((current) => current.map((conversation) => conversation.id === conversationId ? { ...conversation, hasUnread: false } : conversation));
   };
@@ -1295,6 +1315,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     acceptConnection,
     denyConnection,
     sendMessage,
+    broadcastMessage,
     markConversationRead,
     toggleNotifications,
     setNotificationRadius,

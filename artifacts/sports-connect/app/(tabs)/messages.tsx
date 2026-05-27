@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -154,11 +155,20 @@ function MessageSender({ accountId, isMe }: { accountId?: string; isMe: boolean 
 export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId: string; onClose: () => void; asAdmin?: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations, sendMessage, adminSendMessage, markConversationRead, currentAccount, isAdmin } = useSportsConnect();
+  const { conversations, sendMessage, broadcastMessage, adminSendMessage, markConversationRead, currentAccount, isAdmin } = useSportsConnect();
   const conversation = conversations.find((c) => c.id === conversationId)!;
   const [draft, setDraft] = useState("");
+  const [isBroadcast, setIsBroadcast] = useState(false);
   const adminMode = !!asAdmin && isAdmin;
   const { title: roomTitle, subtitle: roomSubtitle } = anonymousLabel(conversation, currentAccount?.id);
+
+  const connectedSiblings = conversations.filter(
+    (c) => c.advertId === conversation.advertId && c.status === "connected"
+  );
+  const canBroadcast =
+    currentAccount?.role === "club" &&
+    currentAccount?.id === conversation.ownerAccountId &&
+    connectedSiblings.length >= 2;
 
   useEffect(() => {
     markConversationRead(conversationId);
@@ -168,8 +178,32 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
   const submit = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    if (adminMode) adminSendMessage(conversationId, trimmed);
-    else sendMessage(conversationId, trimmed);
+    if (adminMode) {
+      adminSendMessage(conversationId, trimmed);
+      setDraft("");
+      return;
+    }
+    if (isBroadcast && canBroadcast) {
+      const count = connectedSiblings.length;
+      const advertTitle = conversation.advertTitle ?? "this advert";
+      Alert.alert(
+        "Broadcast Message",
+        `Send to all ${count} connected chats for "${advertTitle}"?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Send to All",
+            onPress: () => {
+              broadcastMessage(conversation.advertId, trimmed);
+              setDraft("");
+              setIsBroadcast(false);
+            },
+          },
+        ]
+      );
+      return;
+    }
+    sendMessage(conversationId, trimmed);
     setDraft("");
   };
 
@@ -300,22 +334,40 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
               </View>
             </View>
           ) : (
-            <View style={[styles.composer, { borderTopColor: colors.border, paddingBottom: insets.bottom + 10 }]}>
-              <TextInput
-                value={draft}
-                onChangeText={setDraft}
-                placeholder="Message privately…"
-                placeholderTextColor={colors.mutedForeground}
-                style={[styles.input, { backgroundColor: colors.muted, color: colors.foreground }]}
-                onSubmitEditing={submit}
-                returnKeyType="send"
-              />
-              <Pressable
-                onPress={submit}
-                style={({ pressed }) => [styles.send, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}
-              >
-                <Feather name="send" color={colors.primaryForeground} size={18} />
-              </Pressable>
+            <View style={[styles.composerWrap, { borderTopColor: isBroadcast ? colors.primary : colors.border, paddingBottom: insets.bottom + 10 }]}>
+              {canBroadcast && (
+                <Pressable
+                  onPress={() => setIsBroadcast((v) => !v)}
+                  style={[styles.broadcastRow, { backgroundColor: isBroadcast ? colors.primary + "18" : colors.secondary }]}
+                >
+                  <View style={[styles.broadcastCheckbox, { borderColor: isBroadcast ? colors.primary : colors.mutedForeground, backgroundColor: isBroadcast ? colors.primary : "transparent" }]}>
+                    {isBroadcast && <Feather name="check" size={11} color="#FFF" />}
+                  </View>
+                  <Feather name="radio" size={13} color={isBroadcast ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.broadcastLabel, { color: isBroadcast ? colors.primary : colors.mutedForeground }]}>
+                    {isBroadcast
+                      ? `Broadcast — ${connectedSiblings.length} connected chats will receive this`
+                      : "Broadcast to all connected chats for this advert"}
+                  </Text>
+                </Pressable>
+              )}
+              <View style={styles.composerRow}>
+                <TextInput
+                  value={draft}
+                  onChangeText={setDraft}
+                  placeholder={isBroadcast ? `Message all ${connectedSiblings.length} connected chats…` : "Message privately…"}
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[styles.input, { backgroundColor: isBroadcast ? colors.primary + "12" : colors.muted, color: colors.foreground, borderWidth: isBroadcast ? 1.5 : 0, borderColor: isBroadcast ? colors.primary : "transparent" }]}
+                  onSubmitEditing={submit}
+                  returnKeyType="send"
+                />
+                <Pressable
+                  onPress={submit}
+                  style={({ pressed }) => [styles.send, { backgroundColor: isBroadcast ? colors.primary : colors.primary, opacity: pressed ? 0.75 : 1 }]}
+                >
+                  <Feather name={isBroadcast ? "radio" : "send"} color={colors.primaryForeground} size={18} />
+                </Pressable>
+              </View>
             </View>
           )}
         </KeyboardAvoidingView>
@@ -517,6 +569,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 12,
     borderTopWidth: 1,
+  },
+  composerWrap: {
+    flexDirection: "column",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+  },
+  composerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  broadcastRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+  },
+  broadcastCheckbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  broadcastLabel: {
+    flex: 1,
+    fontWeight: "600",
+    fontSize: 12,
+    lineHeight: 16,
   },
   input: {
     flex: 1,
