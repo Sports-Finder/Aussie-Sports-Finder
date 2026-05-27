@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
+import { ActivityIndicator } from "react-native";
 import { FlatList, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -117,8 +118,16 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
     ? advert.postedBy
     : advert.postedByType === "club" ? "A Club" : advert.postedByType === "player" ? "A Player" : "A Coach";
 
-  const connect = () => {
-    connectOnAdvert(advert);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const connect = async () => {
+    if (isConnecting || myRequest) return;
+    setIsConnecting(true);
+    try {
+      await connectOnAdvert(advert);
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const trainingSchedule = (() => {
@@ -318,7 +327,14 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               </View>
             ) : myRequest?.status === "connected" ? null : (
               canRequestConnection(currentAccount?.role ?? "player", advert) ? (
-                <PrimaryButton label="Request to connect privately" icon="message-circle" onPress={connect} />
+                isConnecting ? (
+                  <View style={[styles.connectedBadge, { backgroundColor: colors.pitchSoft }]}>
+                    <ActivityIndicator color={colors.primary} size="small" />
+                    <Text style={[styles.connectedText, { color: colors.primary }]}>Sending connection request…</Text>
+                  </View>
+                ) : (
+                  <PrimaryButton label="Request to connect privately" icon="message-circle" onPress={connect} />
+                )
               ) : (
                 <View style={[styles.connectedBadge, { backgroundColor: colors.secondary }]}>
                   <Feather name="lock" color={colors.mutedForeground} size={18} />

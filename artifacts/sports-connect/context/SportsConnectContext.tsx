@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
 
 import { SportTheme, createCustomSportTheme, defaultSportThemes } from "@/constants/sports";
@@ -965,9 +965,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return () => clearInterval(interval);
   }, []);
 
+  const pendingConnectionIds = useRef<Set<string>>(new Set());
+
   const connectOnAdvert = async (advert: Advert) => {
+    if (pendingConnectionIds.current.has(advert.id)) return "";
     const existing = conversations.find((c) => c.advertId === advert.id && c.initiatorAccountId === currentAccount?.id);
     if (existing) return existing.id;
+    pendingConnectionIds.current.add(advert.id);
     const isClubAdvert = advert.postedByType === "club";
     const convId = makeId();
     const conversation: Conversation = {
@@ -1002,6 +1006,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       setConversations((current) => current.map((c) => c.id === convId ? { ...c, messages: [inactiveMsg, ...c.messages] } : c));
     } catch (_) {
       setConversations((current) => [conversation, ...current]);
+    } finally {
+      pendingConnectionIds.current.delete(advert.id);
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     return convId;
