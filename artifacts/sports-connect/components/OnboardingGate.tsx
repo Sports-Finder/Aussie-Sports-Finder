@@ -315,6 +315,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       clubAddress: form.clubAddress,
       clubContactEmail: form.clubContactEmail,
       clubContactMobile: form.clubContactMobile,
+      bio: form.bio || undefined,
       socialId: authMethod !== "email" ? socialId : undefined,
       password: authMethod === "email" ? password : undefined,
     });
