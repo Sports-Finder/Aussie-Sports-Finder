@@ -511,9 +511,8 @@ export default function PostScreen() {
     setEditingId(advert.id);
     setType(advert.type);
     setSport(advert.sport);
-    const parts = advert.location.split(", ");
-    setSuburb(parts.slice(0, -1).join(", ") || advert.location);
-    setState(parts[parts.length - 1] || "");
+    setSuburb(stripStateFromLocation(advert.location));
+    setState(stateFromLocation(advert.location));
     setLevel(advert.level || "Competitive amateur");
     setDescription(advert.description || "");
     setPlayerDescription(advert.playerDescription || "");
@@ -650,7 +649,7 @@ export default function PostScreen() {
       type,
       title,
       sport,
-      location: suburb.trim(),
+      location: state ? `${suburb.trim()} ${state}` : suburb.trim(),
       level,
       availability: isClubTrials
         ? trialSlots.filter((s) => s.date.trim()).map((s) => s.date).join(", ") || "TBD"
