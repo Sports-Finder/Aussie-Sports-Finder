@@ -39,6 +39,23 @@ export type HighlightLink = {
 export type AccountStatus = "active" | "closed" | "banned";
 export type ClubApprovalStatus = "pending" | "approved" | "rejected";
 
+export type ModeratorPermissions = {
+  closeChats: boolean;
+  closeAdverts: boolean;
+  closeAccounts: boolean;
+  approveImages: boolean;
+  approveHighlights: boolean;
+  approveSports: boolean;
+  approveClubs: boolean;
+};
+
+export type ModeratorAccount = {
+  id: string;
+  name: string;
+  passcode: string;
+  permissions: ModeratorPermissions;
+};
+
 export type UserAccount = {
   id: string;
   role: AccountRole;
@@ -200,6 +217,13 @@ type SportsConnectState = {
   selectedSport: string;
   activeProfile: ProfileType;
   isAdmin: boolean;
+  isModerator: boolean;
+  currentModerator: ModeratorAccount | null;
+  moderators: ModeratorAccount[];
+  moderatorLogin: (passcode: string) => boolean;
+  moderatorSignOut: () => void;
+  addModerator: (mod: Omit<ModeratorAccount, "id">) => boolean;
+  deleteModerator: (modId: string) => void;
   isHydrated: boolean;
   setSelectedSport: (sport: string) => void;
   setActiveProfile: (profile: ProfileType) => void;
@@ -475,6 +499,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [selectedSport, setSelectedSport] = useState(defaultState.selectedSport);
   const [activeProfile, setActiveProfile] = useState<ProfileType>(defaultState.activeProfile);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isModerator, setIsModerator] = useState(false);
+  const [currentModerator, setCurrentModerator] = useState<ModeratorAccount | null>(null);
+  const [moderators, setModerators] = useState<ModeratorAccount[]>([]);
   const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
   const [bannedEmails, setBannedEmails] = useState<string[]>([]);
   const [signOutResetToken, setSignOutResetToken] = useState(0);
@@ -483,15 +510,16 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     AsyncStorage.getItem(adminStorageKey).then((stored) => {
       if (!stored) return;
-      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[] };
+      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[]; moderators?: ModeratorAccount[] };
       if (parsed.adminPasscode) setAdminPasscode(parsed.adminPasscode);
       if (Array.isArray(parsed.bannedEmails)) setBannedEmails(parsed.bannedEmails);
+      if (Array.isArray(parsed.moderators)) setModerators(parsed.moderators);
     }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails })).catch(() => undefined);
-  }, [adminPasscode, bannedEmails]);
+    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails, moderators })).catch(() => undefined);
+  }, [adminPasscode, bannedEmails, moderators]);
 
   useEffect(() => {
     let cancelled = false;
@@ -828,6 +856,40 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setAdminPasscode(next.trim());
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return true;
+  };
+
+  const moderatorLogin = (passcode: string): boolean => {
+    const mod = moderators.find((m) => m.passcode === passcode.trim());
+    if (!mod) return false;
+    setIsModerator(true);
+    setCurrentModerator(mod);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    return true;
+  };
+
+  const moderatorSignOut = () => {
+    setIsModerator(false);
+    setCurrentModerator(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const addModerator = (mod: Omit<ModeratorAccount, "id">): boolean => {
+    if (!mod.passcode.trim() || !mod.name.trim()) return false;
+    if (mod.passcode.trim() === adminPasscode) return false;
+    if (moderators.some((m) => m.passcode === mod.passcode.trim())) return false;
+    const newMod: ModeratorAccount = { ...mod, passcode: mod.passcode.trim(), name: mod.name.trim(), id: makeId() };
+    setModerators((current) => [...current, newMod]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    return true;
+  };
+
+  const deleteModerator = (modId: string) => {
+    setModerators((current) => current.filter((m) => m.id !== modId));
+    if (currentModerator?.id === modId) {
+      setIsModerator(false);
+      setCurrentModerator(null);
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
   const adminUpdateAccount = async (accountId: string, patch: Partial<UserAccount>) => {
@@ -1283,7 +1345,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const value = useMemo<SportsConnectState>(() => {
-    const myConversations = isAdmin
+    const myConversations = isAdmin || isModerator
       ? conversations
       : currentAccount
       ? conversations.filter((c) =>
@@ -1306,6 +1368,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     selectedSport,
     activeProfile,
     isAdmin,
+    isModerator,
+    currentModerator,
+    moderators,
+    moderatorLogin,
+    moderatorSignOut,
+    addModerator,
+    deleteModerator,
     isHydrated,
     setSelectedSport,
     setActiveProfile,
@@ -1352,7 +1421,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     getImageUri,
     getImageStatus,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminPasscode]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }
