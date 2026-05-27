@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, advertsTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
+import { db, advertsTable, conversationsTable, messagesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapAdvert } from "../lib/mapDbToApi";
 import { normalizeDates } from "../lib/normalizeDates";
@@ -51,6 +51,12 @@ router.put("/adverts/:publicId", async (req, res) => {
 router.delete("/adverts/:publicId", async (req, res) => {
   try {
     const publicId = req.params.publicId;
+    // Cascading delete: remove conversations + messages tied to this advert first,
+    // then delete the advert itself.
+    await db.execute(sql`DELETE FROM ${messagesTable} WHERE ${messagesTable.conversationId} IN (
+      SELECT ${conversationsTable.publicId} FROM ${conversationsTable} WHERE ${conversationsTable.advertId} = ${publicId}
+    )`);
+    await db.delete(conversationsTable).where(eq(conversationsTable.advertId, publicId));
     await db.delete(advertsTable).where(eq(advertsTable.publicId, publicId));
     res.status(204).send();
   } catch (err) {

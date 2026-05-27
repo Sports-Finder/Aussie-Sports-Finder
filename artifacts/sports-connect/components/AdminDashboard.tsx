@@ -200,7 +200,7 @@ function OverviewSection({ setSection }: { setSection: (s: Section) => void }) {
 function AdvertsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { adverts, accounts, adminSetAdvertStatus, updateAdvert } = useSportsConnect();
+  const { adverts, accounts, conversations, adminSetAdvertStatus, updateAdvert } = useSportsConnect();
   const [filter, setFilter] = useState<"all" | "active" | "closed">("all");
   const [editing, setEditing] = useState<Advert | null>(null);
 
@@ -392,10 +392,19 @@ function AdvertsSection() {
                     <ActionButton icon="rotate-ccw" label="Reopen" color="#10B981" onPress={() => adminSetAdvertStatus(advert.id, "active")} />
                   ) : (
                     <ActionButton icon="x-circle" label="Close" color="#EF4444" onPress={() => {
-                      Alert.alert("Close advert?", "This will hide the advert from the public feed. You can reopen it later.", [
+                      const linkedChats = conversations.filter((c) => c.advertId === advert.id && (c.status === "pending" || c.status === "connected"));
+                      const chatCount = linkedChats.length;
+                      const warning = chatCount > 0
+                        ? `This advert has ${chatCount} open or pending chat${chatCount === 1 ? "" : "s"}. Closing will remove it from the public feed. You can reopen it later.\n\nDelete the chats too, or keep them?`
+                        : "This will hide the advert from the public feed. You can reopen it later.";
+                      const buttons: { text: string; style?: "cancel" | "default" | "destructive"; onPress?: () => void }[] = [
                         { text: "Cancel", style: "cancel" },
-                        { text: "Close advert", style: "destructive", onPress: () => adminSetAdvertStatus(advert.id, "closed", "Closed by admin") },
-                      ]);
+                      ];
+                      if (chatCount > 0) {
+                        buttons.push({ text: "Close + Delete chats", style: "destructive", onPress: () => adminSetAdvertStatus(advert.id, "closed", "Closed by admin", true) });
+                      }
+                      buttons.push({ text: chatCount > 0 ? "Close only" : "Close advert", style: "destructive", onPress: () => adminSetAdvertStatus(advert.id, "closed", "Closed by admin") });
+                      Alert.alert("Close advert?", warning, buttons);
                     }} />
                   )}
                 </View>

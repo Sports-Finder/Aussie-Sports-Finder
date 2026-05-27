@@ -219,7 +219,7 @@ type SportsConnectState = {
   adminUpdateAccount: (accountId: string, patch: Partial<UserAccount>) => Promise<void>;
   adminSetAccountStatus: (accountId: string, status: AccountStatus, reason?: string) => Promise<void>;
   adminUnbanEmail: (email: string) => Promise<void>;
-  adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string) => Promise<void>;
+  adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string, deleteChats?: boolean) => Promise<void>;
   adminSendMessage: (conversationId: string, body: string) => Promise<void>;
   adminApproveClub: (accountId: string) => Promise<void>;
   adminRejectClub: (accountId: string) => Promise<void>;
@@ -873,9 +873,18 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
-  const adminSetAdvertStatus = async (advertId: string, status: "active" | "closed", reason?: string) => {
+  const adminSetAdvertStatus = async (advertId: string, status: "active" | "closed", reason?: string, deleteChats?: boolean) => {
     setAdverts((current) => current.map((a) => a.id === advertId ? { ...a, status, closedAt: status === "closed" ? now() : undefined, closedReason: status === "closed" ? reason : undefined } : a));
-    try { await api.updateAdvert(advertId, { status, ...(status === "closed" ? { closedAt: now(), closedReason: reason } : { closedAt: undefined, closedReason: undefined }) }); } catch (_) { /* silent */ }
+    if (deleteChats) {
+      setConversations((current) => current.filter((c) => c.advertId !== advertId));
+    }
+    try {
+      if (deleteChats) {
+        await api.deleteAdvert(advertId);
+      } else {
+        await api.updateAdvert(advertId, { status, ...(status === "closed" ? { closedAt: now(), closedReason: reason } : { closedAt: undefined, closedReason: undefined }) });
+      }
+    } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 

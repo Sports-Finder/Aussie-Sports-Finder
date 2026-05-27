@@ -577,7 +577,7 @@ export default function PostScreen() {
   };
 
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
-  const myAdverts = adverts.filter((a) => a.postedBy === ownerName);
+  const myAdverts = adverts.filter((a) => a.postedBy === ownerName && a.status !== "closed");
   const activeTheme = getSportTheme(sport, approvedSports);
   const sportChoices = allowedSports.length ? approvedSports.filter((s) => allowedSports.includes(s.name)) : approvedSports;
   const availableTypes = advertTypesByRole[accountRole];
