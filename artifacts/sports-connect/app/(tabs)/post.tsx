@@ -136,6 +136,16 @@ const coachTitles = ["Senior", "Assistant", "Amateur", "Experienced", "Inexperie
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
+function stripStateFromLocation(location: string): string {
+  const parts = location.trim().split(" ");
+  const last = parts[parts.length - 1]?.toUpperCase();
+  return AU_STATES.includes(last) ? parts.slice(0, -1).join(" ").trim() : location.trim();
+}
+function stateFromLocation(location: string): string {
+  const parts = location.trim().split(" ");
+  const last = parts[parts.length - 1]?.toUpperCase();
+  return AU_STATES.includes(last) ? last : "";
+}
 
 function FormLabel({ text, required }: { text: string; required?: boolean }) {
   const colors = useColors();
@@ -417,8 +427,8 @@ export default function PostScreen() {
 
   const [type, setType] = useState<Advert["type"]>(advertTypesByRole[accountRole][0].value);
   const [sport, setSport] = useState(currentAccount?.defaultSport || allowedSports[0] || selectedSport);
-  const [suburb, setSuburb] = useState(playerProfile.location);
-  const [state, setState] = useState("");
+  const [suburb, setSuburb] = useState(() => stripStateFromLocation(currentAccount?.location ?? playerProfile.location));
+  const [state, setState] = useState(() => stateFromLocation(currentAccount?.location ?? ""));
   const [level, setLevel] = useState("Competitive amateur");
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -454,6 +464,13 @@ export default function PostScreen() {
     setSport((current) => (allowedSports.includes(current) ? current : nextSport));
     setPositions([]);
   }, [allowedSports, currentAccount?.defaultSport, selectedSport]);
+
+  useEffect(() => {
+    if (editingId) return;
+    const loc = currentAccount?.location ?? "";
+    setSuburb(stripStateFromLocation(loc));
+    setState(stateFromLocation(loc));
+  }, [currentAccount?.id, editingId]);
 
   useEffect(() => {
     const nextType = advertTypesByRole[activeProfile][0].value;
