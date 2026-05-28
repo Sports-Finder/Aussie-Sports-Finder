@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AdminPage } from "@/components/AdminDashboard";
+import { AdminPage, ModeratorPage } from "@/components/AdminDashboard";
 import { PrimaryButton } from "@/components/SportsUI";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
@@ -99,7 +99,7 @@ function isValidSocialLink(platform: keyof SocialLinks, value: string) {
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { currentAccount, isAdmin, isHydrated, adminLogin, adminSignOut, approvedSports, accounts, createAccount, loginWithEmail, loginWithSocial, pickAccountImage, signOutResetToken } = useSportsConnect();
+  const { currentAccount, isAdmin, isModerator, isHydrated, adminLogin, adminSignOut, moderatorLogin, moderatorSignOut, approvedSports, accounts, createAccount, loginWithEmail, loginWithSocial, pickAccountImage, signOutResetToken } = useSportsConnect();
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [step, setStep] = useState<Step>("auth");
@@ -217,6 +217,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     );
   }
   if (isAdmin) return <AdminPage onExit={() => adminSignOut()} />;
+  if (isModerator) return <ModeratorPage onExit={() => moderatorSignOut()} />;
   if (currentAccount) return <>{children}</>;
 
   const update = (key: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }));
@@ -376,12 +377,11 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    const ok = adminLogin(adminPasscodeInput);
-                    if (ok) {
-                      setShowAdminModal(false);
-                    } else {
-                      Alert.alert("Incorrect passcode", "The passcode you entered is incorrect. Please try again.");
-                    }
+                    const adminOk = adminLogin(adminPasscodeInput);
+                    if (adminOk) { setShowAdminModal(false); return; }
+                    const modOk = moderatorLogin(adminPasscodeInput);
+                    if (modOk) { setShowAdminModal(false); return; }
+                    Alert.alert("Incorrect passcode", "The passcode you entered is incorrect. Please try again.");
                   }}
                   style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                 >

@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import React, { useMemo, useState } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -10,6 +10,7 @@ import {
   AccountRole,
   AccountStatus,
   Advert,
+  ModeratorPermissions,
   UserAccount,
   useSportsConnect,
 } from "@/context/SportsConnectContext";
@@ -56,12 +57,21 @@ const statusBadgeColor = (status?: AccountStatus | "active" | "closed") => {
   return { bg: "#DCFCE7", fg: "#166534" };
 };
 
+const FULL_PERMISSIONS: ModeratorPermissions = {
+  closeChats: true, closeAdverts: true, closeAccounts: true,
+  approveImages: true, approveHighlights: true, approveSports: true, approveClubs: true,
+};
+
+const DashboardPermissionsContext = createContext<ModeratorPermissions>(FULL_PERMISSIONS);
+const useDashboardPermissions = () => useContext(DashboardPermissionsContext);
+
 function AdminContent({ onExit }: { onExit?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [section, setSection] = useState<Section>("overview");
 
   return (
+    <DashboardPermissionsContext.Provider value={FULL_PERMISSIONS}>
     <View style={[styles.shell, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
         <View style={[styles.adminBadge, { backgroundColor: colors.primary }]}>
@@ -117,6 +127,7 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
         {section === "settings" && <SettingsSection onClose={onExit} />}
       </View>
     </View>
+    </DashboardPermissionsContext.Provider>
   );
 }
 
@@ -130,6 +141,88 @@ export function AdminDashboard({ visible, onClose }: { visible: boolean; onClose
 
 export function AdminPage({ onExit }: { onExit: () => void }) {
   return <AdminContent onExit={onExit} />;
+}
+
+export function ModeratorPage({ onExit }: { onExit: () => void }) {
+  const { currentModerator } = useSportsConnect();
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [section, setSection] = useState<Section>("overview");
+
+  if (!currentModerator) return null;
+  const perms = currentModerator.permissions;
+
+  const visibleSections: typeof sections = [
+    { key: "overview", label: "Overview", icon: "grid" },
+    ...(perms.closeAdverts ? [{ key: "adverts" as const, label: "Adverts", icon: "clipboard" as const }] : []),
+    ...(perms.closeChats ? [{ key: "chats" as const, label: "Chats", icon: "message-circle" as const }] : []),
+    ...(perms.closeAccounts ? [{ key: "accounts" as const, label: "Accounts", icon: "users" as const }] : []),
+    ...(perms.approveImages || perms.approveHighlights || perms.approveSports
+      ? [{ key: "moderation" as const, label: "Moderation", icon: "shield" as const }]
+      : []),
+    ...(perms.approveClubs ? [{ key: "clubapprovals" as const, label: "Club Approvals", icon: "check-circle" as const }] : []),
+  ];
+
+  const activeSection = visibleSections.some((s) => s.key === section) ? section : "overview";
+
+  return (
+    <DashboardPermissionsContext.Provider value={perms}>
+      <View style={[styles.shell, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
+          <View style={[styles.adminBadge, { backgroundColor: "#8B5CF6" }]}>
+            <Feather name="user-check" size={16} color="#FFF" />
+            <Text style={[styles.adminBadgeText, { color: "#FFF" }]}>MOD</Text>
+          </View>
+          <View style={styles.headerCopy}>
+            <Text style={[styles.title, { color: colors.foreground }]}>Moderator Dashboard</Text>
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{currentModerator.name}</Text>
+          </View>
+          <Pressable onPress={onExit} style={[styles.closeBtn, { backgroundColor: "#EF4444" }]}>
+            <Feather name="log-out" size={18} color="#FFF" />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsRow}
+          style={{ flexGrow: 0 }}
+        >
+          {visibleSections.map((s) => {
+            const active = activeSection === s.key;
+            return (
+              <Pressable
+                key={s.key}
+                onPress={() => setSection(s.key)}
+                style={({ pressed }) => [
+                  styles.tab,
+                  {
+                    backgroundColor: active ? "#8B5CF6" : colors.card,
+                    borderColor: active ? "#8B5CF6" : colors.border,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <Feather name={s.icon} size={15} color={active ? "#FFF" : colors.foreground} />
+                <Text style={[styles.tabLabel, { color: active ? "#FFF" : colors.foreground }]}>{s.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.body}>
+          {activeSection === "overview" && (
+            <OverviewSection setSection={(s) => { if (visibleSections.some((vs) => vs.key === s)) setSection(s); }} />
+          )}
+          {activeSection === "adverts" && <AdvertsSection />}
+          {activeSection === "chats" && <ChatsSection />}
+          {activeSection === "accounts" && <AccountsSection />}
+          {activeSection === "moderation" && <ModerationSection />}
+          {activeSection === "clubapprovals" && <ClubApprovalsSection />}
+        </View>
+      </View>
+    </DashboardPermissionsContext.Provider>
+  );
 }
 
 function StatCard({ label, value, icon, color, onPress }: { label: string; value: number; icon: keyof typeof Feather.glyphMap; color: string; onPress?: () => void }) {
@@ -636,6 +729,7 @@ function AccountsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { accounts, bannedEmails, adminApproveClub, adminRejectClub } = useSportsConnect();
+  const { approveClubs } = useDashboardPermissions();
   const [role, setRole] = useState<AccountRole>("player");
   const [editing, setEditing] = useState<UserAccount | null>(null);
 
@@ -695,7 +789,7 @@ function AccountsSection() {
                   <Feather name="activity" size={12} color={colors.mutedForeground} />
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Default sport: {acc.defaultSport}</Text>
                 </View>
-                {acc.role === "club" && clubApproval !== "approved" && (
+                {acc.role === "club" && clubApproval !== "approved" && approveClubs && (
                   <View style={styles.actionRow}>
                     <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => {
                       Alert.alert("Approve Club", `Approve "${acc.clubName ?? acc.email}"?`, [
@@ -735,6 +829,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { adminUpdateAccount, adminSetAccountStatus, adminApproveClub, adminRejectClub } = useSportsConnect();
+  const { approveClubs } = useDashboardPermissions();
 
   const [fullName, setFullName] = useState(account.fullName ?? "");
   const [playerName, setPlayerName] = useState(account.playerName ?? "");
@@ -860,7 +955,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
 
           <PrimaryButton label="Save changes" icon="check" onPress={save} />
 
-          {account.role === "club" && (
+          {account.role === "club" && approveClubs && (
             <View style={styles.dangerZone}>
               <Text style={[styles.dangerTitle, { color: colors.foreground }]}>Club approval</Text>
               <Text style={[styles.dangerText, { color: colors.mutedForeground }]}>
@@ -921,6 +1016,7 @@ function ModerationSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { profileImages, pendingHighlightLinks, pendingSportRequests, moderateImage, moderateHighlightLink, moderateSportRequest, getImageUri, accounts } = useSportsConnect();
+  const { approveImages, approveHighlights, approveSports } = useDashboardPermissions();
   const pendingImages = profileImages.filter((i) => i.status === "pending");
   const pendingHighlights = pendingHighlightLinks.filter((l) => l.status === "pending");
   const pendingSports = pendingSportRequests.filter((r) => r.status === "pending");
@@ -936,8 +1032,8 @@ function ModerationSection() {
         </Pressable>
       </Modal>
 
-      <SectionTitle title="Profile images" action={`${pendingImages.length} pending`} />
-      {pendingImages.length === 0 ? (
+      {approveImages && <SectionTitle title="Profile images" action={`${pendingImages.length} pending`} />}
+      {approveImages && (pendingImages.length === 0 ? (
         <EmptyState icon="image" title="No images to review" text="Pending profile image submissions will appear here." />
       ) : pendingImages.map((img) => {
         const uri = getImageUri(img.id, true);
@@ -977,10 +1073,10 @@ function ModerationSection() {
             </View>
           </View>
         );
-      })}
+      }))}
 
-      <SectionTitle title="Highlight reels" action={`${pendingHighlights.length} pending`} />
-      {pendingHighlights.length === 0 ? (
+      {approveHighlights && <SectionTitle title="Highlight reels" action={`${pendingHighlights.length} pending`} />}
+      {approveHighlights && (pendingHighlights.length === 0 ? (
         <EmptyState icon="video" title="No highlight reels to review" text="Submitted highlight links will appear here." />
       ) : pendingHighlights.map((link) => (
         <View key={link.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -996,10 +1092,10 @@ function ModerationSection() {
             <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => moderateHighlightLink(link.id, "rejected")} />
           </View>
         </View>
-      ))}
+      )))}
 
-      <SectionTitle title="Sport requests" action={`${pendingSports.length} pending`} />
-      {pendingSports.length === 0 ? (
+      {approveSports && <SectionTitle title="Sport requests" action={`${pendingSports.length} pending`} />}
+      {approveSports && (pendingSports.length === 0 ? (
         <EmptyState icon="plus-circle" title="No sport requests" text="New sport suggestions will appear here for review." />
       ) : pendingSports.map((req) => (
         <View key={req.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -1014,7 +1110,7 @@ function ModerationSection() {
             <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => moderateSportRequest(req.id, "rejected")} />
           </View>
         </View>
-      ))}
+      )))}
     </ScrollView>
   );
 }
@@ -1115,13 +1211,52 @@ function ClubApprovalsSection() {
   );
 }
 
+const EMPTY_MOD_PERMS: ModeratorPermissions = {
+  closeChats: false, closeAdverts: false, closeAccounts: false,
+  approveImages: false, approveHighlights: false, approveSports: false, approveClubs: false,
+};
+
+const MOD_PERM_LABELS: { key: keyof ModeratorPermissions; label: string }[] = [
+  { key: "closeChats", label: "Close Chats" },
+  { key: "closeAdverts", label: "Close Adverts" },
+  { key: "closeAccounts", label: "Close Accounts" },
+  { key: "approveImages", label: "Approve Profile Images" },
+  { key: "approveHighlights", label: "Approve Highlight Reels" },
+  { key: "approveSports", label: "Approve Sport Requests" },
+  { key: "approveClubs", label: "Approve Club Accounts" },
+];
+
 function SettingsSection({ onClose }: { onClose?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { changeAdminPasscode, adminSignOut, bannedEmails, adminUnbanEmail, clearAllData } = useSportsConnect();
+  const { changeAdminPasscode, adminSignOut, bannedEmails, adminUnbanEmail, clearAllData, moderators, addModerator, deleteModerator } = useSportsConnect();
   const [showPass, setShowPass] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
+  const [showAddMod, setShowAddMod] = useState(false);
+  const [modName, setModName] = useState("");
+  const [modPasscode, setModPasscode] = useState("");
+  const [modPerms, setModPerms] = useState<ModeratorPermissions>(EMPTY_MOD_PERMS);
+
+  const resetModForm = () => {
+    setShowAddMod(false);
+    setModName("");
+    setModPasscode("");
+    setModPerms(EMPTY_MOD_PERMS);
+  };
+
+  const saveNewMod = () => {
+    if (!modName.trim() || !modPasscode.trim()) {
+      Alert.alert("Missing info", "Name and passcode are required.");
+      return;
+    }
+    const ok = addModerator({ name: modName, passcode: modPasscode, permissions: modPerms });
+    if (!ok) {
+      Alert.alert("Passcode conflict", "This passcode is already in use. Choose a different passcode.");
+      return;
+    }
+    resetModForm();
+  };
 
   const save = () => {
     const ok = changeAdminPasscode(current, next);
@@ -1137,6 +1272,55 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
 
   return (
     <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+      <SectionTitle title="Moderators" action={`${moderators.length}`} />
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {showAddMod ? (
+          <>
+            <Field label="Name" value={modName} onChangeText={setModName} />
+            <Field label="Passcode" value={modPasscode} onChangeText={setModPasscode} secureTextEntry />
+            <Text style={[styles.sectionHeader, { color: colors.foreground, marginTop: 8 }]}>Permissions</Text>
+            {MOD_PERM_LABELS.map(({ key, label }) => (
+              <PermToggle
+                key={key}
+                label={label}
+                value={modPerms[key]}
+                onToggle={() => setModPerms((p) => ({ ...p, [key]: !p[key] }))}
+              />
+            ))}
+            <View style={[styles.actionRow, { marginTop: 12 }]}>
+              <ActionButton icon="x" label="Cancel" color={colors.mutedForeground} onPress={resetModForm} />
+              <ActionButton icon="user-plus" label="Add Moderator" color="#8B5CF6" onPress={saveNewMod} />
+            </View>
+          </>
+        ) : (
+          <ActionButton icon="user-plus" label="Add Moderator" color="#8B5CF6" onPress={() => setShowAddMod(true)} />
+        )}
+      </View>
+      {moderators.map((mod) => (
+        <View key={mod.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.itemHeader}>
+            <Text style={[styles.itemTitle, { color: colors.foreground }]}>{mod.name}</Text>
+            <View style={[styles.badge, { backgroundColor: "#EDE9FE" }]}>
+              <Text style={[styles.badgeText, { color: "#6D28D9" }]}>Moderator</Text>
+            </View>
+          </View>
+          <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={2}>
+            {MOD_PERM_LABELS
+              .filter(({ key }) => mod.permissions[key])
+              .map(({ label }) => label)
+              .join(" · ") || "No permissions"}
+          </Text>
+          <View style={styles.actionRow}>
+            <ActionButton icon="trash-2" label="Delete" color="#EF4444" onPress={() => {
+              Alert.alert("Delete Moderator?", `Remove "${mod.name}"? They will no longer be able to log in.`, [
+                { text: "Cancel", style: "cancel" },
+                { text: "Delete", style: "destructive", onPress: () => deleteModerator(mod.id) },
+              ]);
+            }} />
+          </View>
+        </View>
+      ))}
+
       <SectionTitle title="Banned emails" action={`${bannedEmails.length}`} />
       {bannedEmails.length === 0 ? (
         <EmptyState icon="check-circle" title="No banned emails" text="Emails you ban from the Accounts section will appear here." />
@@ -1199,6 +1383,18 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
   );
 }
 
+function PermToggle({ label, value, onToggle }: { label: string; value: boolean; onToggle: () => void }) {
+  const colors = useColors();
+  return (
+    <Pressable onPress={onToggle} style={[styles.permRow, { borderBottomColor: colors.border }]}>
+      <Text style={[styles.permLabel, { color: colors.foreground }]}>{label}</Text>
+      <View style={[styles.permToggle, { backgroundColor: value ? "#8B5CF6" : colors.secondary }]}>
+        <Feather name={value ? "check" : "x"} size={14} color={value ? "#FFF" : colors.mutedForeground} />
+      </View>
+    </Pressable>
+  );
+}
+
 function ActionButton({ icon, label, color, onPress }: { icon: keyof typeof Feather.glyphMap; label: string; color: string; onPress: () => void }) {
   return (
     <Pressable
@@ -1256,4 +1452,7 @@ const styles = StyleSheet.create({
   dangerTitle: { fontWeight: "700", fontSize: 16 },
   dangerText: { fontWeight: "500", fontSize: 13, lineHeight: 19 },
   sectionHeader: { fontWeight: "700", fontSize: 14, marginTop: 20, marginBottom: 8, letterSpacing: 0.2, textTransform: "uppercase" as const },
+  permRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  permLabel: { fontSize: 14, fontWeight: "500", flex: 1 },
+  permToggle: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
 });
