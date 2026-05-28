@@ -5,7 +5,7 @@ import * as Location from "expo-location";
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
 
-import { SportTheme, createCustomSportTheme, defaultSportThemes } from "@/constants/sports";
+import { SportTheme, defaultSportThemes } from "@/constants/sports";
 import { api } from "@/utils/apiClient";
 
 type AdvertType = "player-looking" | "coach-looking" | "players-wanted" | "club-trials" | "coach-wanted";
@@ -212,6 +212,7 @@ type SportsConnectState = {
   clubProfile: ClubProfile;
   playerProfile: PlayerProfile;
   notificationSettings: NotificationSettings;
+  sportsRegistry: SportTheme[];
   approvedSports: SportTheme[];
   pendingSportRequests: SportRequest[];
   selectedSport: string;
@@ -229,6 +230,8 @@ type SportsConnectState = {
   setActiveProfile: (profile: ProfileType) => void;
   requestSport: (name: string) => void;
   moderateSportRequest: (requestId: string, status: "approved" | "rejected") => Promise<void>;
+  adminAddSport: (sport: SportTheme) => boolean;
+  adminToggleSport: (sportName: string, enabled: boolean) => void;
   accounts: UserAccount[];
   bannedEmails: string[];
   loginWithEmail: (email: string, password: string) => boolean;
@@ -273,6 +276,7 @@ type SportsConnectState = {
 
 const storageKey = "sports-connect-state-v8-clean";
 const adminStorageKey = "sports-connect-admin-v1";
+const sportsRegistryKey = "sports-connect-registry-v1";
 const defaultAdminPasscode = "admin6969";
 
 const now = () => new Date().toISOString();
@@ -476,7 +480,6 @@ const defaultState = {
     radiusKm: 25,
     locationLabel: "Melbourne area",
   },
-  approvedSports: defaultSportThemes,
   pendingSportRequests: [] as SportRequest[],
   selectedSport: "All Sports",
   activeProfile: "player" as ProfileType,
@@ -494,7 +497,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [clubProfile, setClubProfile] = useState<ClubProfile>(defaultState.clubProfile);
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile>(defaultState.playerProfile);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(defaultState.notificationSettings);
-  const [approvedSports, setApprovedSports] = useState<SportTheme[]>(defaultState.approvedSports);
+  const [sportsRegistry, setSportsRegistry] = useState<SportTheme[]>(defaultSportThemes);
   const [pendingSportRequests, setPendingSportRequests] = useState<SportRequest[]>(defaultState.pendingSportRequests);
   const [selectedSport, setSelectedSport] = useState(defaultState.selectedSport);
   const [activeProfile, setActiveProfile] = useState<ProfileType>(defaultState.activeProfile);
@@ -506,6 +509,28 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [bannedEmails, setBannedEmails] = useState<string[]>([]);
   const [signOutResetToken, setSignOutResetToken] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(sportsRegistryKey).then((stored) => {
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored) as SportTheme[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const migrated = parsed.map((s) => ({
+              ...s,
+              enabled: s.enabled ?? true,
+              positions: s.positions ?? [],
+            }));
+            setSportsRegistry(migrated);
+          }
+        } catch (_) { /* ignore */ }
+      }
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(sportsRegistryKey, JSON.stringify(sportsRegistry)).catch(() => undefined);
+  }, [sportsRegistry]);
 
   useEffect(() => {
     AsyncStorage.getItem(adminStorageKey).then((stored) => {
@@ -577,7 +602,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         } catch (_) {
           setAccounts(fetchedAccounts);
         }
-      } catch (e) {
+      } catch (_e) {
         // API unreachable, will fall back to AsyncStorage below
         if (cancelled) return;
       }
@@ -598,7 +623,6 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
             setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
             setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
             setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
-            setApprovedSports(parsed.approvedSports ?? defaultState.approvedSports);
             setPendingSportRequests(parsed.pendingSportRequests ?? []);
             setSelectedSport(parsed.selectedSport ?? defaultState.selectedSport);
             setActiveProfile(parsed.activeProfile ?? "player");
@@ -614,17 +638,17 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
-    const snapshot = { adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile };
+    const snapshot = { adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, pendingSportRequests, selectedSport, activeProfile };
     AsyncStorage.setItem(storageKey, JSON.stringify(snapshot)).catch(() => undefined);
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, bannedEmails]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, pendingSportRequests, selectedSport, activeProfile, bannedEmails]);
 
   const requestSport = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const alreadyApproved = approvedSports.some((sport) => sport.name.toLowerCase() === trimmed.toLowerCase());
+    const alreadyInRegistry = sportsRegistry.some((sport) => sport.name.toLowerCase() === trimmed.toLowerCase());
     const alreadyPending = pendingSportRequests.some((request) => request.name.toLowerCase() === trimmed.toLowerCase() && request.status === "pending");
-    if (alreadyApproved || alreadyPending) {
-      Alert.alert("Sport already exists", "This sport is already available or waiting for admin approval.");
+    if (alreadyInRegistry || alreadyPending) {
+      Alert.alert("Sport already exists", "This sport is already in the registry or waiting for admin approval.");
       return;
     }
     const publicId = makeId();
@@ -637,15 +661,25 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const moderateSportRequest = async (requestId: string, status: "approved" | "rejected") => {
     const request = pendingSportRequests.find((item) => item.id === requestId);
     if (!request) return;
-    if (status === "approved") {
-      setApprovedSports((current) => {
-        if (current.some((sport) => sport.name.toLowerCase() === request.name.toLowerCase())) return current;
-        return [...current, createCustomSportTheme(request.name)];
-      });
-    }
     setPendingSportRequests((current) => current.map((item) => item.id === requestId ? { ...item, status } : item));
     try { await api.updateSportRequest(requestId, { status }); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  };
+
+  const adminAddSport = (sport: SportTheme): boolean => {
+    const exists = sportsRegistry.some((s) => s.name.toLowerCase() === sport.name.toLowerCase());
+    if (exists) return false;
+    setSportsRegistry((current) => [...current, { ...sport, enabled: true }]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    return true;
+  };
+
+  const adminToggleSport = (sportName: string, enabled: boolean) => {
+    setSportsRegistry((current) => current.map((s) => s.name === sportName ? { ...s, enabled } : s));
+    if (!enabled && selectedSport === sportName) {
+      setSelectedSport("All Sports");
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
   const createAccount = (draft: DraftAccount): boolean => {
@@ -729,7 +763,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setClubProfile(defaultState.clubProfile);
     setPlayerProfile(defaultState.playerProfile);
     setNotificationSettings(defaultState.notificationSettings);
-    setApprovedSports(defaultState.approvedSports);
+    setSportsRegistry(defaultSportThemes);
+    await AsyncStorage.removeItem(sportsRegistryKey);
     setPendingSportRequests(defaultState.pendingSportRequests);
     setSelectedSport(defaultState.selectedSport);
     setActiveProfile(defaultState.activeProfile);
@@ -1354,6 +1389,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
           c.ownerAccountId === currentAccount.id
         )
       : conversations;
+    const approvedSports = sportsRegistry.filter((s) => s.enabled);
     return {
     adverts,
     conversations: myConversations,
@@ -1363,6 +1399,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     clubProfile,
     playerProfile,
     notificationSettings,
+    sportsRegistry,
     approvedSports,
     pendingSportRequests,
     selectedSport,
@@ -1380,6 +1417,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setActiveProfile,
     requestSport,
     moderateSportRequest,
+    adminAddSport,
+    adminToggleSport,
     accounts,
     bannedEmails,
     loginWithEmail,
@@ -1421,7 +1460,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     getImageUri,
     getImageStatus,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, approvedSports, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

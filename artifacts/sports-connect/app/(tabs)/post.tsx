@@ -31,95 +31,6 @@ function agesInGroup(group: AgeGroup) {
   return Array.from({ length: group.max - group.min + 1 }, (_, i) => group.min + i);
 }
 
-const SPORT_POSITIONS: Record<string, string[]> = {
-  "Football (Soccer)": [
-    "Goalkeeper (GK)",
-    "Centre Back (CB)",
-    "Full Back (LB/RB)",
-    "Wing Back (LWB/RWB)",
-    "Sweeper",
-    "Defensive Midfielder (CDM)",
-    "Central Midfielder (CM)",
-    "Attacking Midfielder (CAM)",
-    "Wide Midfielder (LM/RM)",
-    "Winger (LW/RW)",
-    "Box-to-Box Midfielder",
-    "Striker (ST)",
-    "Centre Forward (CF)",
-    "Second Striker (SS)",
-    "False 9",
-  ],
-  "Futsal (Indoor Soccer)": ["Goalkeeper", "Defender (Fixo)", "Winger (Ala)", "Pivot"],
-  "Aussie Rules Football": [
-    "Full Forward",
-    "Forward Pocket",
-    "Centre Half Forward",
-    "Half Forward Flank",
-    "Wing",
-    "Centre",
-    "Half Back Flank",
-    "Centre Half Back",
-    "Full Back",
-    "Back Pocket",
-    "Ruck",
-    "Ruck Rover",
-    "Rover",
-    "Interchange / Bench",
-  ],
-  "Rugby League": [
-    "Fullback",
-    "Wing",
-    "Centre",
-    "Five-Eighth",
-    "Halfback",
-    "Prop",
-    "Hooker",
-    "Second Row",
-    "Lock Forward",
-  ],
-  "Rugby Union": [
-    "Fullback",
-    "Wing",
-    "Centre",
-    "Fly-half",
-    "Scrum-half",
-    "Loosehead Prop",
-    "Tighthead Prop",
-    "Hooker",
-    "Lock",
-    "Blindside Flanker",
-    "Openside Flanker",
-    "Number 8",
-  ],
-  "Touch Rugby": ["Middle", "Link", "Wing"],
-  "Cricket": [
-    "Opening Batter",
-    "Top Order Batter",
-    "Middle Order Batter",
-    "Lower Order / Tailender",
-    "Wicketkeeper",
-    "All-rounder",
-    "Fast Bowler",
-    "Medium Bowler",
-    "Spin Bowler",
-    "Slip",
-    "Gully",
-    "Point",
-    "Cover",
-    "Mid-off",
-    "Mid-on",
-    "Square Leg",
-    "Fine Leg",
-  ],
-  "Indoor Cricket": ["Wicketkeeper", "Bowler", "Batter", "Zone A", "Zone B", "Zone C", "Zone D"],
-  "Basketball": ["Point Guard (PG)", "Shooting Guard (SG)", "Small Forward (SF)", "Power Forward (PF)", "Centre (C)"],
-  "Netball": ["Goal Shooter (GS)", "Goal Attack (GA)", "Wing Attack (WA)", "Centre (C)", "Wing Defence (WD)", "Goal Defence (GD)", "Goal Keeper (GK)"],
-  "Volleyball": ["Setter", "Outside Hitter (Left-side)", "Opposite Hitter (Right-side)", "Middle Blocker", "Libero", "Defensive Specialist"],
-};
-
-function getPositions(sport: string): string[] {
-  return SPORT_POSITIONS[sport] ?? ["General Player"];
-}
 
 const advertTypesByRole: Record<AccountRole, { value: Advert["type"]; label: string }[]> = {
   player: [{ value: "player-looking", label: "Player looking for Club" }],
@@ -415,12 +326,17 @@ export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
+  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
   const accountRole = currentAccount?.role ?? activeProfile;
 
-  const allowedSports = activeProfile === "club"
+  const rawAllowedSports: string[] = activeProfile === "club"
     ? [currentAccount?.defaultSport || clubProfile.sport].filter(Boolean)
     : (currentAccount?.sports?.length ? currentAccount.sports : [playerProfile.sports.split(", ")[0] || selectedSport]).filter(Boolean);
+
+  // Intersect account sports with the enabled registry so disabled sports are never postable
+  const allowedSports = rawAllowedSports.length
+    ? approvedSports.filter((s) => rawAllowedSports.includes(s.name)).map((s) => s.name)
+    : approvedSports.map((s) => s.name);
 
   const [selectedMyAdvert, setSelectedMyAdvert] = useState<Advert | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -459,11 +375,13 @@ export default function PostScreen() {
   const [coachSalaryTbc, setCoachSalaryTbc] = useState(false);
   const [title, setTitle] = useState("");
 
+  const allowedSportsKey = allowedSports.join(",");
   useEffect(() => {
-    const nextSport = currentAccount?.defaultSport || allowedSports[0] || selectedSport;
+    const nextSport = (currentAccount?.defaultSport && allowedSports.includes(currentAccount.defaultSport) ? currentAccount.defaultSport : undefined) ?? allowedSports[0] ?? "";
     setSport((current) => (allowedSports.includes(current) ? current : nextSport));
     setPositions([]);
-  }, [allowedSports, currentAccount?.defaultSport, selectedSport]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedSportsKey, currentAccount?.defaultSport, selectedSport]);
 
   useEffect(() => {
     if (editingId) return;
@@ -579,9 +497,9 @@ export default function PostScreen() {
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
   const myAdverts = adverts.filter((a) => a.postedBy === ownerName && a.status !== "closed");
   const activeTheme = getSportTheme(sport, approvedSports);
-  const sportChoices = allowedSports.length ? approvedSports.filter((s) => allowedSports.includes(s.name)) : approvedSports;
+  const sportChoices = rawAllowedSports.length ? approvedSports.filter((s) => allowedSports.includes(s.name)) : approvedSports;
   const availableTypes = advertTypesByRole[accountRole];
-  const positionOptions = getPositions(sport);
+  const positionOptions = sportsRegistry.find((s) => s.name === sport)?.positions ?? ["General Player"];
 
   const isPlayerLooking = type === "player-looking";
   const isCoachLooking = type === "coach-looking";

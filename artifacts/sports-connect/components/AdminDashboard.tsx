@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React, { createContext, useContext, useMemo, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChatRoom } from "@/app/(tabs)/messages";
@@ -14,10 +14,11 @@ import {
   UserAccount,
   useSportsConnect,
 } from "@/context/SportsConnectContext";
+import { SportTheme } from "@/constants/sports";
 import type { ClubApprovalStatus } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
-type Section = "overview" | "adverts" | "chats" | "accounts" | "moderation" | "clubapprovals" | "settings";
+type Section = "overview" | "adverts" | "chats" | "accounts" | "moderation" | "clubapprovals" | "sports" | "settings";
 
 const sections: { key: Section; label: string; icon: keyof typeof Feather.glyphMap }[] = [
   { key: "overview", label: "Overview", icon: "grid" },
@@ -26,6 +27,7 @@ const sections: { key: Section; label: string; icon: keyof typeof Feather.glyphM
   { key: "accounts", label: "Accounts", icon: "users" },
   { key: "moderation", label: "Moderation", icon: "shield" },
   { key: "clubapprovals", label: "Club Approvals", icon: "check-circle" },
+  { key: "sports", label: "Sports", icon: "activity" },
   { key: "settings", label: "Settings", icon: "settings" },
 ];
 
@@ -71,6 +73,12 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [section, setSection] = useState<Section>("overview");
+  const [sportsPrefillName, setSportsPrefillName] = useState<string | undefined>();
+
+  const handleApproveSportRequest = (sportName: string) => {
+    setSportsPrefillName(sportName);
+    setSection("sports");
+  };
 
   return (
     <DashboardPermissionsContext.Provider value={{ ...FULL_PERMISSIONS, isFullAdmin: true }}>
@@ -124,8 +132,14 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
         {section === "adverts" && <AdvertsSection />}
         {section === "chats" && <ChatsSection />}
         {section === "accounts" && <AccountsSection />}
-        {section === "moderation" && <ModerationSection />}
+        {section === "moderation" && <ModerationSection onApproveSportRequest={handleApproveSportRequest} />}
         {section === "clubapprovals" && <ClubApprovalsSection />}
+        {section === "sports" && (
+          <SportsSection
+            prefillName={sportsPrefillName}
+            onPrefillConsumed={() => setSportsPrefillName(undefined)}
+          />
+        )}
         {section === "settings" && <SettingsSection onClose={onExit} />}
       </View>
     </View>
@@ -1028,7 +1042,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
   );
 }
 
-function ModerationSection() {
+function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: (name: string) => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { profileImages, pendingHighlightLinks, pendingSportRequests, moderateImage, moderateHighlightLink, moderateSportRequest, getImageUri, accounts } = useSportsConnect();
@@ -1122,7 +1136,7 @@ function ModerationSection() {
             </View>
           </View>
           <View style={styles.actionRow}>
-            <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => moderateSportRequest(req.id, "approved")} />
+            <ActionButton icon="check" label="Approve → Add Sport" color="#10B981" onPress={() => { moderateSportRequest(req.id, "approved"); onApproveSportRequest?.(req.name); }} />
             <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => moderateSportRequest(req.id, "rejected")} />
           </View>
         </View>
@@ -1241,6 +1255,134 @@ const MOD_PERM_LABELS: { key: keyof ModeratorPermissions; label: string }[] = [
   { key: "approveSports", label: "Approve Sport Requests" },
   { key: "approveClubs", label: "Approve Club Accounts" },
 ];
+
+const inputStyle = {
+  borderWidth: 1,
+  borderRadius: 12,
+  paddingHorizontal: 14,
+  paddingVertical: 12,
+  fontSize: 15,
+  fontWeight: "500" as const,
+} as const;
+
+function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: string; onPrefillConsumed?: () => void }) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { sportsRegistry, adminAddSport, adminToggleSport } = useSportsConnect();
+
+  const [showForm, setShowForm] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formPrimary, setFormPrimary] = useState("#0B63CE");
+  const [formSoft, setFormSoft] = useState("#CFE8FF");
+  const [formButton, setFormButton] = useState("#0B63CE");
+  const [formBackground, setFormBackground] = useState("#E8F4FF");
+  const [formText, setFormText] = useState("#08233F");
+  const [formPositions, setFormPositions] = useState("");
+
+  React.useEffect(() => {
+    if (prefillName) {
+      setFormName(prefillName);
+      setShowForm(true);
+      onPrefillConsumed?.();
+    }
+  }, [prefillName]);
+
+  const resetForm = () => {
+    setFormName("");
+    setFormPrimary("#0B63CE");
+    setFormSoft("#CFE8FF");
+    setFormButton("#0B63CE");
+    setFormBackground("#E8F4FF");
+    setFormText("#08233F");
+    setFormPositions("");
+    setShowForm(false);
+  };
+
+  const handleAdd = () => {
+    const trimmed = formName.trim();
+    if (!trimmed) { Alert.alert("Name required", "Please enter a sport name."); return; }
+    const positions = formPositions.split(",").map((p) => p.trim()).filter(Boolean);
+    const sport: SportTheme = {
+      name: trimmed,
+      enabled: true,
+      primary: formPrimary || "#0B63CE",
+      soft: formSoft || "#CFE8FF",
+      button: formButton || "#0B63CE",
+      background: formBackground || "#E8F4FF",
+      text: formText || "#08233F",
+      positions: positions.length ? positions : ["General Player"],
+    };
+    const ok = adminAddSport(sport);
+    if (!ok) { Alert.alert("Already exists", `"${trimmed}" is already in the sports registry.`); return; }
+    resetForm();
+  };
+
+  return (
+    <ScrollView
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
+      showsVerticalScrollIndicator={false}
+    >
+      <SectionTitle title="Sports Registry" />
+
+      <Pressable
+        onPress={() => setShowForm(true)}
+        style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.primary, alignSelf: "flex-start", marginBottom: 16, opacity: pressed ? 0.8 : 1 }]}
+      >
+        <Feather name="plus" size={15} color="#FFF" />
+        <Text style={styles.actionBtnText}>Add New Sport</Text>
+      </Pressable>
+
+      {sportsRegistry.length === 0 ? (
+        <EmptyState icon="activity" title="No sports" text="The registry is empty." />
+      ) : sportsRegistry.map((sport) => (
+        <View key={sport.name} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: "row", alignItems: "center" }]}>
+          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: sport.primary, marginRight: 10 }} />
+          <Text style={[styles.itemTitle, { color: colors.foreground, flex: 1 }]}>{sport.name}</Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: 12, marginRight: 8 }}>{sport.enabled ? "On" : "Off"}</Text>
+          <Switch
+            value={sport.enabled}
+            onValueChange={(val) => adminToggleSport(sport.name, val)}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="#FFF"
+          />
+        </View>
+      ))}
+
+      <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={resetForm}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingTop: 32, paddingBottom: insets.bottom + 32, backgroundColor: colors.background }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <SectionTitle title="Add Sport" />
+          <Field label="Sport Name" value={formName} onChangeText={setFormName} placeholder="e.g. Handball" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <Field label="Primary Colour (hex)" value={formPrimary} onChangeText={setFormPrimary} placeholder="#0B63CE" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <Field label="Soft Colour (hex)" value={formSoft} onChangeText={setFormSoft} placeholder="#CFE8FF" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <Field label="Button Colour (hex)" value={formButton} onChangeText={setFormButton} placeholder="#0B63CE" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <Field label="Background Colour (hex)" value={formBackground} onChangeText={setFormBackground} placeholder="#E8F4FF" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <Field label="Text Colour (hex)" value={formText} onChangeText={setFormText} placeholder="#08233F" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <Field
+            label="Positions (comma-separated)"
+            value={formPositions}
+            onChangeText={setFormPositions}
+            placeholder="e.g. Goalkeeper, Defender, Midfielder"
+            placeholderTextColor={colors.mutedForeground}
+            multiline
+            style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card, minHeight: 80 }]}
+          />
+          <View style={[styles.actionRow, { marginTop: 8 }]}>
+            <Pressable onPress={handleAdd} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
+              <Feather name="plus" size={15} color="#FFF" />
+              <Text style={styles.actionBtnText}>Add Sport</Text>
+            </Pressable>
+            <Pressable onPress={resetForm} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
+              <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Cancel</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </Modal>
+    </ScrollView>
+  );
+}
 
 function SettingsSection({ onClose }: { onClose?: () => void }) {
   const colors = useColors();
