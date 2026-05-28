@@ -1355,11 +1355,28 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
         >
           <SectionTitle title="Add Sport" />
           <Field label="Sport Name" value={formName} onChangeText={setFormName} placeholder="e.g. Handball" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
-          <Field label="Primary Colour (hex)" value={formPrimary} onChangeText={setFormPrimary} placeholder="#0B63CE" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
-          <Field label="Soft Colour (hex)" value={formSoft} onChangeText={setFormSoft} placeholder="#CFE8FF" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
-          <Field label="Button Colour (hex)" value={formButton} onChangeText={setFormButton} placeholder="#0B63CE" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
-          <Field label="Background Colour (hex)" value={formBackground} onChangeText={setFormBackground} placeholder="#E8F4FF" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
-          <Field label="Text Colour (hex)" value={formText} onChangeText={setFormText} placeholder="#08233F" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <ColorField label="Primary Colour" hex={formPrimary} onChange={setFormPrimary} />
+          <ColorField label="Soft Colour" hex={formSoft} onChange={setFormSoft} />
+          <ColorField label="Button Colour" hex={formButton} onChange={setFormButton} />
+          <ColorField label="Background Colour" hex={formBackground} onChange={setFormBackground} />
+          <ColorField label="Text Colour" hex={formText} onChange={setFormText} />
+
+          <Text style={[styles.sectionHeader, { color: colors.foreground, marginTop: 8 }]}>Preview</Text>
+          <View style={{ borderRadius: 10, borderWidth: 1, borderColor: colors.border, overflow: "hidden", marginBottom: 8 }}>
+            <View style={{ backgroundColor: formBackground, padding: 16, alignItems: "center" }}>
+              <Text style={{ color: formText, fontSize: 15, fontWeight: "700", marginBottom: 6 }}>{formName.trim() || "Sport Preview"}</Text>
+              <View style={{ width: "100%", borderRadius: 8, backgroundColor: "#FFFFFF", padding: 12, marginBottom: 10, borderWidth: 1, borderColor: formSoft }}>
+                <Text style={{ color: formText, fontSize: 13 }}>Sample card content</Text>
+                <Text style={{ color: formPrimary, fontSize: 12, marginTop: 4 }}>Primary accent text</Text>
+              </View>
+              <View style={{ width: "100%", borderRadius: 8, backgroundColor: formSoft, padding: 10, marginBottom: 10 }}>
+                <Text style={{ color: formText, fontSize: 12 }}>Soft accent area</Text>
+              </View>
+              <View style={{ borderRadius: 8, backgroundColor: formButton, paddingHorizontal: 20, paddingVertical: 10, alignSelf: "center" }}>
+                <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 14 }}>Sample Button</Text>
+              </View>
+            </View>
+          </View>
           <Field
             label="Positions (comma-separated)"
             value={formPositions}
@@ -1568,6 +1585,50 @@ function ActionButton({ icon, label, color, onPress }: { icon: keyof typeof Feat
       <Feather name={icon} size={15} color="#FFF" />
       <Text style={styles.actionBtnText}>{label}</Text>
     </Pressable>
+  );
+}
+
+const PRESET_PALETTES: Record<string, string[]> = {
+  "Blues": ["#0B63CE", "#006A8E", "#00877D", "#6545B8", "#4C7F1F", "#2E5BFF", "#1D4ED8"],
+  "Warm": ["#C53222", "#B87400", "#D45B16", "#D85C13", "#C12572", "#A21CAF", "#B45309"],
+  "Greens": ["#08743C", "#166534", "#4C7F1F", "#0F766E", "#3F6212", "#059669", "#15803D"],
+  "Neutrals": ["#374151", "#4B5563", "#57534E", "#6B7280", "#78716C", "#41513B", "#08233F"],
+};
+
+const PALETTE_PRESETS = Object.entries(PRESET_PALETTES);
+
+function hexValid(h: string) {
+  return /^#[0-9A-Fa-f]{6}$/.test(h);
+}
+
+function ColorField({ label, hex, onChange }: { label: string; hex: string; onChange: (v: string) => void }) {
+  const colors = useColors();
+  const valid = hexValid(hex);
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+        <View style={{ width: 18, height: 18, borderRadius: 4, backgroundColor: valid ? hex : colors.border, marginRight: 8, borderWidth: 1, borderColor: colors.border }} />
+        <Text style={{ color: colors.foreground, fontWeight: "700", fontSize: 14 }}>{label}</Text>
+      </View>
+      <TextInput
+        value={hex}
+        onChangeText={onChange}
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={[inputStyle, { color: colors.foreground, borderColor: valid ? colors.border : "#EF4444", backgroundColor: colors.card }]}
+      />
+      {!valid && <Text style={{ color: "#EF4444", fontSize: 11, marginTop: 2 }}>Enter a valid 6-digit hex (e.g. #0B63CE)</Text>}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 6 }}>
+        {PALETTE_PRESETS.map(([name, swatches]) => (
+          <View key={name} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Text style={{ color: colors.mutedForeground, fontSize: 10, marginRight: 2 }}>{name}</Text>
+            {swatches.map((s) => (
+              <Pressable key={s} onPress={() => onChange(s)} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: s, borderWidth: hex === s ? 2 : 0, borderColor: "#FFF" }} />
+            ))}
+          </View>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
