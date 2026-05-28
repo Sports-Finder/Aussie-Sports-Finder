@@ -760,8 +760,8 @@ function AccountsSection() {
             return (
               <Pressable
                 key={acc.id}
-                onPress={() => setEditing(acc)}
-                style={({ pressed }) => [styles.itemCard, { backgroundColor: colors.card, borderColor: clubApproval === "pending" ? "#FDE68A" : colors.border, borderWidth: clubApproval === "pending" ? 1.5 : 1, opacity: pressed ? 0.85 : 1 }]}
+                onPress={isFullAdmin ? () => setEditing(acc) : undefined}
+                style={({ pressed }) => [styles.itemCard, { backgroundColor: colors.card, borderColor: clubApproval === "pending" ? "#FDE68A" : colors.border, borderWidth: clubApproval === "pending" ? 1.5 : 1, opacity: isFullAdmin && pressed ? 0.85 : 1 }]}
               >
                 <View style={styles.itemHeader}>
                   <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{displayName(acc)}</Text>
@@ -841,7 +841,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { adminUpdateAccount, adminSetAccountStatus, adminApproveClub, adminRejectClub } = useSportsConnect();
-  const { approveClubs } = useDashboardPermissions();
+  const { approveClubs, isFullAdmin } = useDashboardPermissions();
 
   const [fullName, setFullName] = useState(account.fullName ?? "");
   const [playerName, setPlayerName] = useState(account.playerName ?? "");
@@ -929,43 +929,47 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
-          <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Basic info</Text>
-          {account.role === "club" ? (
+          {isFullAdmin ? (
             <>
-              <Field label="Club name" value={clubName} onChangeText={setClubName} />
-              <Field label="Club website" value={clubWebsite} onChangeText={setClubWebsite} autoCapitalize="none" />
-              <Field label="Club address" value={clubAddress} onChangeText={setClubAddress} />
-              <Field label="Club contact email" value={clubContactEmail} onChangeText={setClubContactEmail} autoCapitalize="none" keyboardType="email-address" />
-              <Field label="Club contact mobile" value={clubContactMobile} onChangeText={setClubContactMobile} />
-            </>
-          ) : (
-            <>
-              {account.role === "guardian" ? (
-                <Field label="Parent / guardian name" value={parentGuardianName} onChangeText={setParentGuardianName} />
-              ) : null}
-              <Field label="Full name" value={fullName} onChangeText={setFullName} />
-              {account.role === "guardian" || account.role === "player" ? (
-                <Field label="Player name" value={playerName} onChangeText={setPlayerName} />
-              ) : null}
-              <Field label="Gender" value={gender} onChangeText={setGender} />
-              <Field label="Date of birth (DD-MM-YYYY)" value={dateOfBirth} onChangeText={setDateOfBirth} />
-              <Field label="Bio" value={bio} onChangeText={setBio} multiline />
-            </>
-          )}
-          <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-          <Field label="Mobile" value={mobile} onChangeText={setMobile} />
-          <Field label="Location" value={location} onChangeText={setLocation} />
-          <Field label="Default sport" value={defaultSport} onChangeText={setDefaultSport} />
-          <Field label="Sports (comma-separated)" value={sports} onChangeText={setSports} />
+              <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Basic info</Text>
+              {account.role === "club" ? (
+                <>
+                  <Field label="Club name" value={clubName} onChangeText={setClubName} />
+                  <Field label="Club website" value={clubWebsite} onChangeText={setClubWebsite} autoCapitalize="none" />
+                  <Field label="Club address" value={clubAddress} onChangeText={setClubAddress} />
+                  <Field label="Club contact email" value={clubContactEmail} onChangeText={setClubContactEmail} autoCapitalize="none" keyboardType="email-address" />
+                  <Field label="Club contact mobile" value={clubContactMobile} onChangeText={setClubContactMobile} />
+                </>
+              ) : (
+                <>
+                  {account.role === "guardian" ? (
+                    <Field label="Parent / guardian name" value={parentGuardianName} onChangeText={setParentGuardianName} />
+                  ) : null}
+                  <Field label="Full name" value={fullName} onChangeText={setFullName} />
+                  {account.role === "guardian" || account.role === "player" ? (
+                    <Field label="Player name" value={playerName} onChangeText={setPlayerName} />
+                  ) : null}
+                  <Field label="Gender" value={gender} onChangeText={setGender} />
+                  <Field label="Date of birth (DD-MM-YYYY)" value={dateOfBirth} onChangeText={setDateOfBirth} />
+                  <Field label="Bio" value={bio} onChangeText={setBio} multiline />
+                </>
+              )}
+              <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+              <Field label="Mobile" value={mobile} onChangeText={setMobile} />
+              <Field label="Location" value={location} onChangeText={setLocation} />
+              <Field label="Default sport" value={defaultSport} onChangeText={setDefaultSport} />
+              <Field label="Sports (comma-separated)" value={sports} onChangeText={setSports} />
 
-          <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Social & extras</Text>
-          <Field label="Instagram" value={instagram} onChangeText={setInstagram} autoCapitalize="none" />
-          <Field label="Facebook" value={facebook} onChangeText={setFacebook} autoCapitalize="none" />
-          <Field label="X / Twitter" value={x} onChangeText={setX} autoCapitalize="none" />
-          <Field label="TikTok" value={tiktok} onChangeText={setTiktok} autoCapitalize="none" />
-          <Field label="Highlight reel URL" value={highlightReelUrl} onChangeText={setHighlightReelUrl} autoCapitalize="none" />
+              <Text style={[styles.sectionHeader, { color: colors.foreground }]}>Social & extras</Text>
+              <Field label="Instagram" value={instagram} onChangeText={setInstagram} autoCapitalize="none" />
+              <Field label="Facebook" value={facebook} onChangeText={setFacebook} autoCapitalize="none" />
+              <Field label="X / Twitter" value={x} onChangeText={setX} autoCapitalize="none" />
+              <Field label="TikTok" value={tiktok} onChangeText={setTiktok} autoCapitalize="none" />
+              <Field label="Highlight reel URL" value={highlightReelUrl} onChangeText={setHighlightReelUrl} autoCapitalize="none" />
 
-          <PrimaryButton label="Save changes" icon="check" onPress={save} />
+              <PrimaryButton label="Save changes" icon="check" onPress={save} />
+            </>
+          ) : null}
 
           {account.role === "club" && approveClubs && (
             <View style={styles.dangerZone}>
