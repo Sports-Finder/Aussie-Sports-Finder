@@ -14,7 +14,7 @@ import {
   UserAccount,
   useSportsConnect,
 } from "@/context/SportsConnectContext";
-import { SportTheme } from "@/constants/sports";
+import { SportTheme, defaultSportThemes } from "@/constants/sports";
 import type { ClubApprovalStatus } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -1265,12 +1265,15 @@ const inputStyle = {
   fontWeight: "500" as const,
 } as const;
 
+const BUILT_IN_SPORT_NAMES = new Set(defaultSportThemes.map((s) => s.name.toLowerCase()));
+
 function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: string; onPrefillConsumed?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { sportsRegistry, adminAddSport, adminToggleSport } = useSportsConnect();
+  const { sportsRegistry, adminAddSport, adminToggleSport, adminUpdateSport, adminDeleteSport } = useSportsConnect();
 
   const [showForm, setShowForm] = useState(false);
+  const [editingSport, setEditingSport] = useState<SportTheme | null>(null);
   const [formName, setFormName] = useState("");
   const [formPrimary, setFormPrimary] = useState("#0B63CE");
   const [formSoft, setFormSoft] = useState("#CFE8FF");
@@ -1287,7 +1290,32 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
     }
   }, [prefillName]);
 
+  const openAdd = () => {
+    setEditingSport(null);
+    setFormName("");
+    setFormPrimary("#0B63CE");
+    setFormSoft("#CFE8FF");
+    setFormButton("#0B63CE");
+    setFormBackground("#E8F4FF");
+    setFormText("#08233F");
+    setFormPositions("");
+    setShowForm(true);
+  };
+
+  const openEdit = (sport: SportTheme) => {
+    setEditingSport(sport);
+    setFormName(sport.name);
+    setFormPrimary(sport.primary);
+    setFormSoft(sport.soft);
+    setFormButton(sport.button);
+    setFormBackground(sport.background);
+    setFormText(sport.text);
+    setFormPositions(sport.positions.join(", "));
+    setShowForm(true);
+  };
+
   const resetForm = () => {
+    setEditingSport(null);
     setFormName("");
     setFormPrimary("#0B63CE");
     setFormSoft("#CFE8FF");
@@ -1298,13 +1326,12 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
     setShowForm(false);
   };
 
-  const handleAdd = () => {
+  const handleSave = () => {
     const trimmed = formName.trim();
     if (!trimmed) { Alert.alert("Name required", "Please enter a sport name."); return; }
     const positions = formPositions.split(",").map((p) => p.trim()).filter(Boolean);
-    const sport: SportTheme = {
+    const patch: Partial<SportTheme> = {
       name: trimmed,
-      enabled: true,
       primary: formPrimary || "#0B63CE",
       soft: formSoft || "#CFE8FF",
       button: formButton || "#0B63CE",
@@ -1312,9 +1339,45 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
       text: formText || "#08233F",
       positions: positions.length ? positions : ["General Player"],
     };
+
+    if (editingSport) {
+      const nameChanged = editingSport.name.toLowerCase() !== trimmed.toLowerCase();
+      if (nameChanged && sportsRegistry.some((s) => s.name.toLowerCase() === trimmed.toLowerCase() && s.name !== editingSport.name)) {
+        Alert.alert("Already exists", `"${trimmed}" already exists in the sports registry.`);
+        return;
+      }
+      adminUpdateSport(editingSport.name, patch);
+      resetForm();
+      return;
+    }
+
+    const sport: SportTheme = {
+      name: trimmed,
+      enabled: true,
+      primary: patch.primary!,
+      soft: patch.soft!,
+      button: patch.button!,
+      background: patch.background!,
+      text: patch.text!,
+      positions: patch.positions!,
+    };
     const ok = adminAddSport(sport);
     if (!ok) { Alert.alert("Already exists", `"${trimmed}" is already in the sports registry.`); return; }
     resetForm();
+  };
+
+  const confirmDelete = (sport: SportTheme) => {
+    const isBuiltIn = BUILT_IN_SPORT_NAMES.has(sport.name.toLowerCase());
+    Alert.alert(
+      `Delete "${sport.name}"?`,
+      isBuiltIn
+        ? "This is a built-in sport. Removing it will permanently delete it from the registry. Any accounts or adverts using this sport may be affected."
+        : "This sport will be permanently removed from the registry.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => adminDeleteSport(sport.name) },
+      ]
+    );
   };
 
   return (
@@ -1325,7 +1388,7 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
       <SectionTitle title="Sports Registry" />
 
       <Pressable
-        onPress={() => setShowForm(true)}
+        onPress={openAdd}
         style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.primary, alignSelf: "flex-start", marginBottom: 16, opacity: pressed ? 0.8 : 1 }]}
       >
         <Feather name="plus" size={15} color="#FFF" />
@@ -1334,26 +1397,42 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
 
       {sportsRegistry.length === 0 ? (
         <EmptyState icon="activity" title="No sports" text="The registry is empty." />
-      ) : sportsRegistry.map((sport) => (
-        <View key={sport.name} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: "row", alignItems: "center" }]}>
-          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: sport.primary, marginRight: 10 }} />
-          <Text style={[styles.itemTitle, { color: colors.foreground, flex: 1 }]}>{sport.name}</Text>
-          <Text style={{ color: colors.mutedForeground, fontSize: 12, marginRight: 8 }}>{sport.enabled ? "On" : "Off"}</Text>
-          <Switch
-            value={sport.enabled}
-            onValueChange={(val) => adminToggleSport(sport.name, val)}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor="#FFF"
-          />
-        </View>
-      ))}
+      ) : sportsRegistry.map((sport) => {
+        const isBuiltIn = BUILT_IN_SPORT_NAMES.has(sport.name.toLowerCase());
+        return (
+          <View key={sport.name} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+              <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: sport.primary, marginRight: 10 }} />
+              <Text style={[styles.itemTitle, { color: colors.foreground, flex: 1 }]}>{sport.name}</Text>
+              {isBuiltIn ? (
+                <View style={[styles.badge, { backgroundColor: "#E0E7FF" }]}>
+                  <Text style={[styles.badgeText, { color: "#3730A3", fontSize: 10 }]}>Built-in</Text>
+                </View>
+              ) : null}
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+                <Text style={{ color: colors.mutedForeground, fontSize: 12 }}>{sport.enabled ? "On" : "Off"}</Text>
+                <Switch
+                  value={sport.enabled}
+                  onValueChange={(val) => adminToggleSport(sport.name, val)}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#FFF"
+                />
+              </View>
+              <ActionButton icon="edit-2" label="Edit" color={colors.primary} onPress={() => openEdit(sport)} />
+              <ActionButton icon="trash-2" label="Delete" color="#EF4444" onPress={() => confirmDelete(sport)} />
+            </View>
+          </View>
+        );
+      })}
 
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={resetForm}>
         <ScrollView
           contentContainerStyle={[styles.scrollContent, { paddingTop: 32, paddingBottom: insets.bottom + 32, backgroundColor: colors.background }]}
           showsVerticalScrollIndicator={false}
         >
-          <SectionTitle title="Add Sport" />
+          <SectionTitle title={editingSport ? `Edit ${editingSport.name}` : "Add Sport"} />
           <Field label="Sport Name" value={formName} onChangeText={setFormName} placeholder="e.g. Handball" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
           <ColorField label="Primary Colour" hex={formPrimary} onChange={setFormPrimary} />
           <ColorField label="Soft Colour" hex={formSoft} onChange={setFormSoft} />
@@ -1387,9 +1466,9 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
             style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card, minHeight: 80 }]}
           />
           <View style={[styles.actionRow, { marginTop: 8 }]}>
-            <Pressable onPress={handleAdd} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
-              <Feather name="plus" size={15} color="#FFF" />
-              <Text style={styles.actionBtnText}>Add Sport</Text>
+            <Pressable onPress={handleSave} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
+              <Feather name={editingSport ? "save" : "plus"} size={15} color="#FFF" />
+              <Text style={styles.actionBtnText}>{editingSport ? "Save Changes" : "Add Sport"}</Text>
             </Pressable>
             <Pressable onPress={resetForm} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
               <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Cancel</Text>

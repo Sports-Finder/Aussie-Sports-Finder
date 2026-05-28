@@ -232,6 +232,8 @@ type SportsConnectState = {
   moderateSportRequest: (requestId: string, status: "approved" | "rejected") => Promise<void>;
   adminAddSport: (sport: SportTheme) => boolean;
   adminToggleSport: (sportName: string, enabled: boolean) => void;
+  adminUpdateSport: (name: string, patch: Partial<SportTheme>) => void;
+  adminDeleteSport: (name: string) => void;
   accounts: UserAccount[];
   bannedEmails: string[];
   loginWithEmail: (email: string, password: string) => boolean;
@@ -680,6 +682,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       setSelectedSport("All Sports");
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const adminUpdateSport = (sportName: string, patch: Partial<SportTheme>) => {
+    setSportsRegistry((current) => current.map((s) => s.name === sportName ? { ...s, ...patch } : s));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const adminDeleteSport = (sportName: string) => {
+    setSportsRegistry((current) => current.filter((s) => s.name !== sportName));
+    if (selectedSport === sportName) {
+      setSelectedSport("All Sports");
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
   const createAccount = (draft: DraftAccount): boolean => {
@@ -1419,6 +1434,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     moderateSportRequest,
     adminAddSport,
     adminToggleSport,
+    adminUpdateSport,
+    adminDeleteSport,
     accounts,
     bannedEmails,
     loginWithEmail,
