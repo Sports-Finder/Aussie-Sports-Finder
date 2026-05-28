@@ -62,7 +62,9 @@ const FULL_PERMISSIONS: ModeratorPermissions = {
   approveImages: true, approveHighlights: true, approveSports: true, approveClubs: true,
 };
 
-const DashboardPermissionsContext = createContext<ModeratorPermissions>(FULL_PERMISSIONS);
+type DashboardContext = ModeratorPermissions & { isFullAdmin: boolean };
+
+const DashboardPermissionsContext = createContext<DashboardContext>({ ...FULL_PERMISSIONS, isFullAdmin: true });
 const useDashboardPermissions = () => useContext(DashboardPermissionsContext);
 
 function AdminContent({ onExit }: { onExit?: () => void }) {
@@ -71,7 +73,7 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
   const [section, setSection] = useState<Section>("overview");
 
   return (
-    <DashboardPermissionsContext.Provider value={FULL_PERMISSIONS}>
+    <DashboardPermissionsContext.Provider value={{ ...FULL_PERMISSIONS, isFullAdmin: true }}>
     <View style={[styles.shell, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
         <View style={[styles.adminBadge, { backgroundColor: colors.primary }]}>
@@ -166,7 +168,7 @@ export function ModeratorPage({ onExit }: { onExit: () => void }) {
   const activeSection = visibleSections.some((s) => s.key === section) ? section : "overview";
 
   return (
-    <DashboardPermissionsContext.Provider value={perms}>
+    <DashboardPermissionsContext.Provider value={{ ...perms, isFullAdmin: false }}>
       <View style={[styles.shell, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: insets.top + 12, borderBottomColor: colors.border }]}>
           <View style={[styles.adminBadge, { backgroundColor: "#8B5CF6" }]}>
@@ -294,6 +296,7 @@ function AdvertsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { adverts, accounts, conversations, adminSetAdvertStatus, updateAdvert } = useSportsConnect();
+  const { isFullAdmin } = useDashboardPermissions();
   const [filter, setFilter] = useState<"all" | "active" | "closed">("all");
   const [editing, setEditing] = useState<Advert | null>(null);
 
@@ -480,9 +483,9 @@ function AdvertsSection() {
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Posted: {advert.createdAt.slice(0, 10)} · Distance: {advert.distanceKm} km</Text>
                 </View>
                 <View style={styles.actionRow}>
-                  <ActionButton icon="edit-2" label="Edit" color={colors.primary} onPress={() => setEditing(advert)} />
+                  {isFullAdmin && <ActionButton icon="edit-2" label="Edit" color={colors.primary} onPress={() => setEditing(advert)} />}
                   {isClosed ? (
-                    <ActionButton icon="rotate-ccw" label="Reopen" color="#10B981" onPress={() => adminSetAdvertStatus(advert.id, "active")} />
+                    isFullAdmin ? <ActionButton icon="rotate-ccw" label="Reopen" color="#10B981" onPress={() => adminSetAdvertStatus(advert.id, "active")} /> : null
                   ) : (
                     <ActionButton icon="x-circle" label="Close" color="#EF4444" onPress={() => {
                       const linkedChats = conversations.filter((c) => c.advertId === advert.id && (c.status === "pending" || c.status === "connected"));
@@ -728,8 +731,8 @@ function ChatsSection() {
 function AccountsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { accounts, bannedEmails, adminApproveClub, adminRejectClub } = useSportsConnect();
-  const { approveClubs } = useDashboardPermissions();
+  const { accounts, bannedEmails, adminSetAccountStatus, adminApproveClub, adminRejectClub } = useSportsConnect();
+  const { approveClubs, isFullAdmin } = useDashboardPermissions();
   const [role, setRole] = useState<AccountRole>("player");
   const [editing, setEditing] = useState<UserAccount | null>(null);
 
@@ -806,7 +809,16 @@ function AccountsSection() {
                   </View>
                 )}
                 <View style={styles.actionRow}>
-                  <ActionButton icon="edit-2" label="View / Edit" color={colors.primary} onPress={() => setEditing(acc)} />
+                  {isFullAdmin ? (
+                    <ActionButton icon="edit-2" label="View / Edit" color={colors.primary} onPress={() => setEditing(acc)} />
+                  ) : acc.status === "active" ? (
+                    <>
+                      <ActionButton icon="x-circle" label="Close" color="#F59E0B" onPress={() => Alert.alert("Close account?", `Close "${acc.fullName || acc.playerName || acc.clubName || acc.email}"?`, [{ text: "Cancel", style: "cancel" }, { text: "Close", style: "destructive", onPress: () => adminSetAccountStatus(acc.id, "closed", "Closed by moderator") }])} />
+                      <ActionButton icon="user-x" label="Ban" color="#EF4444" onPress={() => Alert.alert("Ban account?", `Ban "${acc.fullName || acc.playerName || acc.clubName || acc.email}" and their email?`, [{ text: "Cancel", style: "cancel" }, { text: "Ban", style: "destructive", onPress: () => adminSetAccountStatus(acc.id, "banned", "Banned by moderator") }])} />
+                    </>
+                  ) : (
+                    <ActionButton icon="rotate-ccw" label="Reactivate" color="#10B981" onPress={() => Alert.alert("Reactivate account?", `Reactivate this account?`, [{ text: "Cancel", style: "cancel" }, { text: "Reactivate", onPress: () => adminSetAccountStatus(acc.id, "active", "Reactivated by moderator") }])} />
+                  )}
                 </View>
               </Pressable>
             );
@@ -1304,6 +1316,9 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
               <Text style={[styles.badgeText, { color: "#6D28D9" }]}>Moderator</Text>
             </View>
           </View>
+          <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
+            Passcode: {"•".repeat(mod.passcode.length)}
+          </Text>
           <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={2}>
             {MOD_PERM_LABELS
               .filter(({ key }) => mod.permissions[key])
