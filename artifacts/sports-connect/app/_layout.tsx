@@ -32,11 +32,14 @@ import {
 } from "@/lib/revenuecat";
 import colors from "@/constants/colors";
 
-// Initialize RevenueCat SDK at module load time (before any React trees mount)
-// so that Purchases.getCustomerInfo/getOfferings queries are safe to run
-// as soon as SubscriptionProvider's context is created.
+// Initialize RevenueCat SDK at module load time (before any React trees mount).
+// Track whether configure() succeeded so SubscriptionSync doesn't mark the
+// SDK as ready when it actually failed (which would trigger queries against
+// an unconfigured SDK and produce unhelpful errors).
+let _rcInitOk = false;
 try {
   initializeRevenueCat();
+  _rcInitOk = true;
 } catch (err) {
   console.warn("RevenueCat init failed:", err);
 }
@@ -47,9 +50,9 @@ function SubscriptionSync() {
   const { currentAccount, updateAccount } = useSportsConnect();
   const { customerInfo, isLoading, markInitialized } = useSubscription();
 
-  // Confirm to the context that the SDK is ready — this enables the queries.
+  // Only signal "ready" to the RC context if configure() actually succeeded.
   useEffect(() => {
-    markInitialized();
+    if (_rcInitOk) markInitialized();
   // markInitialized is stable (ref-based), run once on mount.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
