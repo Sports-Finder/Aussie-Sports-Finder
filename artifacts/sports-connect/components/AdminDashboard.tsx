@@ -820,7 +820,7 @@ function AccountsSection() {
           <View style={{ backgroundColor: "#FFFBEB", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Feather name="star" size={16} color="#D97706" />
             <Text style={{ fontSize: 13, color: "#92400E", fontWeight: "700" }}>
-              {foundingClubCount} / 20 founding clubs granted Free Premium
+              {foundingClubCount} founding clubs granted Free Premium
             </Text>
           </View>
         ) : null}
