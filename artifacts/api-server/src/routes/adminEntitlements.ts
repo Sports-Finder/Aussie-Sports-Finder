@@ -4,6 +4,7 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 import { db, accountsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapAccount } from "../lib/mapDbToApi";
+import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
 
@@ -15,13 +16,15 @@ async function callRevenueCatEntitlement(
   const connectors = new ReplitConnectors();
   const path = `/v1/subscribers/${encodeURIComponent(appUserId)}/entitlements/${encodeURIComponent(entitlementIdentifier)}/promotional`;
   const response = await connectors.proxy("revenuecat", path, { method });
-  if (!response.ok && response.status !== 404) {
+  // For DELETE (revoke), treat 404 as success — entitlement already absent.
+  // For POST (grant), any non-2xx is a real failure.
+  if (!response.ok && !(method === "DELETE" && response.status === 404)) {
     const errText = await response.text();
     throw new Error(`RevenueCat ${method} failed (${response.status}): ${errText}`);
   }
 }
 
-router.post("/admin/entitlements", async (req, res) => {
+router.post("/admin/entitlements", requireAdmin, async (req, res) => {
   try {
     const { accountPublicId, entitlementIdentifier } = req.body as {
       accountPublicId?: string;
@@ -52,7 +55,7 @@ router.post("/admin/entitlements", async (req, res) => {
   }
 });
 
-router.delete("/admin/entitlements", async (req, res) => {
+router.delete("/admin/entitlements", requireAdmin, async (req, res) => {
   try {
     const { accountPublicId, entitlementIdentifier } = req.body as {
       accountPublicId?: string;

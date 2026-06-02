@@ -2,6 +2,8 @@ const API_BASE = typeof process !== "undefined" && process.env?.EXPO_PUBLIC_DOMA
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
 
+const ADMIN_API_KEY = typeof process !== "undefined" ? (process.env.EXPO_PUBLIC_ADMIN_API_KEY ?? "") : "";
+
 export class ApiError extends Error {
   status: number;
   body: Record<string, unknown>;
@@ -64,7 +66,7 @@ export const api = {
   deleteCoachAffiliate: (publicId: string) => apiFetch(`/coach-affiliates/${publicId}`, { method: "DELETE" }),
 
   grantEntitlement: (accountPublicId: string, entitlementIdentifier: string) =>
-    apiFetch("/admin/entitlements", { method: "POST", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
+    apiFetch("/admin/entitlements", { method: "POST", headers: { "X-Admin-Key": ADMIN_API_KEY }, body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
   revokeEntitlement: (accountPublicId: string, entitlementIdentifier: string) =>
-    apiFetch("/admin/entitlements", { method: "DELETE", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
+    apiFetch("/admin/entitlements", { method: "DELETE", headers: { "X-Admin-Key": ADMIN_API_KEY }, body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
 };

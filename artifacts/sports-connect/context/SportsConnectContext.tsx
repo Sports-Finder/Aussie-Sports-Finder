@@ -1101,12 +1101,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const adminGrantPremium = async (accountId: string, grant: boolean) => {
-    setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, promotionalPremium: grant } : acc));
     if (grant) {
       await api.grantEntitlement(accountId, "premium");
     } else {
       await api.revokeEntitlement(accountId, "premium");
     }
+    setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, promotionalPremium: grant } : acc));
     Haptics.notificationAsync(grant ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
   };
 
