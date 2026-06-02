@@ -81,8 +81,11 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }) {
   const colors = useColors();
+  const { accounts } = useSportsConnect();
   const expiry = getExpiryInfo(advert.createdAt);
   const icon = advert.postedByType === "club" ? "shield" : "user";
+  const posterAccount = accounts.find((a) => a.id === advert.ownerAccountId);
+  const posterIsSubscribed = posterAccount?.subscriptionStatus === "active";
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.adCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
       <View style={[styles.adIcon, { backgroundColor: colors.pitchSoft }]}>
@@ -91,7 +94,14 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
       <View style={styles.adBody}>
         <View style={styles.adMetaRow}>
           <Text style={[styles.adMeta, { color: colors.primary }]}>{advert.sport}</Text>
-          <Text style={[styles.adDistance, { color: colors.mutedForeground }]}>{advert.distanceKm} km</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            {posterIsSubscribed ? (
+              <View style={styles.goldBadge}>
+                <Feather name="star" size={11} color="#D97706" />
+              </View>
+            ) : null}
+            <Text style={[styles.adDistance, { color: colors.mutedForeground }]}>{advert.distanceKm} km</Text>
+          </View>
         </View>
         <Text style={[styles.adTitle, { color: colors.foreground }]}>{advert.title}</Text>
         {advert.teamGender ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.teamGender}</Text> : null}
@@ -178,8 +188,15 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
             <View style={styles.modalTop}>
-              <View style={[styles.modalIcon, { backgroundColor: theme.soft }]}>
-                <Feather name={advert.postedByType === "club" ? "shield" : "user"} color={theme.primary} size={24} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={[styles.modalIcon, { backgroundColor: theme.soft }]}>
+                  <Feather name={advert.postedByType === "club" ? "shield" : "user"} color={theme.primary} size={24} />
+                </View>
+                {accounts.find((a) => a.id === advert.ownerAccountId)?.subscriptionStatus === "active" ? (
+                  <View style={[styles.goldBadge, { width: 26, height: 26, borderRadius: 13 }]}>
+                    <Feather name="star" size={13} color="#D97706" />
+                  </View>
+                ) : null}
               </View>
               <IconButton icon="x" label="Close" onPress={onClose} />
             </View>
@@ -568,6 +585,7 @@ const styles = StyleSheet.create({
   stateBlock: { gap: 8 },
   stateLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7 },
   stateScroll: { paddingRight: 20 },
+  goldBadge: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#FEF9C3", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#FDE68A" },
   adCard: { borderWidth: 1, borderRadius: 26, padding: 14, marginBottom: 12, flexDirection: "row", gap: 13 },
   adIcon: { width: 48, height: 48, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   adBody: { flex: 1 },

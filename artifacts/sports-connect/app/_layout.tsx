@@ -24,7 +24,24 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AccountSetupGate } from "@/components/AccountSetupGate";
 import { OnboardingGate } from "@/components/OnboardingGate";
 import { SportsConnectProvider, useSportsConnect } from "@/context/SportsConnectContext";
+import { initializeRevenueCat, identifyRevenueCatUser, SubscriptionProvider, useSubscription } from "@/lib/revenuecat";
 import colors from "@/constants/colors";
+
+// Syncs RevenueCat subscription status into the local account store so
+// subscriptionStatus is always up-to-date (drives gold star in Discover).
+function SubscriptionSync() {
+  const { currentAccount, updateAccount } = useSportsConnect();
+  const { customerInfo, isLoading } = useSubscription();
+  useEffect(() => {
+    if (!currentAccount || isLoading) return;
+    const active = customerInfo?.entitlements.active?.["premium"] !== undefined;
+    const nextStatus = active ? "active" : "inactive";
+    if (currentAccount.subscriptionStatus !== nextStatus) {
+      updateAccount({ subscriptionStatus: nextStatus });
+    }
+  }, [customerInfo, isLoading, currentAccount?.id]);
+  return null;
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -60,6 +77,22 @@ function AppContent() {
     // No cleanup: leave the getter active so it remains valid even when
     // TabLayout layers its own getter on top (both point to the singleton).
   }, []);
+
+  // Initialize RevenueCat once on mount
+  useEffect(() => {
+    try {
+      initializeRevenueCat(currentAccount?.id);
+    } catch (err) {
+      console.warn("RevenueCat init failed:", err);
+    }
+  }, []);
+
+  // Identify RevenueCat user when account is available
+  useEffect(() => {
+    if (currentAccount?.id) {
+      identifyRevenueCatUser(currentAccount.id);
+    }
+  }, [currentAccount?.id]);
 
   // Returning user: Clerk is authenticated but currentAccount was cleared by signOut.
   // Search the accounts list by email and restore the session without showing setup form.
@@ -138,11 +171,14 @@ export default function RootLayout() {
           <ErrorBoundary>
             <QueryClientProvider client={queryClient}>
               <SportsConnectProvider>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <KeyboardProvider>
-                    <AppContent />
-                  </KeyboardProvider>
-                </GestureHandlerRootView>
+                <SubscriptionProvider>
+                  <SubscriptionSync />
+                  <GestureHandlerRootView style={{ flex: 1 }}>
+                    <KeyboardProvider>
+                      <AppContent />
+                    </KeyboardProvider>
+                  </GestureHandlerRootView>
+                </SubscriptionProvider>
               </SportsConnectProvider>
             </QueryClientProvider>
           </ErrorBoundary>

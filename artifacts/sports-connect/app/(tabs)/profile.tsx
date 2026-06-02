@@ -10,6 +10,8 @@ import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
 import CoachAffiliatesPage from "@/components/CoachAffiliatesPage";
+import { useSubscription } from "@/lib/revenuecat";
+import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 type Mode = "view" | "edit";
 const genders = ["Male", "Female", "Pref Not to Say"];
@@ -105,9 +107,11 @@ export default function ProfileScreen() {
     resetClubApprovalAfterEdit,
     respondToAffiliationRequest,
   } = useSportsConnect();
+  const { isSubscribed, restore, isRestoring, customerInfo } = useSubscription();
 
   const [mode, setMode] = useState<Mode>("view");
   const [showCoachAffiliates, setShowCoachAffiliates] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [draftDob, setDraftDob] = useState("");
 
@@ -364,7 +368,14 @@ export default function ProfileScreen() {
                 <Feather name={isClub ? "shield" : isCoach ? "award" : "user"} size={22} color={colors.primary} />
               </View>
               <View style={styles.accountCopy}>
-                <Text style={[styles.accountName, { color: colors.foreground }]}>{accountName}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={[styles.accountName, { color: colors.foreground }]}>{accountName}</Text>
+                  {isSubscribed ? (
+                    <View style={styles.goldBadge}>
+                      <Feather name="star" size={12} color="#D97706" />
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={[styles.accountRole, { color: colors.mutedForeground }]}>{roleLabel}</Text>
                 {age !== null && !isClub ? (
                   <Text style={[styles.accountRole, { color: colors.mutedForeground }]}>Age {age} · {currentAccount.defaultSport}</Text>
@@ -376,6 +387,57 @@ export default function ProfileScreen() {
             <PrimaryButton label="Sign out" icon="log-out" onPress={() => { clerkSignOut(); signOut(); }} />
             <PrimaryButton label={mode === "edit" ? "Cancel editing" : "Edit Profile"} icon={mode === "edit" ? "x" : "edit-3"} onPress={mode === "edit" ? () => setMode("view") : openEdit} />
           </View>
+        ) : null}
+
+        {/* ── Subscription card ── */}
+        {currentAccount ? (
+          <Pressable
+            onPress={() => setShowPaywall(true)}
+            style={({ pressed }) => [
+              styles.card,
+              {
+                backgroundColor: isSubscribed ? "#FFFBEB" : colors.card,
+                borderColor: isSubscribed ? "#FDE68A" : colors.border,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={[styles.accountIcon, { backgroundColor: isSubscribed ? "#FEF9C3" : colors.pitchSoft }]}>
+                <Feather name="star" size={20} color={isSubscribed ? "#D97706" : colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cardTitle, { color: isSubscribed ? "#92400E" : colors.foreground }]}>
+                  {isSubscribed ? "Premium Active" : "Upgrade to Premium"}
+                </Text>
+                <Text style={[styles.cardText, { color: isSubscribed ? "#78350F" : colors.mutedForeground }]}>
+                  {isSubscribed
+                    ? `Gold star badge · Unlimited adverts · All features unlocked`
+                    : isClub
+                    ? "Unlimited adverts, BUMP, Coach Affiliates & gold star badge"
+                    : "Unlimited connections, 1 active advert & gold star badge"}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={isSubscribed ? "#D97706" : colors.mutedForeground} />
+            </View>
+            {isSubscribed ? null : (
+              <View style={[styles.subPriceRow, { backgroundColor: colors.pitchSoft, borderRadius: 14, padding: 10, gap: 10 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.cardText, { color: colors.primary, fontWeight: "700" }]}>
+                    {isClub ? "Club from $3.99/mo" : "Player/Coach from $1.99/mo"}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={(e) => { e.stopPropagation?.(); restore().catch(() => undefined); }}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                >
+                  <Text style={{ color: colors.mutedForeground, fontWeight: "600", fontSize: 12 }}>
+                    {isRestoring ? "Restoring…" : "Restore"}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </Pressable>
         ) : null}
 
         {isCoach && (() => {
@@ -458,15 +520,29 @@ export default function ProfileScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>Coach Affiliates</Text>
-                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
-                  {(currentAccount?.coachAffiliates?.filter((a) => a.status === "active").length ?? 0)} active · {(currentAccount?.coachAffiliates?.filter((a) => a.status === "pending").length ?? 0)} pending
-                </Text>
+                {isSubscribed ? (
+                  <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
+                    {(currentAccount?.coachAffiliates?.filter((a) => a.status === "active").length ?? 0)} active · {(currentAccount?.coachAffiliates?.filter((a) => a.status === "pending").length ?? 0)} pending
+                  </Text>
+                ) : (
+                  <Text style={[styles.cardText, { color: "#D97706" }]}>Premium feature — upgrade to manage coach affiliates</Text>
+                )}
               </View>
               <Pressable
-                onPress={() => setShowCoachAffiliates(true)}
-                style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1, flex: 0, minWidth: 90 }]}
+                onPress={() => {
+                  if (!isSubscribed) { setShowPaywall(true); return; }
+                  setShowCoachAffiliates(true);
+                }}
+                style={({ pressed }) => [styles.mapBtn, { backgroundColor: isSubscribed ? colors.primary : "#FDE68A", opacity: pressed ? 0.75 : 1, flex: 0, minWidth: 90 }]}
               >
-                <Text style={styles.mapBtnText}>View/Edit</Text>
+                {isSubscribed ? (
+                  <Text style={styles.mapBtnText}>View/Edit</Text>
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Feather name="lock" size={13} color="#92400E" />
+                    <Text style={[styles.mapBtnText, { color: "#92400E" }]}>Upgrade</Text>
+                  </View>
+                )}
               </Pressable>
             </View>
           </View>
@@ -798,6 +874,11 @@ export default function ProfileScreen() {
           <CoachAffiliatesPage onBack={() => setShowCoachAffiliates(false)} />
         </Modal>
       )}
+
+      <SubscriptionPaywall
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+      />
     </View>
   );
 }
@@ -805,6 +886,8 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   shell: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 18 },
+  goldBadge: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#FEF9C3", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#FDE68A" },
+  subPriceRow: { flexDirection: "row", alignItems: "center" },
   kicker: { fontWeight: "700", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 },
   title: { fontWeight: "800", fontSize: 32, letterSpacing: -0.8, marginTop: 4 },
   card: { borderWidth: 1, borderRadius: 28, padding: 18, gap: 14 },

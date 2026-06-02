@@ -7,6 +7,8 @@ import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/compone
 import { Advert, AccountRole, useSportsConnect } from "@/context/SportsConnectContext";
 import { getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
+import { useSubscription } from "@/lib/revenuecat";
+import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 type AgeGroup = { label: string; min: number; max: number };
 type TrialSlot = { date: string; timeFrom: string; timeTo: string };
@@ -335,7 +337,11 @@ export default function PostScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
+  const { isSubscribed } = useSubscription();
   const accountRole = currentAccount?.role ?? activeProfile;
+
+  const [paywallVisible, setPaywallVisible] = useState(false);
+  const [paywallHint, setPaywallHint] = useState<string | undefined>(undefined);
 
   const rawAllowedSports: string[] = activeProfile === "club"
     ? [currentAccount?.defaultSport || clubProfile.sport].filter(Boolean)
@@ -593,9 +599,36 @@ export default function PostScreen() {
     setPositions((prev) => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
   }
 
+  // ── Subscription gating ──────────────────────────────────────────────────
+  // Free clubs: max 1 active advert
+  // Free players/coaches: can post 1 advert (player-looking / coach-looking)
+  // Paid clubs: unlimited adverts
+  // Paid players/coaches: 1 active advert
+  const activeMyAdverts = myAdverts.filter((a) => a.status !== "closed");
+  const isClubFreeTrialLimited = isClub && !isSubscribed && activeMyAdverts.length >= 1 && !editingId;
+  const isPlayerFreeLimited = !isClub && !isSubscribed && activeMyAdverts.length >= 1 && !editingId;
+
+  const requiresSubscription = isClubFreeTrialLimited || isPlayerFreeLimited;
+
+  const openPaywallForFeature = (hint: string) => {
+    setPaywallHint(hint);
+    setPaywallVisible(true);
+  };
+
   const submit = () => {
     if (!canSubmit || !ageGroup) return;
     if (allowedSports.length && !allowedSports.includes(sport)) return;
+
+    // Gate: free-tier advert limit
+    if (requiresSubscription) {
+      openPaywallForFeature(
+        isClub
+          ? "Free clubs are limited to 1 active advert. Upgrade for unlimited."
+          : "Free accounts are limited to 1 advert. Upgrade for unlimited connections too."
+      );
+      return;
+    }
+
     const seasonFees = !feesFree && seasonFeesText.trim() ? parseFloat(seasonFeesText.replace(/[^0-9.]/g, "")) : undefined;
     const draft = {
       type,
@@ -712,6 +745,29 @@ export default function PostScreen() {
           </View>
         </View>
 
+        {/* ── Subscription status banner ── */}
+        {isSubscribed ? (
+          <View style={[localStyles.subBanner, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
+            <Feather name="star" size={16} color="#D97706" />
+            <Text style={[localStyles.subBannerText, { color: "#15803D" }]}>Premium — unlimited adverts active</Text>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => openPaywallForFeature(
+              isClub
+                ? "Upgrade to post unlimited adverts, BUMP to top of list, and unlock Coach Affiliates."
+                : "Upgrade for unlimited connections and 1 active advert at a time."
+            )}
+            style={({ pressed }) => [localStyles.subBanner, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A", opacity: pressed ? 0.8 : 1 }]}
+          >
+            <Feather name="lock" size={15} color="#D97706" />
+            <Text style={[localStyles.subBannerText, { color: "#92400E" }]}>
+              {isClub ? "Free trial — 1 advert limit. Tap to upgrade." : "Free — 1 advert limit. Tap to upgrade."}
+            </Text>
+            <Feather name="chevron-right" size={15} color="#D97706" style={{ marginLeft: "auto" }} />
+          </Pressable>
+        )}
+
         <View style={[localStyles.sportHeader, { backgroundColor: activeTheme.background, borderColor: activeTheme.soft }]}> 
           <Text style={[localStyles.sportHeaderKicker, { color: activeTheme.primary }]}>Posting under</Text>
           <Text style={[localStyles.sportHeaderTitle, { color: activeTheme.text }]}>{sport}</Text>
@@ -816,364 +872,330 @@ export default function PostScreen() {
 
           {ageGroup !== null && (
             <>
-              <FormLabel text="Preferred Age (optional)" />
-              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select a specific age within the group above, or leave blank.</Text>
+              <FormLabel text="Preferred age (optional)" />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={localStyles.sportPickerScroll}>
                 {agesInGroup(ageGroup).map((age) => (
-                  <Pressable key={age} onPress={() => setPreferredAge(preferredAge === age ? null : age)} style={({ pressed }) => [localStyles.agePill, { backgroundColor: preferredAge === age ? colors.primary : colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
-                    <Text style={[localStyles.agePillText, { color: preferredAge === age ? "#FFF" : colors.secondaryForeground }]}>{age}</Text>
+                  <Pressable
+                    key={age}
+                    onPress={() => setPreferredAge(preferredAge === age ? null : age)}
+                    style={[localStyles.sportChip, { backgroundColor: preferredAge === age ? colors.primary : colors.secondary }]}
+                  >
+                    <Text style={[localStyles.sportChipText, { color: preferredAge === age ? "#FFFFFF" : colors.secondaryForeground }]}>{age}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
             </>
           )}
 
-          {showCoachTitle ? (
-            <>
-              <FormLabel text="Coach Title" required />
-              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select one coach title only.</Text>
-              <View style={localStyles.pillRow}>
-                {coachTitles.map((item) => <Pill key={item} label={item} active={coachTitle === item} onPress={() => setCoachTitle(item)} />)}
-              </View>
-            </>
-          ) : !isCoachWanted ? (
+          {!isCoachWanted && (
             <>
               <FormLabel text="Position(s)" />
-              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select all that apply.</Text>
               <View style={localStyles.pillRow}>
-                {positionOptions.map((p) => <Pill key={p} label={p} active={positions.includes(p)} onPress={() => togglePosition(p)} />)}
-              </View>
-            </>
-          ) : null}
-
-          <Field label="Advert title" value={title} editable={false} placeholder="Auto-generated from your selections" />
-          <Field label="Location *" value={suburb} onChangeText={setSuburb} placeholder="Suburb or town" />
-          <FormLabel text="State" required />
-          <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
-            {AU_STATES.map((item) => (
-              <Pressable
-                key={item}
-                onPress={() => setState(item)}
-                style={({ pressed }) => [
-                  localStyles.choice,
-                  {
-                    backgroundColor: state === item ? colors.primary : colors.secondary,
-                    opacity: pressed ? 0.75 : 1,
-                  },
-                ]}
-              >
-                <Text style={[localStyles.choiceText, { color: state === item ? "#FFFFFF" : colors.secondaryForeground }]}>{item}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Field label="Level" value={level} onChangeText={setLevel} placeholder="Beginner, amateur, semi-pro, elite" />
-
-          {isClubTrials && (
-            <>
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Trial Dates & Times</Text>
-              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Add the date(s) and times for your club trials. Dates must be in chronological order with no duplicates.</Text>
-              {trialSlots.map((slot, i) => {
-                const hasOrderError = trialSlotOrderErrors[i];
-                const hasDupError = trialSlotDuplicates[i];
-                return (
-                  <View key={i} style={{ gap: 6, marginTop: 10 }}>
-                    {i > 0 && (
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                        <FormLabel text={`Trial Date ${i + 1}`} />
-                        <Pressable onPress={() => setTrialSlots((prev) => prev.filter((_, j) => j !== i))} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-                          <Feather name="x-circle" size={18} color="#D9534F" />
-                        </Pressable>
-                      </View>
-                    )}
-                    {i === 0 && <FormLabel text="Trial Date 1" required />}
-                    <TextInput
-                      value={slot.date}
-                      onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, date: v } : s))}
-                      placeholder="DD/MM/YYYY"
-                      placeholderTextColor={colors.mutedForeground}
-                      style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: (hasOrderError || hasDupError) ? "#D9534F" : colors.border, color: colors.foreground, flex: 1, paddingHorizontal: 12, paddingVertical: 10 }]}
-                    />
-                    <View style={localStyles.timeRowInner}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>FROM</Text>
-                        <TextInput value={slot.timeFrom} onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeFrom: v } : s))} placeholder="e.g. 9:00 AM" placeholderTextColor={colors.mutedForeground} style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>TO</Text>
-                        <TextInput value={slot.timeTo} onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeTo: v } : s))} placeholder="e.g. 11:00 AM" placeholderTextColor={colors.mutedForeground} style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]} />
-                      </View>
-                    </View>
-                    {(hasOrderError || hasDupError) && (
-                      <Text style={{ color: "#D9534F", fontSize: 13, marginTop: 2 }}>
-                        {hasDupError ? "This date and time is a duplicate of a previous slot." : "Please change the date or times of your trials so they are in chronological order."}
-                      </Text>
-                    )}
-                  </View>
-                );
-              })}
-              {trialSlots.length < 6 && (
-                <Pressable onPress={() => setTrialSlots((prev) => [...prev, { date: "", timeFrom: "", timeTo: "" }])} style={({ pressed }) => [{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, opacity: pressed ? 0.7 : 1 }]}>
-                  <Feather name="plus-circle" size={18} color={colors.primary} />
-                  <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 14 }}>Add another date and time</Text>
-                </Pressable>
-              )}
-            </>
-          )}
-
-          {showPlayerDesc && (
-            <Field label="In 100 words or less, describe what type of player you are" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe your style, strengths and what you bring to a team…" multiline />
-          )}
-          {isPlayersWanted && (
-            <Field label="In 100 words or less, describe what type of player you are looking for" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe the player profile, attitude and skills required…" multiline />
-          )}
-          {isClubTrials && (
-            <Field label="In 100 words or less, describe what type of Player/s you are looking for" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe the player profile, attitude and skills required…" multiline />
-          )}
-          {isCoachWanted && (
-            <>
-              <Field label="In 100 words or less, describe what type of Coach or TD you are looking for" value={playerDescription} onChangeText={(t) => { const words = t.trim().split(/\s+/).filter(Boolean); if (words.length <= 100) setPlayerDescription(t); }} placeholder="Describe the ideal coaching candidate, qualifications and philosophy…" multiline />
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Club Role Available</Text>
-              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select the role you are advertising for.</Text>
-              {COACH_ROLES.map((role) => (
-                <CheckRow key={role} label={role} value={coachRole === role} onToggle={() => setCoachRole((prev) => prev === role ? "" : role)} />
-              ))}
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Experience Required</Text>
-              <View style={{ gap: 6, marginBottom: 8 }}>
-                {COACH_EXPERIENCE_LEVELS.map((lvl) => (
-                  <Pressable key={lvl.value} onPress={() => setCoachExperienceLevel(lvl.value)} style={[localStyles.ageGroupRow, { backgroundColor: coachExperienceLevel === lvl.value ? colors.primary : colors.secondary, borderColor: coachExperienceLevel === lvl.value ? colors.primary : colors.border }]}>
-                    <Text style={[localStyles.ageGroupText, { color: coachExperienceLevel === lvl.value ? "#FFF" : colors.secondaryForeground }]}>{lvl.label}</Text>
-                    {coachExperienceLevel === lvl.value ? <Feather name="check" color="#FFF" size={14} /> : null}
-                  </Pressable>
+                {positionOptions.map((p) => (
+                  <Pill key={p} label={p} active={positions.includes(p)} onPress={() => togglePosition(p)} />
                 ))}
               </View>
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>What Type of Position Is This Role?</Text>
-              <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>Select one option only.</Text>
-              {COACH_POSITION_TYPES.map((pt) => (
-                <CheckRow key={pt} label={pt} value={coachPositionTypes.includes(pt)} onToggle={() => setCoachPositionTypes((prev) => prev.includes(pt) ? [] : [pt])} />
-              ))}
-              {coachPositionTypes.includes("Unpaid Volunteer") && coachPositionTypes.length === 1 ? null : (
-                <>
-                  <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-                  <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>
-                    {coachPositionTypes.includes("One off payment") ? "One Off Payment Amount (AUD) — Optional" : "Annual Salary (AUD) — Optional"}
-                  </Text>
-                  <CheckRow label="TBC / Negotiable" value={coachSalaryTbc} onToggle={() => { setCoachSalaryTbc(!coachSalaryTbc); setCoachSalaryText(""); }} />
-                  {!coachSalaryTbc && (
-                    <View style={localStyles.feeRow}>
-                      <View style={[localStyles.feeCurrencyBadge, { backgroundColor: colors.secondary }]}>
-                        <Text style={[localStyles.feeCurrencyText, { color: colors.secondaryForeground }]}>AUD $</Text>
-                      </View>
-                      <TextInput value={coachSalaryText} onChangeText={(t) => setCoachSalaryText(t.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.mutedForeground} style={[localStyles.feeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground, flex: 1 }]} />
-                    </View>
-                  )}
-                </>
-              )}
             </>
           )}
 
-          <Field label="Additional Details" value={description} onChangeText={setDescription} placeholder="Describe the opportunity, player, club culture or requirements" multiline />
+          {showCoachTitle && (
+            <>
+              <FormLabel text="Coach level / title (optional)" />
+              <View style={localStyles.pillRow}>
+                {coachTitles.map((t) => (
+                  <Pill key={t} label={t} active={coachTitle === t} onPress={() => setCoachTitle(coachTitle === t ? "" : t)} />
+                ))}
+              </View>
+            </>
+          )}
+
+          <FormLabel text="Level" />
+          <Field value={level} onChangeText={setLevel} label="" placeholder="e.g. Competitive Amateur, Semi-Pro" />
+
+          {showPlayerDesc && (
+            <>
+              <FormLabel text={isCoachLooking ? "About the coach" : "About the player"} />
+              <Field value={playerDescription} onChangeText={setPlayerDescription} label="" multiline placeholder="Describe the player or coach, experience, goals…" />
+            </>
+          )}
+
+          {showSchedule && (
+            <>
+              <DayPicker label="Training Days" selected={trainingDays} onToggle={(d) => setTrainingDays(toggleDay(trainingDays, d))} tbd={trainingTbd} onTbdToggle={() => setTrainingTbd(!trainingTbd)} />
+              <TimeRow label="Training Time" from={trainingFrom} to={trainingTo} onFromChange={setTrainingFrom} onToChange={setTrainingTo} disabled={trainingTbd} />
+              <DayPicker label="Game Days" selected={gameDays} onToggle={(d) => setGameDays(toggleDay(gameDays, d))} tbd={gameTbd} onTbdToggle={() => setGameTbd(!gameTbd)} />
+              <TimeRow label="Game Time" from={gameFrom} to={gameTo} onFromChange={setGameFrom} onToChange={setGameTo} disabled={gameTbd} />
+            </>
+          )}
 
           {isPlayerLooking && (
             <>
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Available Training Days</Text>
-              <DayPicker label="Available training days" selected={trainingDays} onToggle={(d) => setTrainingDays(toggleDay(trainingDays, d))} tbd={trainingTbd} onTbdToggle={() => { setTrainingTbd(!trainingTbd); setTrainingDays([]); }} />
-
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Available Game Days</Text>
-              <DayPicker label="Available game days" selected={gameDays} onToggle={(d) => setGameDays(toggleDay(gameDays, d))} tbd={gameTbd} onTbdToggle={() => { setGameTbd(!gameTbd); setGameDays([]); }} />
-
-              <Field
-                label="Additional training or game day information (optional)"
-                value={scheduleNote}
-                onChangeText={setScheduleNote}
-                placeholder="e.g. Prefer weekend mornings, flexible on times, available school holidays…"
-                multiline
-              />
+              <FormLabel text="Training / game day notes (optional)" />
+              <Field value={scheduleNote} onChangeText={setScheduleNote} label="" multiline placeholder="e.g. Prefer weeknight training, Saturday games" />
             </>
           )}
 
-          {isPlayersWanted && (
+          {isClubTrials && (
             <>
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Training Days</Text>
-              <DayPicker label="Training days" selected={trainingDays} onToggle={(d) => setTrainingDays(toggleDay(trainingDays, d))} tbd={trainingTbd} onTbdToggle={() => { setTrainingTbd(!trainingTbd); setTrainingDays([]); }} />
-              <TimeRow label="Training times" from={trainingFrom} to={trainingTo} onFromChange={setTrainingFrom} onToChange={setTrainingTo} disabled={trainingTbd} />
+              <FormLabel text="Trial date(s) (DD/MM/YYYY)" required />
+              {trialSlots.map((slot, i) => (
+                <View key={i} style={{ gap: 6, marginBottom: 8 }}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <View style={{ flex: 2 }}>
+                      <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>DATE</Text>
+                      <TextInput
+                        value={slot.date}
+                        onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, date: v } : s))}
+                        placeholder="DD/MM/YYYY"
+                        placeholderTextColor={colors.mutedForeground}
+                        keyboardType="number-pad"
+                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: trialSlotOrderErrors[i] || trialSlotDuplicates[i] ? "#D9534F" : colors.border, color: colors.foreground }]}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>FROM</Text>
+                      <TextInput
+                        value={slot.timeFrom}
+                        onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeFrom: v } : s))}
+                        placeholder="6:00 PM"
+                        placeholderTextColor={colors.mutedForeground}
+                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>TO</Text>
+                      <TextInput
+                        value={slot.timeTo}
+                        onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeTo: v } : s))}
+                        placeholder="8:00 PM"
+                        placeholderTextColor={colors.mutedForeground}
+                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+                      />
+                    </View>
+                    {i > 0 ? (
+                      <Pressable onPress={() => setTrialSlots((prev) => prev.filter((_, j) => j !== i))} style={{ alignSelf: "flex-end", marginBottom: 4 }}>
+                        <Feather name="x-circle" size={20} color="#D9534F" />
+                      </Pressable>
+                    ) : null}
+                  </View>
+                  {trialSlotOrderErrors[i] && <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 12 }}>Trial dates must be in chronological order</Text>}
+                  {trialSlotDuplicates[i] && <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 12 }}>Duplicate trial date/time</Text>}
+                </View>
+              ))}
+              <Pressable onPress={() => setTrialSlots((prev) => [...prev, { date: "", timeFrom: "", timeTo: "" }])} style={({ pressed }) => [localStyles.addSlotButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
+                <Feather name="plus" size={16} color={colors.primary} />
+                <Text style={[localStyles.addSlotText, { color: colors.primary }]}>Add another trial date</Text>
+              </Pressable>
+            </>
+          )}
 
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Game Days</Text>
-              <DayPicker label="Game days" selected={gameDays} onToggle={(d) => setGameDays(toggleDay(gameDays, d))} tbd={gameTbd} onTbdToggle={() => { setGameTbd(!gameTbd); setGameDays([]); }} />
-              <TimeRow label="Game times" from={gameFrom} to={gameTo} onFromChange={setGameFrom} onToChange={setGameTo} disabled={gameTbd} />
+          {isCoachWanted && (
+            <>
+              <FormLabel text="Coach role" required />
+              <View style={localStyles.pillRow}>
+                {COACH_ROLES.map((r) => (
+                  <Pill key={r} label={r} active={coachRole === r} onPress={() => setCoachRole(r)} />
+                ))}
+              </View>
+
+              <FormLabel text="Experience level required" required />
+              <View style={{ gap: 6 }}>
+                {COACH_EXPERIENCE_LEVELS.map((l) => (
+                  <Pressable key={l.value} onPress={() => setCoachExperienceLevel(l.value)} style={[localStyles.ageGroupRow, { backgroundColor: coachExperienceLevel === l.value ? colors.primary : colors.secondary, borderColor: coachExperienceLevel === l.value ? colors.primary : colors.border }]}>
+                    <Text style={[localStyles.ageGroupText, { color: coachExperienceLevel === l.value ? "#FFF" : colors.secondaryForeground }]}>{l.label}</Text>
+                    {coachExperienceLevel === l.value ? <Feather name="check" color="#FFF" size={14} /> : null}
+                  </Pressable>
+                ))}
+              </View>
+
+              <FormLabel text="Position type" required />
+              <View style={localStyles.pillRow}>
+                {COACH_POSITION_TYPES.map((pt) => (
+                  <Pill key={pt} label={pt} active={coachPositionTypes.includes(pt)} onPress={() => setCoachPositionTypes((prev) => prev.includes(pt) ? prev.filter((x) => x !== pt) : [...prev, pt])} />
+                ))}
+              </View>
+
+              <FormLabel text="Salary / remuneration (optional)" />
+              <CheckRow label="TBD / Negotiable" value={coachSalaryTbc} onToggle={() => setCoachSalaryTbc(!coachSalaryTbc)} />
+              {!coachSalaryTbc && (
+                <Field label="" value={coachSalaryText} onChangeText={setCoachSalaryText} keyboardType="numeric" placeholder="e.g. 25000 (annual AUD)" />
+              )}
             </>
           )}
 
           {showClubFees && (
             <>
-              <View style={[localStyles.sectionDivider, { backgroundColor: colors.border }]} />
-              <Text style={[localStyles.subSectionTitle, { color: colors.foreground }]}>Season Fees & Registration</Text>
-
-              <CheckRow label="Free / Scholarship (no fees)" value={feesFree} onToggle={() => { setFeesFree(!feesFree); setFeesNegotiable(false); setSeasonFeesText(""); }} />
-
+              <FormLabel text="Season fees (optional)" />
+              <CheckRow label="Free / Scholarship" value={feesFree} onToggle={() => setFeesFree(!feesFree)} />
               {!feesFree && (
                 <>
-                  <FormLabel text="Season fees (AUD)" />
-                  <View style={localStyles.feeRow}>
-                    <View style={[localStyles.feeCurrencyBadge, { backgroundColor: colors.secondary }]}>
-                      <Text style={[localStyles.feeCurrencyText, { color: colors.secondaryForeground }]}>AUD $</Text>
-                    </View>
-                    <TextInput value={seasonFeesText} onChangeText={(t) => setSeasonFeesText(t.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.mutedForeground} style={[localStyles.feeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground, flex: 1 }]} />
-                    {feesNegotiable && seasonFeesText.trim() ? <View style={[localStyles.nearOfferBadge, { backgroundColor: colors.secondary }]}><Text style={[localStyles.nearOfferText, { color: colors.secondaryForeground }]}>or near offer</Text></View> : null}
-                  </View>
-                  <CheckRow label="Negotiable (or near offer)" value={feesNegotiable} onToggle={() => setFeesNegotiable(!feesNegotiable)} />
+                  <Field label="" value={seasonFeesText} onChangeText={setSeasonFeesText} keyboardType="numeric" placeholder="e.g. 350 (AUD per season)" />
+                  <CheckRow label="Or near offer (negotiable)" value={feesNegotiable} onToggle={() => setFeesNegotiable(!feesNegotiable)} />
                 </>
               )}
-
-              <CheckRow label="Trial required before joining" value={trialRequired} onToggle={() => setTrialRequired(!trialRequired)} />
             </>
           )}
 
-          <View style={{ marginTop: 12 }}>
-            {submitted ? <Text style={[localStyles.success, { color: colors.primary }]}>{editingId ? "Advert updated." : "Advert posted and visible in Discover."}</Text> : null}
-            <PrimaryButton
-              label={editingId ? "Save changes" : "Publish advert"}
-              icon={editingId ? "check" : "send"}
-              onPress={submit}
-              onPressWhenDisabled={() => setShowErrors(true)}
-              disabled={!canSubmit}
-            />
-            {showErrors && validationErrors.length > 0 && (
-              <View style={{ marginTop: 10, gap: 5 }}>
-                <Text style={{ color: "#D9534F", fontSize: 13, fontWeight: "700", marginBottom: 2 }}>Please complete the following before publishing:</Text>
-                {validationErrors.map((err, i) => (
-                  <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
-                    <Text style={{ color: "#D9534F", fontSize: 13, lineHeight: 20 }}>•</Text>
-                    <Text style={{ color: "#D9534F", fontSize: 13, lineHeight: 20, flex: 1 }}>{err}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-            {editingId ? (
-              <Pressable onPress={cancelEdit} style={({ pressed }) => [localStyles.cancelEditBtn, { opacity: pressed ? 0.7 : 1 }]}>
-                <Text style={[localStyles.cancelEditText, { color: colors.mutedForeground }]}>Cancel edit</Text>
+          <CheckRow label="Trial required" value={trialRequired} onToggle={() => setTrialRequired(!trialRequired)} />
+
+          <FormLabel text="Location (suburb)" required />
+          <Field value={suburb} onChangeText={setSuburb} label="" placeholder="e.g. Richmond" />
+          <FormLabel text="State" required />
+          <View style={localStyles.stateRow}>
+            {AU_STATES.map((s) => (
+              <Pressable key={s} onPress={() => setState(s)} style={[localStyles.stateChip, { backgroundColor: state === s ? colors.primary : colors.secondary }]}>
+                <Text style={[localStyles.stateChipText, { color: state === s ? "#FFF" : colors.secondaryForeground }]}>{s}</Text>
               </Pressable>
-            ) : null}
+            ))}
           </View>
+
+          <FormLabel text="Additional details" required />
+          <Field value={description} onChangeText={setDescription} label="" multiline placeholder="Describe what you're looking for, your experience, goals…" />
+
+          <FormLabel text="Generated title (tap to edit)" />
+          <Field value={title} onChangeText={setTitle} label="" />
         </View>
 
-        <SectionTitle title="Your active adverts" />
-        {myAdverts.length ? (
-          <FlatList
-            data={myAdverts}
-            scrollEnabled={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <MyAdvertCard advert={item} onPress={() => setSelectedMyAdvert(item)} />}
-          />
-        ) : (
-          <View style={[localStyles.emptyMini, { backgroundColor: colors.secondary }]}>
-            <Text style={[localStyles.emptyMiniText, { color: colors.secondaryForeground }]}>Your posted adverts will appear here.</Text>
+        {submitted && !editingId ? (
+          <View style={[localStyles.successBox, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
+            <Feather name="check-circle" color="#16A34A" size={24} />
+            <Text style={[localStyles.successTitle, { color: "#15803D" }]}>Advert posted!</Text>
+            <Text style={[localStyles.successText, { color: "#166534" }]}>Your advert is now live in the Discover tab. You can manage and edit it here.</Text>
           </View>
-        )}
+        ) : null}
+
+        {showErrors && validationErrors.length > 0 ? (
+          <View style={[localStyles.errorBox, { backgroundColor: "#FEF2F2", borderColor: "#D9534F" }]}>
+            {validationErrors.map((e) => (
+              <View key={e} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+                <Feather name="alert-circle" size={14} color="#D9534F" style={{ marginTop: 2 }} />
+                <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 13 }}>{e}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        <PrimaryButton
+          label={editingId ? "Save changes" : "Post Advert"}
+          icon={editingId ? "save" : "send"}
+          onPress={() => {
+            if (!canSubmit) { setShowErrors(true); return; }
+            submit();
+          }}
+        />
+
+        {myAdverts.length > 0 ? (
+          <>
+            <SectionTitle title="My adverts" action={`${myAdverts.length} live`} />
+            <FlatList
+              data={myAdverts}
+              scrollEnabled={false}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <MyAdvertCard advert={item} onPress={() => setSelectedMyAdvert(item)} />
+              )}
+            />
+          </>
+        ) : null}
       </ScrollView>
 
-      {selectedMyAdvert ? (
+      {selectedMyAdvert && !editingId ? (
         <MyAdvertDetail
           advert={selectedMyAdvert}
           onClose={() => setSelectedMyAdvert(null)}
           onEdit={() => loadAdvertForEdit(selectedMyAdvert)}
         />
       ) : null}
+
+      <SubscriptionPaywall
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        featureHint={paywallHint}
+      />
     </ScreenShell>
   );
 }
 
 const localStyles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 18 },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   kicker: { fontWeight: "700", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 },
-  title: { fontWeight: "700", fontSize: 32, letterSpacing: -0.8, marginTop: 4 },
-  roleBadge: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999 },
-  roleBadgeText: { fontWeight: "700", fontSize: 12, textTransform: "capitalize" },
-  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
-  sportHeader: { borderWidth: 1, borderRadius: 26, padding: 18 },
-  sportHeaderKicker: { fontWeight: "800", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8 },
-  sportHeaderTitle: { fontWeight: "800", fontSize: 25, letterSpacing: -0.5, marginTop: 4 },
+  title: { fontWeight: "800", fontSize: 32, letterSpacing: -0.8, marginTop: 4 },
+  roleBadge: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
+  roleBadgeText: { fontWeight: "700", fontSize: 13, textTransform: "capitalize" },
+  subBanner: { flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 11 },
+  subBannerText: { fontWeight: "700", fontSize: 13, flex: 1 },
+  sportHeader: { borderWidth: 1, borderRadius: 22, padding: 14, gap: 4 },
+  sportHeaderKicker: { fontWeight: "800", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.8 },
+  sportHeaderTitle: { fontWeight: "800", fontSize: 22, letterSpacing: -0.5 },
+  editingBanner: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 18, padding: 14 },
+  editingBannerText: { fontWeight: "700", fontSize: 13, flex: 1 },
   formCard: { borderWidth: 1, borderRadius: 28, padding: 18, gap: 4 },
-  formTitle: { fontWeight: "700", fontSize: 18, marginBottom: 4 },
+  formTitle: { fontWeight: "800", fontSize: 18, marginBottom: 4 },
   formLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
-  formHint: { fontSize: 12, fontWeight: "500", marginBottom: 4 },
-  sportPickerScroll: { gap: 8, paddingRight: 20, paddingVertical: 8 },
+  formHint: { fontWeight: "500", fontSize: 12, marginBottom: 6 },
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
+  sportPickerScroll: { paddingRight: 16, gap: 8 },
   sportChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
-  sportChipText: { fontWeight: "800", fontSize: 13 },
-  ageGroupRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 14, borderWidth: 1 },
-  ageGroupText: { fontWeight: "600", fontSize: 14 },
-  agePill: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
-  agePillText: { fontWeight: "700", fontSize: 14 },
-  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 },
+  sportChipText: { fontWeight: "700", fontSize: 13 },
+  ageGroupRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderRadius: 14, padding: 12 },
+  ageGroupText: { fontWeight: "600", fontSize: 14, flex: 1 },
+  choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  choice: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
+  choiceText: { fontWeight: "700", fontSize: 13 },
+  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 4 },
   checkBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  checkLabel: { fontWeight: "500", fontSize: 14, flex: 1 },
-  dayRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingVertical: 4 },
-  dayChip: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10 },
+  checkLabel: { fontWeight: "600", fontSize: 14 },
+  dayRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
+  dayChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
   dayChipText: { fontWeight: "700", fontSize: 13 },
   timeRowInner: { flexDirection: "row", gap: 10 },
-  timeSubLabel: { fontWeight: "600", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 },
-  timeInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, minHeight: 44, fontWeight: "500", fontSize: 15 },
-  sectionDivider: { height: 1, marginVertical: 14, opacity: 0.5 },
-  subSectionTitle: { fontWeight: "700", fontSize: 16, marginBottom: 4 },
-  feeRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  feeCurrencyBadge: { paddingHorizontal: 12, paddingVertical: 12, borderRadius: 12 },
-  feeCurrencyText: { fontWeight: "700", fontSize: 14 },
-  feeInput: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, minHeight: 44, fontWeight: "500", fontSize: 15 },
-  nearOfferBadge: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: 12 },
-  nearOfferText: { fontWeight: "600", fontSize: 12 },
-  success: { fontWeight: "700", fontSize: 13, marginBottom: 8 },
-  myCard: { borderWidth: 1, borderRadius: 22, overflow: "hidden", marginBottom: 10 },
-  expiryRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
-  expiryText: { fontWeight: "700", fontSize: 12 },
-  cardTop: { flexDirection: "row", justifyContent: "space-between", marginTop: 12, marginBottom: 4, paddingHorizontal: 16 },
-  cardType: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.6 },
-  cardDistance: { fontWeight: "600", fontSize: 12 },
-  cardTitle: { fontWeight: "700", fontSize: 17, marginBottom: 4, paddingHorizontal: 16 },
-  cardText: { fontWeight: "500", fontSize: 14, paddingHorizontal: 16 },
-  cardFooter: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 16, paddingVertical: 10, marginTop: 4 },
-  cardFooterText: { fontWeight: "500", fontSize: 12 },
-  editingBanner: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 18 },
-  editingBannerText: { fontWeight: "600", fontSize: 13, flex: 1 },
-  cancelEditBtn: { marginTop: 10, alignItems: "center", padding: 10 },
-  cancelEditText: { fontWeight: "600", fontSize: 14 },
+  timeSubLabel: { fontWeight: "700", fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 },
+  timeInput: { borderWidth: 1, borderRadius: 12, minHeight: 44, paddingHorizontal: 12, fontWeight: "600", fontSize: 14 },
+  addSlotButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 14, padding: 12 },
+  addSlotText: { fontWeight: "700", fontSize: 14 },
+  stateRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
+  stateChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
+  stateChipText: { fontWeight: "700", fontSize: 13 },
+  successBox: { borderWidth: 1, borderRadius: 24, padding: 20, alignItems: "center", gap: 8 },
+  successTitle: { fontWeight: "800", fontSize: 18 },
+  successText: { fontWeight: "500", fontSize: 14, lineHeight: 21, textAlign: "center" },
+  errorBox: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 8 },
+  myCard: { borderWidth: 1, borderRadius: 26, padding: 14, marginBottom: 12 },
+  expiryRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, alignSelf: "flex-start", marginBottom: 8 },
+  expiryText: { fontWeight: "700", fontSize: 11 },
+  cardTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  cardType: { fontWeight: "700", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6 },
+  cardDistance: { fontWeight: "700", fontSize: 12 },
+  cardTitle: { fontWeight: "700", fontSize: 17, lineHeight: 22 },
+  cardText: { fontWeight: "500", fontSize: 13 },
+  cardFooter: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
+  cardFooterText: { fontWeight: "600", fontSize: 12 },
   modalScrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   modalCard: { borderTopLeftRadius: 34, borderTopRightRadius: 34, maxHeight: "92%", overflow: "hidden" },
   detailExpiryBar: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
   detailExpiryText: { fontWeight: "700", fontSize: 13, flex: 1 },
-  detailScroll: { paddingHorizontal: 22, paddingBottom: 40, gap: 4 },
+  detailScroll: { paddingHorizontal: 22, paddingBottom: 34, gap: 4 },
   detailTypeLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 16 },
-  detailTitle: { fontWeight: "700", fontSize: 26, lineHeight: 31, letterSpacing: -0.5, marginTop: 4 },
+  detailTitle: { fontWeight: "800", fontSize: 26, lineHeight: 32, letterSpacing: -0.5 },
   detailChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 10 },
-  chip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  chip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
   chipText: { fontWeight: "700", fontSize: 12 },
   detailSection: { gap: 4, marginTop: 10 },
-  detailLabel: { fontWeight: "700", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6 },
+  detailLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7 },
   detailValue: { fontWeight: "600", fontSize: 15, lineHeight: 21 },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   tagText: { fontWeight: "600", fontSize: 12 },
-  editButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 18, marginTop: 12 },
-  editButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
-  deleteButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 52, borderRadius: 18, borderWidth: 1.5, marginTop: 10 },
-  deleteButtonText: { fontWeight: "700", fontSize: 16 },
-  deleteConfirmBox: { borderWidth: 1.5, borderRadius: 18, padding: 16, marginTop: 10, gap: 12 },
-  deleteConfirmText: { fontWeight: "600", fontSize: 14, color: "#7F1D1D", lineHeight: 20 },
+  editButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 16, paddingVertical: 14, marginVertical: 6 },
+  editButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
+  deleteButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 16, borderWidth: 1.5, paddingVertical: 14, marginVertical: 6 },
+  deleteButtonText: { fontWeight: "700", fontSize: 15 },
+  deleteConfirmBox: { borderWidth: 1.5, borderRadius: 18, padding: 16, gap: 12, marginVertical: 6 },
+  deleteConfirmText: { fontWeight: "600", fontSize: 14, lineHeight: 21, color: "#991B1B" },
   deleteConfirmRow: { flexDirection: "row", gap: 10 },
-  deleteConfirmCancel: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 46, borderRadius: 14 },
-  deleteConfirmCancelText: { fontWeight: "700", fontSize: 14 },
-  deleteConfirmYes: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 46, borderRadius: 14, backgroundColor: "#D9534F" },
-  deleteConfirmYesText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },
-  emptyMini: { borderRadius: 20, padding: 18 },
-  emptyMiniText: { fontWeight: "600", textAlign: "center" },
-  choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  choice: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
-  choiceText: { fontWeight: "700", fontSize: 13 },
+  deleteConfirmCancel: { flex: 1, borderRadius: 14, paddingVertical: 12, alignItems: "center", justifyContent: "center" },
+  deleteConfirmCancelText: { fontWeight: "700", fontSize: 15 },
+  deleteConfirmYes: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#D9534F", borderRadius: 14, paddingVertical: 12 },
+  deleteConfirmYesText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
 });
