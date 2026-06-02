@@ -77,6 +77,8 @@ export type UserAccount = {
   highlightReelStatus?: ImageStatus;
   clubWebsite?: string;
   clubAddress?: string;
+  clubSuburb?: string;
+  clubPostcode?: string;
   clubContactEmail?: string;
   clubContactMobile?: string;
   password?: string;
@@ -735,7 +737,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         name: account.clubName || current.name,
         sport: account.defaultSport,
         location: account.location || current.location,
-        mapAddress: account.clubAddress || current.mapAddress,
+        mapAddress: [account.clubAddress, [account.clubSuburb, account.clubPostcode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || current.mapAddress,
         imageId: account.profileImageId,
         bio: account.bio || current.bio,
       }));
@@ -843,7 +845,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         name: match.clubName || current.name,
         sport: match.defaultSport,
         location: match.location || current.location,
-        mapAddress: match.clubAddress || current.mapAddress,
+        mapAddress: [match.clubAddress, [match.clubSuburb, match.clubPostcode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || current.mapAddress,
         imageId: match.profileImageId,
       }));
     } else {
@@ -881,7 +883,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         name: match.clubName || current.name,
         sport: match.defaultSport,
         location: match.location || current.location,
-        mapAddress: match.clubAddress || current.mapAddress,
+        mapAddress: [match.clubAddress, [match.clubSuburb, match.clubPostcode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || current.mapAddress,
         imageId: match.profileImageId,
       }));
     } else {

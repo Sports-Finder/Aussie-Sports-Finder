@@ -135,6 +135,8 @@ export function AccountSetupGate() {
     mobile: "",
     bio: "",
     clubAddress: "",
+    clubSuburb: "",
+    clubPostcode: "",
     clubWebsite: "",
     clubContactEmail: "",
     clubContactMobile: "",
@@ -163,7 +165,10 @@ export function AccountSetupGate() {
       return Boolean(
         form.clubName.trim() &&
         defaultSport &&
-        isAustralianLocation(form.clubAddress) &&
+        form.clubAddress.trim() &&
+        form.clubSuburb.trim() &&
+        /^\d{4}$/.test(form.clubPostcode) &&
+        form.state &&
         form.clubContactEmail.includes("@") &&
         form.clubContactMobile.trim()
       );
@@ -238,7 +243,7 @@ export function AccountSetupGate() {
       clubName: form.clubName,
       gender: form.gender,
       dateOfBirth: form.dateOfBirth,
-      location: isClub ? form.clubAddress : `${form.suburb} ${form.state}`.trim(),
+      location: isClub ? `${form.clubSuburb} ${form.state}`.trim() : `${form.suburb} ${form.state}`.trim(),
       mobile: isClub ? form.clubContactMobile : form.mobile,
       sports: isClub ? [defaultSport] : selectedSports,
       defaultSport,
@@ -253,6 +258,8 @@ export function AccountSetupGate() {
       highlightReelStatus: form.highlightReelUrl ? "pending" : undefined,
       clubWebsite: form.clubWebsite,
       clubAddress: form.clubAddress,
+      clubSuburb: form.clubSuburb,
+      clubPostcode: form.clubPostcode,
       clubContactEmail: form.clubContactEmail,
       clubContactMobile: form.clubContactMobile,
       bio: form.bio || undefined,
@@ -371,10 +378,30 @@ export function AccountSetupGate() {
                   approvedSports={approvedSports.map((s) => s.name)}
                 />
                 <Input
-                  label="Full Address including Suburb, City and State (Australia only) (required)"
+                  label="Club Street Number & Street Address (required)"
                   value={form.clubAddress}
                   onChangeText={(v) => update("clubAddress", v)}
                 />
+                <Input
+                  label="Suburb (required)"
+                  value={form.clubSuburb}
+                  onChangeText={(v) => update("clubSuburb", v)}
+                />
+                <Input
+                  label="Postcode (required)"
+                  value={form.clubPostcode}
+                  onChangeText={(v) => {
+                    const digits = v.replace(/\D/g, "").slice(0, 4);
+                    update("clubPostcode", digits);
+                  }}
+                  keyboardType="number-pad"
+                />
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>State (required)</Text>
+                <View style={styles.wrapRow}>
+                  {states.map((s) => (
+                    <Choice key={s} label={s} active={form.state === s} onPress={() => update("state", s)} colors={colors} />
+                  ))}
+                </View>
                 <Input label="Club Website Address (optional)" value={form.clubWebsite} onChangeText={(v) => update("clubWebsite", v)} />
                 <Input
                   label="Club Contact Email Address (required)"

@@ -420,7 +420,7 @@ export default function PostScreen() {
     const positionLabel = positions.length === 1 ? positions[0] : "";
     const levelLabel = level.trim() && level !== "Competitive amateur" ? level.trim() : "";
     const locationLabel = suburb.trim();
-    const ending = locationLabel ? `in ${locationLabel}` : "";
+    const ending = locationLabel ? `in ${[locationLabel, state].filter(Boolean).join(" ")}` : "";
     const parts = [ageLabel, coachTitleLabel, positionLabel, levelLabel, roleLabel, sportLabel].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" ");
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());

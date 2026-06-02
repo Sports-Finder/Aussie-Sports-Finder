@@ -110,17 +110,35 @@ export default function ProfileScreen() {
   const [guardianBio, setGuardianBio] = useState(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
   const [coachBio, setCoachBio] = useState(currentAccount?.role === "coach" ? currentAccount.bio ?? "" : "");
   const [clubBio, setClubBio] = useState(clubProfile.bio ?? "");
-  const [clubMapAddress, setClubMapAddress] = useState(clubProfile.mapAddress ?? "");
-  const [suburb, setSuburb] = useState(currentAccount?.location ?? "");
-  const [state, setState] = useState("");
+  const [clubMapAddress, setClubMapAddress] = useState(currentAccount?.clubAddress ?? clubProfile.mapAddress ?? "");
+  const [clubSuburb, setClubSuburb] = useState(currentAccount?.clubSuburb ?? "");
+  const [clubPostcode, setClubPostcode] = useState(currentAccount?.clubPostcode ?? "");
+  const [suburb, setSuburb] = useState(() => {
+    const loc = currentAccount?.location ?? "";
+    const parts = loc.trim().split(" ");
+    const last = parts[parts.length - 1]?.toUpperCase();
+    return states.includes(last) ? parts.slice(0, -1).join(" ").trim() : loc.trim();
+  });
+  const [state, setState] = useState(() => {
+    const loc = currentAccount?.location ?? "";
+    const parts = loc.trim().split(" ");
+    const last = parts[parts.length - 1]?.toUpperCase();
+    return states.includes(last) ? last : "";
+  });
 
   useEffect(() => {
     setPlayerBio(playerProfile.bio ?? "");
     setGuardianBio(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
     setCoachBio(currentAccount?.role === "coach" ? currentAccount.bio ?? "" : "");
     setClubBio(clubProfile.bio ?? "");
-    setClubMapAddress(clubProfile.mapAddress ?? "");
-    setSuburb(currentAccount?.location ?? "");
+    setClubMapAddress(currentAccount?.clubAddress ?? clubProfile.mapAddress ?? "");
+    setClubSuburb(currentAccount?.clubSuburb ?? "");
+    setClubPostcode(currentAccount?.clubPostcode ?? "");
+    const loc = currentAccount?.location ?? "";
+    const parts = loc.trim().split(" ");
+    const last = parts[parts.length - 1]?.toUpperCase();
+    setSuburb(states.includes(last) ? parts.slice(0, -1).join(" ").trim() : loc.trim());
+    setState(states.includes(last) ? last : "");
   }, [currentAccount?.bio, currentAccount?.role, clubProfile, playerProfile]);
 
   const playerImage = getImageUri(playerProfile.imageId, true);
@@ -158,15 +176,23 @@ export default function ProfileScreen() {
     if (isClub) {
       const isApproved = currentAccount?.clubApprovalStatus === "approved";
       const doClubSave = () => {
+        const newLocation = `${clubSuburb} ${state}`.trim();
+        const newMapAddress = [clubMapAddress, [clubSuburb, clubPostcode].filter(Boolean).join(" ")].filter(Boolean).join(", ");
         updateClubProfile({
           ...clubProfile,
           name: currentAccount?.clubName ?? clubProfile.name,
           sport: currentAccount?.defaultSport ?? clubProfile.sport,
-          location: currentAccount?.location ?? clubProfile.location,
-          mapAddress: clubMapAddress,
+          location: newLocation || clubProfile.location,
+          mapAddress: newMapAddress || clubProfile.mapAddress,
           bio: clubBio,
         });
-        updateAccount({ bio: clubBio });
+        updateAccount({
+          bio: clubBio,
+          location: newLocation || currentAccount?.location,
+          clubAddress: clubMapAddress,
+          clubSuburb,
+          clubPostcode,
+        });
         if (isApproved) {
           resetClubApprovalAfterEdit();
           setMode("view");
@@ -233,7 +259,14 @@ export default function ProfileScreen() {
     setGuardianBio(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
     setCoachBio(currentAccount?.role === "coach" ? currentAccount.bio ?? "" : "");
     setClubBio(clubProfile.bio ?? "");
-    setClubMapAddress(clubProfile.mapAddress ?? "");
+    setClubMapAddress(currentAccount?.clubAddress ?? clubProfile.mapAddress ?? "");
+    setClubSuburb(currentAccount?.clubSuburb ?? "");
+    setClubPostcode(currentAccount?.clubPostcode ?? "");
+    const loc = currentAccount?.location ?? "";
+    const parts = loc.trim().split(" ");
+    const last = parts[parts.length - 1]?.toUpperCase();
+    setSuburb(states.includes(last) ? parts.slice(0, -1).join(" ").trim() : loc.trim());
+    setState(states.includes(last) ? last : "");
     setMode("edit");
   };
 
@@ -265,7 +298,10 @@ export default function ProfileScreen() {
       return [
         { label: "Club name", value: currentAccount.clubName ?? "" },
         { label: "Sport", value: currentAccount.defaultSport ?? "" },
-        { label: "Address", value: currentAccount.clubAddress ?? currentAccount.location ?? "" },
+        { label: "Street Address", value: currentAccount.clubAddress ?? "" },
+        { label: "Suburb", value: currentAccount.clubSuburb ?? "" },
+        { label: "Postcode", value: currentAccount.clubPostcode ?? "" },
+        { label: "State", value: currentAccount.location ? (currentAccount.location.trim().split(" ").pop() ?? "") : "" },
         { label: "Contact email", value: currentAccount.clubContactEmail ?? "", url: currentAccount.clubContactEmail ? `mailto:${currentAccount.clubContactEmail}` : undefined },
         { label: "Contact mobile", value: currentAccount.clubContactMobile ?? "" },
         { label: "Bio", value: clubBio },
@@ -456,14 +492,20 @@ export default function ProfileScreen() {
               ))}
             </View>
 
-            <Field label="Suburb" value={suburb} onChangeText={setSuburb} />
+            <Field label="Club Street Number & Street Address" value={clubMapAddress} onChangeText={setClubMapAddress} placeholder="e.g. 123 Smith Street" />
+            <Field label="Suburb" value={clubSuburb} onChangeText={setClubSuburb} />
+            <Field
+              label="Postcode"
+              value={clubPostcode}
+              onChangeText={(v) => setClubPostcode(v.replace(/\D/g, "").slice(0, 4))}
+              keyboardType="number-pad"
+            />
             <Text style={[styles.label, { color: colors.mutedForeground }]}>State</Text>
             <View style={styles.wrapRow}>
               {states.map((item) => (
                 <Choice key={item} label={item} active={state === item} onPress={() => setState(item)} />
               ))}
             </View>
-            <Field label="Club ground or street address" value={clubMapAddress} onChangeText={setClubMapAddress} placeholder="e.g. Princes Park, Carlton North VIC" />
             <Field label="Club contact email" value={currentAccount?.clubContactEmail ?? ""} onChangeText={(v) => updateAccount({ clubContactEmail: v })} keyboardType="email-address" />
             <Field label="Club contact mobile" value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
             <Field label="Club bio" value={clubBio} onChangeText={(value) => {
