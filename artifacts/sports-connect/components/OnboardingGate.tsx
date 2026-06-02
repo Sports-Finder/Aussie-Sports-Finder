@@ -66,6 +66,29 @@ export function OnboardingGate() {
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [bannedEmailError, setBannedEmailError] = useState(false);
 
+  // All hooks must be declared before any conditional returns
+  const checkAndActivateOAuth = useCallback(async (strategy: "oauth_google" | "oauth_apple") => {
+    try {
+      const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+        strategy,
+        redirectUrl: AuthSession.makeRedirectUri(),
+      });
+      if (!createdSessionId || !setActive) return;
+      const oauthEmail =
+        (signIn?.identifier ?? signUp?.emailAddress ?? "").toLowerCase().trim();
+      if (oauthEmail && bannedEmails.map((e) => e.toLowerCase()).includes(oauthEmail)) {
+        Alert.alert("Account blocked", BANNED_EMAIL_MSG);
+        return;
+      }
+      await setActive({ session: createdSessionId, navigate: () => {} });
+    } catch (err) {
+      console.error(JSON.stringify(err, null, 2));
+    }
+  }, [startSSOFlow, bannedEmails]);
+
+  const handleGoogleAuth = useCallback(() => checkAndActivateOAuth("oauth_google"), [checkAndActivateOAuth]);
+  const handleAppleAuth = useCallback(() => checkAndActivateOAuth("oauth_apple"), [checkAndActivateOAuth]);
+
   // Admin/moderator bypass — passcode-based, independent of Clerk auth
   if (isAdmin) return <AdminPage onExit={() => adminSignOut()} />;
   if (isModerator) return <ModeratorPage onExit={() => moderatorSignOut()} />;
@@ -113,29 +136,6 @@ export function OnboardingGate() {
       await signUp.finalize({ navigate: () => {} });
     }
   };
-
-  const checkAndActivateOAuth = useCallback(async (strategy: "oauth_google" | "oauth_apple") => {
-    try {
-      const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
-        strategy,
-        redirectUrl: AuthSession.makeRedirectUri(),
-      });
-      if (!createdSessionId || !setActive) return;
-      // Extract the email Clerk resolved for this OAuth user
-      const oauthEmail =
-        (signIn?.identifier ?? signUp?.emailAddress ?? "").toLowerCase().trim();
-      if (oauthEmail && bannedEmails.map((e) => e.toLowerCase()).includes(oauthEmail)) {
-        Alert.alert("Account blocked", BANNED_EMAIL_MSG);
-        return; // Do NOT call setActive — leave the Clerk session uncreated
-      }
-      await setActive({ session: createdSessionId, navigate: () => {} });
-    } catch (err) {
-      console.error(JSON.stringify(err, null, 2));
-    }
-  }, [startSSOFlow, bannedEmails]);
-
-  const handleGoogleAuth = useCallback(() => checkAndActivateOAuth("oauth_google"), [checkAndActivateOAuth]);
-  const handleAppleAuth = useCallback(() => checkAndActivateOAuth("oauth_apple"), [checkAndActivateOAuth]);
 
   const switchMode = (next: AuthMode) => {
     setMode(next);
