@@ -25,5 +25,6 @@ router.use(profileImagesRouter);
 router.use(sportRequestsRouter);
 router.use(bannedEmailsRouter);
 router.use(wipeRouter);
+router.use(coachAffiliatesRouter);
 
 export default router;

@@ -106,6 +106,12 @@ export type UserAccount = {
   coachAffiliates?: CoachAffiliate[];
   affiliatedClubId?: string;
   affiliatedClubName?: string;
+  verifiedBadge?: boolean;
+  subscriptionTier?: string;
+  subscriptionStatus?: string;
+  trialStartedAt?: string;
+  trialExpiresAt?: string;
+  subscriptionExpiresAt?: string;
 };
 
 export type Advert = {
@@ -659,22 +665,22 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         try {
           const stored = await AsyncStorage.getItem(storageKey);
           if (stored) {
-            const parsed = JSON.parse(stored) as typeof defaultState;
-            setAdverts((parsed.adverts ?? defaultState.adverts).map((advert) => ({
-              ...advert,
-              type: normalizeAdvertType(advert.type),
-            })));
-            setConversations(parsed.conversations ?? defaultState.conversations);
-            setProfileImages(parsed.profileImages ?? []);
-            setPendingHighlightLinks(parsed.pendingHighlightLinks ?? []);
-            setAccounts(parsed.accounts ?? []);
-            setCurrentAccount(parsed.currentAccount);
-            setClubProfile(parsed.clubProfile ?? defaultState.clubProfile);
-            setPlayerProfile(parsed.playerProfile ?? defaultState.playerProfile);
-            setNotificationSettings(parsed.notificationSettings ?? defaultState.notificationSettings);
-            setPendingSportRequests(parsed.pendingSportRequests ?? []);
-            setSelectedSport(parsed.selectedSport ?? defaultState.selectedSport);
-            setActiveProfile(parsed.activeProfile ?? "player");
+            const parsed = JSON.parse(stored) as {
+              currentAccount?: UserAccount;
+              clubProfile?: ClubProfile;
+              playerProfile?: PlayerProfile;
+              notificationSettings?: NotificationSettings;
+              pendingHighlightLinks?: HighlightLink[];
+              selectedSport?: string;
+              activeProfile?: ProfileType;
+            };
+            if (parsed.currentAccount) setCurrentAccount(parsed.currentAccount);
+            if (parsed.clubProfile) setClubProfile(parsed.clubProfile);
+            if (parsed.playerProfile) setPlayerProfile(parsed.playerProfile);
+            if (parsed.notificationSettings) setNotificationSettings(parsed.notificationSettings);
+            if (parsed.pendingHighlightLinks?.length) setPendingHighlightLinks(parsed.pendingHighlightLinks);
+            if (parsed.selectedSport) setSelectedSport(parsed.selectedSport);
+            if (parsed.activeProfile) setActiveProfile(parsed.activeProfile);
           }
         } catch (_) {
           // ignore
@@ -687,9 +693,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
-    const snapshot = { adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, pendingSportRequests, selectedSport, activeProfile };
+    const snapshot = { currentAccount, clubProfile, playerProfile, notificationSettings, pendingHighlightLinks, selectedSport, activeProfile };
     AsyncStorage.setItem(storageKey, JSON.stringify(snapshot)).catch(() => undefined);
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, currentAccount, clubProfile, playerProfile, notificationSettings, pendingSportRequests, selectedSport, activeProfile, bannedEmails]);
+  }, [currentAccount, clubProfile, playerProfile, notificationSettings, pendingHighlightLinks, selectedSport, activeProfile]);
 
   const requestSport = (name: string) => {
     const trimmed = name.trim();

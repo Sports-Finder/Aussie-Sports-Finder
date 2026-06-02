@@ -44,6 +44,7 @@ export const accountsTable = pgTable("accounts", {
   trialStartedAt: timestamp("trial_started_at", { withTimezone: true }),
   trialExpiresAt: timestamp("trial_expires_at", { withTimezone: true }),
   subscriptionExpiresAt: timestamp("subscription_expires_at", { withTimezone: true }),
+  verifiedBadge: boolean("verified_badge").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
