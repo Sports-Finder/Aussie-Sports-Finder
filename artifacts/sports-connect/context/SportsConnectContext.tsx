@@ -114,6 +114,7 @@ export type UserAccount = {
   trialExpiresAt?: string;
   subscriptionExpiresAt?: string;
   lastAdvertClosedAt?: string;
+  promotionalPremium?: boolean;
 };
 
 export type Advert = {
@@ -299,6 +300,7 @@ type SportsConnectState = {
   forbiddenConnections: ForbiddenConnection[];
   adminApproveClub: (accountId: string) => Promise<void>;
   adminRejectClub: (accountId: string) => Promise<void>;
+  adminGrantPremium: (accountId: string, grant: boolean) => Promise<void>;
   resetClubApprovalAfterEdit: () => void;
   createAdvert: (draft: DraftAdvert & { postedBy?: string; affiliatedClubId?: string }) => Promise<void>;
   updateAdvert: (id: string, patch: Partial<DraftAdvert>) => Promise<void>;
@@ -1096,6 +1098,16 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setCurrentAccount((current) => (current && current.id === accountId ? { ...current, clubApprovalStatus: "rejected" as ClubApprovalStatus } : current));
     try { await api.updateAccount(accountId, { clubApprovalStatus: "rejected" }); } catch (_) { /* silent */ }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+  };
+
+  const adminGrantPremium = async (accountId: string, grant: boolean) => {
+    setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, promotionalPremium: grant } : acc));
+    if (grant) {
+      await api.grantEntitlement(accountId, "premium");
+    } else {
+      await api.revokeEntitlement(accountId, "premium");
+    }
+    Haptics.notificationAsync(grant ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
   };
 
   const resetClubApprovalAfterEdit = () => {
@@ -1911,6 +1923,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     forbiddenConnections,
     adminApproveClub,
     adminRejectClub,
+    adminGrantPremium,
     resetClubApprovalAfterEdit,
     createAdvert,
     updateAdvert,

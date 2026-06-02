@@ -67,6 +67,7 @@ export function mapAccount(
     lastAdvertClosedAt: row.lastAdvertClosedAt
       ? new Date(row.lastAdvertClosedAt as string).toISOString()
       : undefined,
+    promotionalPremium: (row.promotionalPremium as boolean) ?? false,
     coachAffiliates: affiliates,
     createdAt: new Date(row.createdAt as string).toISOString(),
     updatedAt: new Date(row.updatedAt as string).toISOString(),

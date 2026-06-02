@@ -8,6 +8,7 @@ import sportRequestsRouter from "./sportRequests";
 import bannedEmailsRouter from "./bannedEmails";
 import wipeRouter from "./wipe";
 import coachAffiliatesRouter from "./coachAffiliates";
+import adminEntitlementsRouter from "./adminEntitlements";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -26,5 +27,6 @@ router.use(sportRequestsRouter);
 router.use(bannedEmailsRouter);
 router.use(wipeRouter);
 router.use(coachAffiliatesRouter);
+router.use(adminEntitlementsRouter);
 
 export default router;

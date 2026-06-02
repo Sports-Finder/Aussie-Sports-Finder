@@ -62,4 +62,9 @@ export const api = {
   createCoachAffiliate: (body: any) => apiFetch("/coach-affiliates", { method: "POST", body: JSON.stringify(body) }),
   updateCoachAffiliate: (publicId: string, body: any) => apiFetch(`/coach-affiliates/${publicId}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteCoachAffiliate: (publicId: string) => apiFetch(`/coach-affiliates/${publicId}`, { method: "DELETE" }),
+
+  grantEntitlement: (accountPublicId: string, entitlementIdentifier: string) =>
+    apiFetch("/admin/entitlements", { method: "POST", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
+  revokeEntitlement: (accountPublicId: string, entitlementIdentifier: string) =>
+    apiFetch("/admin/entitlements", { method: "DELETE", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
 };

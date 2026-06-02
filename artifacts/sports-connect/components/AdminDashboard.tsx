@@ -780,18 +780,51 @@ function ChatsSection() {
 function AccountsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { accounts, bannedEmails, adminSetAccountStatus, adminApproveClub, adminRejectClub, unblockCoachAffiliate } = useSportsConnect();
+  const { accounts, bannedEmails, adminSetAccountStatus, adminApproveClub, adminRejectClub, adminGrantPremium, unblockCoachAffiliate } = useSportsConnect();
   const { approveClubs, isFullAdmin } = useDashboardPermissions();
   const [role, setRole] = useState<AccountRole>("player");
   const [editing, setEditing] = useState<UserAccount | null>(null);
+  const [toastError, setToastError] = useState<string | null>(null);
+  const [pendingPremium, setPendingPremium] = useState<string | null>(null);
 
   const list = useMemo(() => accounts.filter((a) => a.role === role).sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1)), [accounts, role]);
+  const foundingClubCount = useMemo(() => accounts.filter((a) => a.role === "club" && a.promotionalPremium).length, [accounts]);
 
   const displayName = (acc: UserAccount) => acc.clubName || acc.fullName || acc.playerName || acc.email;
+
+  const handleTogglePremium = async (acc: UserAccount) => {
+    if (pendingPremium) return;
+    setPendingPremium(acc.id);
+    setToastError(null);
+    try {
+      await adminGrantPremium(acc.id, !acc.promotionalPremium);
+    } catch {
+      setToastError(`Failed to ${acc.promotionalPremium ? "revoke" : "grant"} Free Premium for ${displayName(acc)}. RevenueCat may be unavailable.`);
+    } finally {
+      setPendingPremium(null);
+    }
+  };
 
   return (
     <>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+        {toastError ? (
+          <View style={{ backgroundColor: "#FEF2F2", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+            <Feather name="alert-circle" size={16} color="#DC2626" style={{ marginTop: 1 }} />
+            <Text style={{ flex: 1, fontSize: 13, color: "#991B1B", fontWeight: "600" }}>{toastError}</Text>
+            <Pressable onPress={() => setToastError(null)}><Feather name="x" size={16} color="#DC2626" /></Pressable>
+          </View>
+        ) : null}
+
+        {isFullAdmin ? (
+          <View style={{ backgroundColor: "#FFFBEB", borderRadius: 12, padding: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Feather name="star" size={16} color="#D97706" />
+            <Text style={{ fontSize: 13, color: "#92400E", fontWeight: "700" }}>
+              {foundingClubCount} / 20 founding clubs granted Free Premium
+            </Text>
+          </View>
+        ) : null}
+
         <SectionTitle title="Accounts" action={`${list.length} ${roleLabels[role]}`} />
         <View style={styles.pillRow}>
           {(Object.keys(roleLabels) as AccountRole[]).map((r) => (
@@ -857,6 +890,31 @@ function AccountsSection() {
                     }} />
                   </View>
                 )}
+                {isFullAdmin ? (
+                  <Pressable
+                    onPress={() => handleTogglePremium(acc)}
+                    disabled={pendingPremium === acc.id}
+                    style={({ pressed }) => ({
+                      flexDirection: "row" as const,
+                      alignItems: "center" as const,
+                      gap: 6,
+                      paddingHorizontal: 10,
+                      paddingVertical: 7,
+                      borderRadius: 10,
+                      backgroundColor: acc.promotionalPremium ? "#FEF9C3" : colors.secondary,
+                      borderWidth: 1,
+                      borderColor: acc.promotionalPremium ? "#FDE047" : colors.border,
+                      opacity: pendingPremium === acc.id ? 0.5 : pressed ? 0.75 : 1,
+                      alignSelf: "flex-start" as const,
+                      marginTop: 4,
+                    })}
+                  >
+                    <Feather name="star" size={13} color={acc.promotionalPremium ? "#D97706" : colors.mutedForeground} />
+                    <Text style={{ fontSize: 12, fontWeight: "700" as const, color: acc.promotionalPremium ? "#92400E" : colors.mutedForeground }}>
+                      {pendingPremium === acc.id ? "Updating…" : acc.promotionalPremium ? "Free Premium ON" : "Free Premium OFF"}
+                    </Text>
+                  </Pressable>
+                ) : null}
                 <View style={styles.actionRow}>
                   {isFullAdmin ? (
                     <ActionButton icon="edit-2" label="View / Edit" color={colors.primary} onPress={() => setEditing(acc)} />
