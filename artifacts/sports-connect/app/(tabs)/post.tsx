@@ -513,11 +513,11 @@ export default function PostScreen() {
     const ending = locationLabel ? `in ${[locationLabel, state].filter(Boolean).join(" ")}` : "";
     const isTechnicalDirector = isCoachWanted && coachRole === "Technical Director";
     const parts = isTechnicalDirector
-      ? [genderLabel, sportLabel, focusArea, middleSlot, rolePhrase].filter(Boolean)
-      : [genderLabel, ageLabel, middleSlot, sportLabel, rolePhrase].filter(Boolean);
+      ? [genderLabel, sportLabel, focusArea, level, middleSlot, rolePhrase].filter(Boolean)
+      : [genderLabel, ageLabel, level, middleSlot, sportLabel, rolePhrase].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim();
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, focusArea, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender]);
+  }, [sport, type, ageGroup, focusArea, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender, level]);
 
   const loadAdvertForEdit = (advert: Advert) => {
     setEditingId(advert.id);
@@ -648,8 +648,8 @@ export default function PostScreen() {
   const hasTrialSlotErrors = trialSlotOrderErrors.some(Boolean) || trialSlotDuplicates.some(Boolean);
   const trialSlotsOk = !isClubTrials || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors);
   const isTechnicalDirector = isCoachWanted && coachRole === "Technical Director";
-  const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && (!isTechnicalDirector || focusArea.trim().length > 0) && coachExperienceLevel.trim().length > 0 && coachPositionTypes.length > 0);
-  const teamGenderOk = !isPlayersWanted && !isClubTrials && !isCoachWanted || teamGender.trim().length > 0;
+  const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && (!isTechnicalDirector || focusArea.trim().length > 0) && (isTechnicalDirector || coachExperienceLevel.trim().length > 0) && coachPositionTypes.length > 0);
+  const teamGenderOk = (!isPlayersWanted && !isClubTrials && !isCoachWanted) || teamGender.trim().length > 0;
 
   const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && (isTechnicalDirector ? focusArea.trim().length > 0 : ageGroup !== null) && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk;
 
@@ -664,9 +664,9 @@ export default function PostScreen() {
   if (isClubTrials && hasTrialSlotErrors) validationErrors.push("Trial dates must be in chronological order with no duplicates");
   if (isCoachWanted && !coachRole) validationErrors.push("Club role must be selected");
   if (isTechnicalDirector && !focusArea) validationErrors.push("Focus area must be selected");
-  if (isCoachWanted && !coachExperienceLevel) validationErrors.push("Experience level must be selected");
+  if (!isTechnicalDirector && isCoachWanted && !coachExperienceLevel) validationErrors.push("Experience level must be selected");
   if (isCoachWanted && coachPositionTypes.length === 0) validationErrors.push("Position type must be selected");
-  if ((isPlayersWanted || isClubTrials || isCoachWanted) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
+  if ((isPlayersWanted || isClubTrials || (isCoachWanted && !isTechnicalDirector)) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
 
   function toggleDay(list: string[], day: string): string[] {
     return list.includes(day) ? list.filter((d) => d !== day) : [...list, day];
@@ -818,7 +818,7 @@ export default function PostScreen() {
       feesNegotiable,
       feesFree,
       trialRequired,
-      teamGender: (isPlayersWanted || isClubTrials || isCoachWanted) ? teamGender.trim() || undefined : undefined,
+      teamGender: (isPlayersWanted || isClubTrials || (isCoachWanted && !isTechnicalDirector)) ? teamGender.trim() || undefined : undefined,
       playerGender: (isPlayerLooking || isCoachLooking) ? playerGender.trim() || undefined : undefined,
     };
     if (editingId) {
@@ -1099,7 +1099,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {(isCoachWanted || (ageGroup !== null && (isPlayersWanted || isClubTrials || isCoachWanted))) && (
+          {((isCoachWanted && !isTechnicalDirector) || (ageGroup !== null && (isPlayersWanted || isClubTrials || isCoachWanted))) && (
             <>
               <FormLabel text="Team Gender" required />
               <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
@@ -1184,8 +1184,12 @@ export default function PostScreen() {
             </>
           )}
 
-          <FormLabel text="Level" />
-          <Field value={level} onChangeText={setLevel} label="" placeholder="e.g. Competitive Amateur, Semi-Pro" />
+          {!isTechnicalDirector && (
+            <>
+              <FormLabel text="Level" />
+              <Field value={level} onChangeText={setLevel} label="" placeholder="e.g. Competitive Amateur, Semi-Pro" />
+            </>
+          )}
 
           {showPlayerDesc && (
             <>
@@ -1264,7 +1268,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {isCoachWanted && (
+          {isCoachWanted && !isTechnicalDirector && (
             <>
               <FormLabel text="Experience level required" required />
               <View style={{ gap: 6 }}>
@@ -1307,7 +1311,7 @@ export default function PostScreen() {
           <CheckRow label="Trial required" value={trialRequired} onToggle={() => setTrialRequired(!trialRequired)} />
 
           <FormLabel text="Additional details" required />
-          <Field value={description} onChangeText={setDescription} label="" multiline placeholder="Describe what you're looking for, your experience, goals…" />
+          <Field value={description} onChangeText={setDescription} label="" multiline placeholder="Describe exactly what you're looking for. Do not add personal details such as mobile numbers or email addresses." />
         </View>
 
         {submitted && !editingId ? (
