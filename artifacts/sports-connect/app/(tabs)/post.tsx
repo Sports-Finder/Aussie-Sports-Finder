@@ -1009,6 +1009,15 @@ export default function PostScreen() {
           </Pressable>
         )}
 
+        {isCoach && !isAffiliatedCoach && (
+          <View style={[localStyles.coachTip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="info" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
+            <Text style={[localStyles.coachTipText, { color: colors.mutedForeground }]}>
+              Already coaching at a club? Ask your club admin to send you an affiliation request from the Coach Affiliates section of their profile.
+            </Text>
+          </View>
+        )}
+
         <View style={isPlayerFreeLimited ? { opacity: 0.4, pointerEvents: "none" } : undefined}>
         <View style={[localStyles.sportHeader, { backgroundColor: activeTheme.background, borderColor: activeTheme.soft }]}> 
           <Text style={[localStyles.sportHeaderKicker, { color: activeTheme.primary }]}>Posting under</Text>
@@ -1441,6 +1450,8 @@ const localStyles = StyleSheet.create({
   sportHeaderTitle: { fontWeight: "800", fontSize: 22, letterSpacing: -0.5 },
   editingBanner: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 18, padding: 14 },
   editingBannerText: { fontWeight: "700", fontSize: 13, flex: 1 },
+  coachTip: { flexDirection: "row", alignItems: "flex-start", gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 10 },
+  coachTipText: { fontSize: 13, fontWeight: "500", flex: 1, lineHeight: 18 },
   formCard: { borderWidth: 1, borderRadius: 28, padding: 18, gap: 4 },
   formTitle: { fontWeight: "800", fontSize: 18, marginBottom: 4 },
   formLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
