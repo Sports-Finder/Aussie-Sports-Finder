@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -366,9 +367,27 @@ export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount, repostCooldownUntil } = useSportsConnect();
+  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
   const { isSubscribed } = useSubscription();
   const accountRole = currentAccount?.role ?? activeProfile;
+
+  // Live ticker so the cooldown lock re-evaluates automatically when time passes.
+  // Updated every 30 s and on tab focus, so the Post tab unlocks without a restart.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useFocusEffect(
+    useCallback(() => {
+      setNowMs(Date.now());
+      const id = setInterval(() => setNowMs(Date.now()), 30_000);
+      return () => clearInterval(id);
+    }, [])
+  );
+  const repostCooldownUntil = (() => {
+    if (!currentAccount?.lastAdvertClosedAt) return null;
+    if (currentAccount.role === "club") return null;
+    if (currentAccount.subscriptionStatus !== "active") return null;
+    const end = new Date(new Date(currentAccount.lastAdvertClosedAt).getTime() + 72 * 60 * 60 * 1000);
+    return end.getTime() > nowMs ? end.toISOString() : null;
+  })();
 
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [paywallHint, setPaywallHint] = useState<string | undefined>(undefined);

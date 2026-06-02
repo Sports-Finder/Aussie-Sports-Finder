@@ -1192,6 +1192,15 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     try {
       const created = await api.createAdvert(body);
       setAdverts((current) => [created, ...current]);
+      // Cancel any pending cooldown unlock notification — the user just posted
+      // (this device or another device syncing). Clear stored ID regardless.
+      try {
+        const notifId = await AsyncStorage.getItem("sports-connect-cooldown-notif-id");
+        if (notifId) {
+          await Notifications.cancelScheduledNotificationAsync(notifId).catch(() => undefined);
+          await AsyncStorage.removeItem("sports-connect-cooldown-notif-id");
+        }
+      } catch (_) { /* notifications not available */ }
     } catch (err) {
       // Re-throw structured server errors (e.g. 409 duplicate/cooldown) so
       // the caller (PostScreen) can surface them in the UI.
@@ -1232,7 +1241,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         const notifId = await Notifications.scheduleNotificationAsync({
           content: {
             title: "Posting unlocked!",
-            body: "Your 72-hour cooldown has ended. You can now post a new advert.",
+            body: "You can now post a new advert — tap to get started.",
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
