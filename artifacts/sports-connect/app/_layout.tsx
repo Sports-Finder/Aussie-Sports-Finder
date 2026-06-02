@@ -5,6 +5,8 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { ClerkLoaded, ClerkLoading, ClerkProvider, useAuth } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -14,18 +16,20 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-// Configure API client base URL and auth token getter (side effects)
+// Configure API client base URL (side effect)
 import "@/lib/api-client";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OnboardingGate } from "@/components/OnboardingGate";
-import { AuthProvider, useAuth } from "@/lib/auth";
 import { SportsConnectProvider } from "@/context/SportsConnectContext";
 import colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 function RootLayoutNav() {
   return (
@@ -36,20 +40,20 @@ function RootLayoutNav() {
 }
 
 function AppContent() {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
 
-  if (isLoading) {
+  if (!isLoaded) {
     return (
       <View style={[styles.loadingScreen, { backgroundColor: colors.light.pitch }]}>
         <ActivityIndicator color={colors.light.accent} size="large" />
         <Text style={[styles.loadingText, { color: colors.light.primaryForeground }]}>
-          Checking your session…
+          Loading…
         </Text>
       </View>
     );
   }
 
-  if (!isAuthenticated || !user) {
+  if (!isSignedIn) {
     return <OnboardingGate />;
   }
 
@@ -74,19 +78,26 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <SportsConnectProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <KeyboardProvider>
-                  <AppContent />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </SportsConnectProvider>
-          </AuthProvider>
-        </QueryClientProvider>
-      </ErrorBoundary>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
+        <ClerkLoading>
+          <View style={[styles.loadingScreen, { backgroundColor: colors.light.pitch }]}>
+            <ActivityIndicator color={colors.light.accent} size="large" />
+          </View>
+        </ClerkLoading>
+        <ClerkLoaded>
+          <ErrorBoundary>
+            <QueryClientProvider client={queryClient}>
+              <SportsConnectProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <AppContent />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </SportsConnectProvider>
+            </QueryClientProvider>
+          </ErrorBoundary>
+        </ClerkLoaded>
+      </ClerkProvider>
     </SafeAreaProvider>
   );
 }

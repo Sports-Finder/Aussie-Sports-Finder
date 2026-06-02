@@ -1,0 +1,1 @@
+- [Clerk Expo auth setup](clerk-expo-setup.md) — ClerkProvider needs ClerkLoading+ClerkLoaded pair; bare ClerkLoaded shows blank screen during init.

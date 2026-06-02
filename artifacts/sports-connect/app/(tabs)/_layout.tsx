@@ -7,6 +7,10 @@ import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 
+import { useAuth } from "@clerk/expo";
+import { useEffect } from "react";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
+
 import { useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -134,6 +138,12 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+  }, [getToken]);
+
   if (Platform.OS === "ios" && isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
   }
