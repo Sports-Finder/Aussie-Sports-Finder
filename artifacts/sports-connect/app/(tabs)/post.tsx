@@ -511,7 +511,8 @@ export default function PostScreen() {
 
     const locationLabel = suburb.trim();
     const ending = locationLabel ? `in ${[locationLabel, state].filter(Boolean).join(" ")}` : "";
-    const parts = isCoachWanted
+    const isTechnicalDirector = isCoachWanted && coachRole === "Technical Director";
+    const parts = isTechnicalDirector
       ? [genderLabel, sportLabel, focusArea, middleSlot, rolePhrase].filter(Boolean)
       : [genderLabel, ageLabel, middleSlot, sportLabel, rolePhrase].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim();
@@ -646,22 +647,23 @@ export default function PostScreen() {
   );
   const hasTrialSlotErrors = trialSlotOrderErrors.some(Boolean) || trialSlotDuplicates.some(Boolean);
   const trialSlotsOk = !isClubTrials || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors);
-  const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && focusArea.trim().length > 0 && coachExperienceLevel.trim().length > 0 && coachPositionTypes.length > 0);
+  const isTechnicalDirector = isCoachWanted && coachRole === "Technical Director";
+  const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && (!isTechnicalDirector || focusArea.trim().length > 0) && coachExperienceLevel.trim().length > 0 && coachPositionTypes.length > 0);
   const teamGenderOk = !isPlayersWanted && !isClubTrials && !isCoachWanted || teamGender.trim().length > 0;
 
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && (isCoachWanted ? focusArea.trim().length > 0 : ageGroup !== null) && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk;
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && (isTechnicalDirector ? focusArea.trim().length > 0 : ageGroup !== null) && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk;
 
   const validationErrors: string[] = [];
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
   if (state.trim().length <= 1) validationErrors.push("State is missing — add it to your profile");
-  if (!isCoachWanted && ageGroup === null) validationErrors.push("Age Group must be selected");
+  if (!isTechnicalDirector && ageGroup === null) validationErrors.push("Age Group must be selected");
   if (description.trim().length <= 10) validationErrors.push("Additional Details must be at least 10 characters");
   if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick TBD)");
   if (showSchedule && !gameDaysOk) validationErrors.push("Game days must be selected (or tick TBD)");
   if (isClubTrials && trialSlots[0].date.trim().length === 0) validationErrors.push("At least one trial date is required");
   if (isClubTrials && hasTrialSlotErrors) validationErrors.push("Trial dates must be in chronological order with no duplicates");
   if (isCoachWanted && !coachRole) validationErrors.push("Club role must be selected");
-  if (isCoachWanted && !focusArea) validationErrors.push("Focus area must be selected");
+  if (isTechnicalDirector && !focusArea) validationErrors.push("Focus area must be selected");
   if (isCoachWanted && !coachExperienceLevel) validationErrors.push("Experience level must be selected");
   if (isCoachWanted && coachPositionTypes.length === 0) validationErrors.push("Position type must be selected");
   if ((isPlayersWanted || isClubTrials || isCoachWanted) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
@@ -766,7 +768,7 @@ export default function PostScreen() {
   }
 
   const submit = () => {
-    if (!canSubmit || (isCoachWanted ? focusArea.trim().length === 0 : !ageGroup)) return;
+    if (!canSubmit || (isTechnicalDirector ? focusArea.trim().length === 0 : !ageGroup)) return;
     if (allowedSports.length && !allowedSports.includes(sport)) return;
 
     // Gate: free-tier advert limit
@@ -806,7 +808,7 @@ export default function PostScreen() {
       gameTbd,
       scheduleNote: isPlayerLooking ? scheduleNote.trim() || undefined : undefined,
       trialSlots: isClubTrials ? trialSlots.filter((s) => s.date.trim()) : undefined,
-      focusArea: isCoachWanted ? focusArea || undefined : undefined,
+      focusArea: isTechnicalDirector ? focusArea || undefined : undefined,
       coachRole: isCoachWanted ? coachRole || undefined : undefined,
       coachExperienceLevel: isCoachWanted ? coachExperienceLevel || undefined : undefined,
       coachPositionTypes: isCoachWanted ? coachPositionTypes : undefined,
@@ -1074,7 +1076,7 @@ export default function PostScreen() {
             <Text style={[localStyles.titlePreviewHint, { color: colors.mutedForeground }]}>Location is taken from your profile</Text>
           </View>
 
-          {isCoachWanted ? (
+          {isTechnicalDirector ? (
             <>
               <FormLabel text="Focus Area" required />
               <View style={localStyles.pillRow}>
@@ -1143,7 +1145,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {ageGroup !== null && !isCoachWanted && (
+          {ageGroup !== null && !isTechnicalDirector && (
             <>
               <FormLabel text="Preferred age (optional)" />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={localStyles.sportPickerScroll}>
