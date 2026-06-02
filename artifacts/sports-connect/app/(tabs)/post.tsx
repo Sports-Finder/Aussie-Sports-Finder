@@ -129,10 +129,12 @@ function TimeRow({ label, from, to, onFromChange, onToChange, disabled }: { labe
   );
 }
 
-const ADVERT_LIFESPAN_MS = 7 * 24 * 60 * 60 * 1000;
+const FREE_LIFESPAN_MS = 7 * 24 * 60 * 60 * 1000;
+const PAID_LIFESPAN_MS = 14 * 24 * 60 * 60 * 1000;
 
-function getExpiryInfo(createdAt: string) {
-  const expiresAt = new Date(createdAt).getTime() + ADVERT_LIFESPAN_MS;
+function getExpiryInfo(advert: Pick<Advert, "createdAt" | "ownerSubscriptionStatus">) {
+  const lifespanMs = advert.ownerSubscriptionStatus === "active" ? PAID_LIFESPAN_MS : FREE_LIFESPAN_MS;
+  const expiresAt = new Date(advert.createdAt).getTime() + lifespanMs;
   const remaining = expiresAt - Date.now();
   if (remaining <= 0) return { expired: true, label: "Expired", days: 0, hours: 0, mins: 0 };
   const days = Math.floor(remaining / (24 * 60 * 60 * 1000));
@@ -154,7 +156,7 @@ function MyAdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void
   const colors = useColors();
   const { approvedSports } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
-  const expiry = getExpiryInfo(advert.createdAt);
+  const expiry = getExpiryInfo(advert);
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [localStyles.myCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
       <View style={[localStyles.expiryRow, { backgroundColor: expiry.expired ? "#FDECEA" : colors.pitchSoft }]}>
@@ -190,7 +192,7 @@ function MyAdvertDetail({
   const colors = useColors();
   const { approvedSports, deleteAdvert } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
-  const expiry = getExpiryInfo(advert.createdAt);
+  const expiry = getExpiryInfo(advert);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const trainingSchedule = (() => {

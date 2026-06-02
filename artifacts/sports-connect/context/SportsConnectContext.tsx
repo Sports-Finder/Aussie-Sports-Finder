@@ -158,6 +158,8 @@ export type Advert = {
   status?: "active" | "closed";
   closedAt?: string;
   closedReason?: string;
+  ownerSubscriptionStatus?: string;
+  bumpedAt?: string;
 };
 
 export type ForbiddenConnection = {
@@ -1164,9 +1166,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
 
   const createAdvert = async (draft: DraftAdvert & { postedBy?: string; affiliatedClubId?: string }) => {
     const owner = draft.postedBy ?? (activeProfile === "club" ? clubProfile.name : playerProfile.name);
+    // Paid subscribers get 14-day adverts; free accounts get 7 days.
+    const isPaidPoster = currentAccount?.subscriptionStatus === "active";
     const body = {
       ...draft,
       ownerAccountId: currentAccount?.id,
+      ownerSubscriptionStatus: isPaidPoster ? "active" : undefined,
       postedBy: owner,
       postedByType: activeProfile,
       distanceKm: Math.max(1, Math.floor(Math.random() * 32)),
@@ -1198,10 +1203,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   useEffect(() => {
-    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+    const SEVEN_DAYS_MS  = 7  * 24 * 60 * 60 * 1000;
+    const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
     const check = () => {
-      const cutoff = new Date(Date.now() - SEVEN_DAYS).toISOString();
-      setAdverts((current) => current.filter((a) => a.createdAt > cutoff));
+      const now = Date.now();
+      setAdverts((current) =>
+        current.filter((a) => {
+          const lifespanMs = a.ownerSubscriptionStatus === "active"
+            ? FOURTEEN_DAYS_MS
+            : SEVEN_DAYS_MS;
+          const expiresAt = new Date(a.createdAt).getTime() + lifespanMs;
+          return expiresAt > now;
+        })
+      );
     };
     check();
     const interval = setInterval(check, 60 * 1000);

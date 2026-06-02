@@ -11,20 +11,25 @@ import { useColors } from "@/hooks/useColors";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
-type Filter = "all" | "players-wanted" | "player-looking" | "near";
+type Filter = "all" | "players-wanted" | "player-looking" | "near" | "expiring-soon";
+type SortOrder = "newest" | "oldest";
 const australianStates = ["All", "NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"] as const;
 type AustralianStateFilter = (typeof australianStates)[number];
 
-const ADVERT_LIFESPAN_MS = 7 * 24 * 60 * 60 * 1000;
+const FREE_LIFESPAN_MS = 7 * 24 * 60 * 60 * 1000;
+const PAID_LIFESPAN_MS = 14 * 24 * 60 * 60 * 1000;
+const EXPIRING_SOON_MS = 24 * 60 * 60 * 1000;
 
-function getExpiryInfo(createdAt: string) {
-  const expiresAt = new Date(createdAt).getTime() + ADVERT_LIFESPAN_MS;
+function getExpiryInfo(advert: Pick<Advert, "createdAt" | "ownerSubscriptionStatus">) {
+  const lifespanMs = advert.ownerSubscriptionStatus === "active" ? PAID_LIFESPAN_MS : FREE_LIFESPAN_MS;
+  const expiresAt = new Date(advert.createdAt).getTime() + lifespanMs;
   const remaining = expiresAt - Date.now();
-  if (remaining <= 0) return { expired: true, label: "Expired", days: 0, hours: 0, mins: 0 };
+  if (remaining <= 0) return { expired: true, expiringSoon: false, label: "Expired", remainingMs: 0, days: 0, hours: 0, mins: 0 };
   const days = Math.floor(remaining / (24 * 60 * 60 * 1000));
   const hours = Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
   const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
-  return { expired: false, label: `${days}d ${hours}h ${mins}m remaining`, days, hours, mins };
+  const expiringSoon = remaining <= EXPIRING_SOON_MS;
+  return { expired: false, expiringSoon, label: `${days}d ${hours}h ${mins}m remaining`, remainingMs: remaining, days, hours, mins };
 }
 
 function typeLabel(type: Advert["type"]) {
@@ -82,7 +87,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }) {
   const colors = useColors();
   const { accounts } = useSportsConnect();
-  const expiry = getExpiryInfo(advert.createdAt);
+  const expiry = getExpiryInfo(advert);
   const icon = advert.postedByType === "club" ? "shield" : "user";
   const posterAccount = accounts.find((a) => a.id === advert.ownerAccountId);
   const posterIsSubscribed = posterAccount?.subscriptionStatus === "active";
@@ -117,7 +122,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
   const colors = useColors();
   const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount, accounts, forbiddenConnections } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
-  const expiry = getExpiryInfo(advert.createdAt);
+  const expiry = getExpiryInfo(advert);
   const isOwnAdvert = !!(currentAccount?.id && advert.ownerAccountId && advert.ownerAccountId === currentAccount.id);
   const isAffiliatedClubParticipant = !isOwnAdvert && !!(currentAccount?.id && advert.affiliatedClubId && advert.affiliatedClubId === currentAccount.id);
   const isOwnOrAffiliated = isOwnAdvert || isAffiliatedClubParticipant;
@@ -391,21 +396,33 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets();
   const { adverts, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport, currentAccount, isAdmin, accounts, showMemberStats, showSportRequestField } = useSportsConnect();
   const [filter, setFilter] = useState<Filter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [stateFilter, setStateFilter] = useState<AustralianStateFilter>("All");
   const [selected, setSelected] = useState<Advert | null>(null);
   const [sportRequest, setSportRequest] = useState("");
   const activeTheme = selectedSport === allSportsFilterName ? null : getSportTheme(selectedSport, approvedSports);
 
-  const filtered = useMemo(() => adverts.filter((advert) => {
-    if (!isAdmin && advert.status === "closed") return false;
-    const matchesSport = selectedSport === allSportsFilterName || advert.sport === selectedSport;
-    if (!matchesSport) return false;
-    const matchesState = stateFilter === "All" || advert.location.includes(stateFilter);
-    if (!matchesState) return false;
-    if (filter === "all") return true;
-    if (filter === "near") return advert.distanceKm <= notificationSettings.radiusKm;
-    return advert.type === filter;
-  }), [adverts, currentAccount, filter, notificationSettings.radiusKm, selectedSport, stateFilter, isAdmin, accounts]);
+  const filtered = useMemo(() => {
+    const base = adverts.filter((advert) => {
+      if (!isAdmin && advert.status === "closed") return false;
+      const matchesSport = selectedSport === allSportsFilterName || advert.sport === selectedSport;
+      if (!matchesSport) return false;
+      const matchesState = stateFilter === "All" || advert.location.includes(stateFilter);
+      if (!matchesState) return false;
+      if (filter === "near") return advert.distanceKm <= notificationSettings.radiusKm;
+      if (filter === "expiring-soon") {
+        const expiry = getExpiryInfo(advert);
+        return !expiry.expired && expiry.expiringSoon;
+      }
+      if (filter === "all") return true;
+      return advert.type === filter;
+    });
+    // Sort newest-first by default, oldest-first when toggled.
+    return [...base].sort((a, b) => {
+      const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return sortOrder === "newest" ? diff : -diff;
+    });
+  }, [adverts, filter, sortOrder, notificationSettings.radiusKm, selectedSport, stateFilter, isAdmin]);
 
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
 
@@ -523,6 +540,14 @@ export default function DiscoverScreen() {
           <Pill label="Players wanted" active={filter === "players-wanted"} onPress={() => setFilter("players-wanted")} />
           <Pill label="Players looking" active={filter === "player-looking"} onPress={() => setFilter("player-looking")} />
           <Pill label="Near me" active={filter === "near"} onPress={() => setFilter("near")} />
+          <Pill label="⏳ Expiring soon" active={filter === "expiring-soon"} onPress={() => setFilter("expiring-soon")} />
+        </View>
+        <View style={[styles.filterRow, { marginTop: -6 }]}>
+          <Pill
+            label={sortOrder === "newest" ? "↓ Newest first" : "↑ Oldest first"}
+            active={false}
+            onPress={() => setSortOrder((s) => s === "newest" ? "oldest" : "newest")}
+          />
         </View>
 
         <View style={styles.stateBlock}>

@@ -24,14 +24,37 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AccountSetupGate } from "@/components/AccountSetupGate";
 import { OnboardingGate } from "@/components/OnboardingGate";
 import { SportsConnectProvider, useSportsConnect } from "@/context/SportsConnectContext";
-import { initializeRevenueCat, identifyRevenueCatUser, SubscriptionProvider, useSubscription } from "@/lib/revenuecat";
+import {
+  initializeRevenueCat,
+  identifyRevenueCatUser,
+  SubscriptionProvider,
+  useSubscription,
+} from "@/lib/revenuecat";
 import colors from "@/constants/colors";
 
+// Initialize RevenueCat SDK at module load time (before any React trees mount)
+// so that Purchases.getCustomerInfo/getOfferings queries are safe to run
+// as soon as SubscriptionProvider's context is created.
+try {
+  initializeRevenueCat();
+} catch (err) {
+  console.warn("RevenueCat init failed:", err);
+}
+
 // Syncs RevenueCat subscription status into the local account store so
-// subscriptionStatus is always up-to-date (drives gold star in Discover).
+// subscriptionStatus is always current (drives gold star badge in Discover).
 function SubscriptionSync() {
   const { currentAccount, updateAccount } = useSportsConnect();
-  const { customerInfo, isLoading } = useSubscription();
+  const { customerInfo, isLoading, markInitialized } = useSubscription();
+
+  // Confirm to the context that the SDK is ready — this enables the queries.
+  useEffect(() => {
+    markInitialized();
+  // markInitialized is stable (ref-based), run once on mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Propagate subscription status to account store whenever RC confirms it.
   useEffect(() => {
     if (!currentAccount || isLoading) return;
     const active = customerInfo?.entitlements.active?.["premium"] !== undefined;
@@ -39,7 +62,9 @@ function SubscriptionSync() {
     if (currentAccount.subscriptionStatus !== nextStatus) {
       updateAccount({ subscriptionStatus: nextStatus });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerInfo, isLoading, currentAccount?.id]);
+
   return null;
 }
 
@@ -78,16 +103,7 @@ function AppContent() {
     // TabLayout layers its own getter on top (both point to the singleton).
   }, []);
 
-  // Initialize RevenueCat once on mount
-  useEffect(() => {
-    try {
-      initializeRevenueCat(currentAccount?.id);
-    } catch (err) {
-      console.warn("RevenueCat init failed:", err);
-    }
-  }, []);
-
-  // Identify RevenueCat user when account is available
+  // Identify the RevenueCat user whenever the account is resolved.
   useEffect(() => {
     if (currentAccount?.id) {
       identifyRevenueCatUser(currentAccount.id);
