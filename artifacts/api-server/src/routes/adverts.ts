@@ -30,10 +30,16 @@ router.post("/adverts", async (req, res) => {
     const now = new Date();
 
     // Look up the account once — used by both player/coach and club checks.
-    let ownerAccount: { subscriptionStatus: string | null; lastAdvertClosedAt: Date | null } | undefined;
+    // The server role and subscription status are the authoritative source;
+    // client-supplied fields are never trusted for policy decisions.
+    let ownerAccount: { role: string; subscriptionStatus: string | null; lastAdvertClosedAt: Date | null } | undefined;
     if (ownerAccountId) {
       const [row] = await db
-        .select({ subscriptionStatus: accountsTable.subscriptionStatus, lastAdvertClosedAt: accountsTable.lastAdvertClosedAt })
+        .select({
+          role: accountsTable.role,
+          subscriptionStatus: accountsTable.subscriptionStatus,
+          lastAdvertClosedAt: accountsTable.lastAdvertClosedAt,
+        })
         .from(accountsTable)
         .where(eq(accountsTable.publicId, ownerAccountId))
         .limit(1);
@@ -45,10 +51,16 @@ router.post("/adverts", async (req, res) => {
     const resolvedStatus = serverSubscriptionStatus ?? clientSubscriptionStatus;
     const isPaid = resolvedStatus === "active";
 
+    // Derive poster type from server-side account role — not from the
+    // client-supplied `postedByType`, which could be spoofed to bypass checks.
+    const serverRole = ownerAccount?.role;
+    const isClubAccount = serverRole === "club";
+
     // ── Player / coach 72h repost cooldown ──────────────────────────────────
-    // Applies to paid player and coach accounts only. Prevents gaming expiry
-    // by closing then immediately reposting to stay at the top of the list.
-    if (isPaid && ownerAccountId && postedByType !== "club") {
+    // Applies to paid player/coach/guardian accounts only (role != "club").
+    // Using server role means a tampered postedByType:"club" payload from a
+    // player/coach account will still be caught here.
+    if (isPaid && ownerAccountId && !isClubAccount) {
       const lastClosed = ownerAccount?.lastAdvertClosedAt;
       if (lastClosed) {
         const repostAvailableAt = new Date(lastClosed.getTime() + PLAYER_COOLDOWN_MS);
@@ -65,7 +77,7 @@ router.post("/adverts", async (req, res) => {
 
     // ── Club duplicate / expiry-cooldown checks ──────────────────────────────
     // Applies to paid club accounts only. Free/trial clubs are unaffected.
-    const isPaidClub = isPaid && postedByType === "club";
+    const isPaidClub = isPaid && isClubAccount;
     if (isPaidClub && ownerAccountId && sport && type) {
       const clubCutoff = new Date(now.getTime() - CLUB_COOLDOWN_MS);
 
