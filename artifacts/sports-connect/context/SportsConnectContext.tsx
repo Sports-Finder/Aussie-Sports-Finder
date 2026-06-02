@@ -1275,6 +1275,36 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return () => clearInterval(interval);
   }, []);
 
+  // Reconcile cooldown notification against live advert/account state.
+  // Runs whenever adverts or account change — catches cross-device posts:
+  // if this device detects the user already has an active advert (synced
+  // from another device), or the 72h window has elapsed, cancel the
+  // locally-scheduled unlock notification so it doesn't fire spuriously.
+  useEffect(() => {
+    if (!currentAccount?.id || currentAccount.role === "club") return;
+    if (currentAccount.subscriptionStatus !== "active") return;
+
+    const hasActiveAdvert = adverts.some(
+      (a) => a.ownerAccountId === currentAccount.id && a.status === "active",
+    );
+    const cooldownElapsed = (() => {
+      if (!currentAccount.lastAdvertClosedAt) return false;
+      const end = new Date(new Date(currentAccount.lastAdvertClosedAt).getTime() + 72 * 60 * 60 * 1000);
+      return end <= new Date();
+    })();
+
+    if (hasActiveAdvert || cooldownElapsed) {
+      AsyncStorage.getItem("sports-connect-cooldown-notif-id")
+        .then((storedId) => {
+          if (storedId) {
+            Notifications.cancelScheduledNotificationAsync(storedId).catch(() => undefined);
+            AsyncStorage.removeItem("sports-connect-cooldown-notif-id").catch(() => undefined);
+          }
+        })
+        .catch(() => undefined);
+    }
+  }, [adverts, currentAccount?.id, currentAccount?.role, currentAccount?.subscriptionStatus, currentAccount?.lastAdvertClosedAt]);
+
   const pendingConnectionIds = useRef<Set<string>>(new Set());
 
   const connectOnAdvert = async (advert: Advert) => {
