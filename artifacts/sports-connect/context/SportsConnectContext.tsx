@@ -1169,6 +1169,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     const owner = draft.postedBy ?? (activeProfile === "club" ? clubProfile.name : playerProfile.name);
     // Paid subscribers get 14-day adverts; free accounts get 7 days.
     const isPaidPoster = currentAccount?.subscriptionStatus === "active";
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+    const lifespanMs = isPaidPoster ? FOURTEEN_DAYS_MS : SEVEN_DAYS_MS;
+    const createdAtStr = now();
+    const expiresAtStr = new Date(new Date(createdAtStr).getTime() + lifespanMs).toISOString();
     const body = {
       ...draft,
       ownerAccountId: currentAccount?.id,
@@ -1176,7 +1181,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       postedBy: owner,
       postedByType: activeProfile,
       distanceKm: Math.max(1, Math.floor(Math.random() * 32)),
-      createdAt: now(),
+      createdAt: createdAtStr,
+      expiresAt: expiresAtStr,
       status: "active",
       publicId: makeId(),
     };
