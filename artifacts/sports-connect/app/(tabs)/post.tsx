@@ -558,7 +558,7 @@ export default function PostScreen() {
   if (isCoachWanted && !coachRole) validationErrors.push("Coach role must be selected");
   if (isCoachWanted && !coachExperienceLevel) validationErrors.push("Experience level must be selected");
   if (isCoachWanted && coachPositionTypes.length === 0) validationErrors.push("Position type must be selected");
-  if ((isPlayersWanted || isClubTrials || isPlayerLooking) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
+  if ((isPlayersWanted || isClubTrials || isPlayerLooking || isCoachLooking) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
 
   function toggleDay(list: string[], day: string): string[] {
     return list.includes(day) ? list.filter((d) => d !== day) : [...list, day];
@@ -725,7 +725,7 @@ export default function PostScreen() {
             ))}
           </View>
 
-          {ageGroup !== null && (isPlayersWanted || isClubTrials || isPlayerLooking) && (
+          {ageGroup !== null && (isPlayersWanted || isClubTrials || isPlayerLooking || isCoachLooking) && (
             <>
               <FormLabel text="Team Gender" required />
               <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
