@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { Alert, ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -41,13 +41,28 @@ function RootLayoutNav() {
   );
 }
 
+const BANNED_EMAIL_MSG = "Your account has been banned by an administrator and access has been revoked.";
+
 function AppContent() {
-  const { isSignedIn, isLoaded, getToken } = useAuth();
-  const { currentAccount, isHydrated } = useSportsConnect();
+  const { isSignedIn, isLoaded, getToken, signOut } = useAuth();
+  const { currentAccount, isHydrated, bannedEmails } = useSportsConnect();
 
   useEffect(() => {
     setAuthTokenGetter(() => getToken());
   }, [getToken]);
+
+  // Detect returning users whose email was banned after account creation
+  useEffect(() => {
+    if (!isSignedIn || !isHydrated || !currentAccount) return;
+    const email = currentAccount.email.toLowerCase();
+    if (bannedEmails.map((e) => e.toLowerCase()).includes(email)) {
+      Alert.alert(
+        "Account blocked",
+        BANNED_EMAIL_MSG,
+        [{ text: "OK", onPress: () => { void signOut(); } }],
+      );
+    }
+  }, [isSignedIn, isHydrated, currentAccount, bannedEmails, signOut]);
 
   if (!isLoaded || !isHydrated) {
     return (

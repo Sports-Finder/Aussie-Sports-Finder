@@ -114,33 +114,28 @@ export function OnboardingGate() {
     }
   };
 
-  const handleGoogleAuth = useCallback(async () => {
+  const checkAndActivateOAuth = useCallback(async (strategy: "oauth_google" | "oauth_apple") => {
     try {
-      const { createdSessionId, setActive } = await startSSOFlow({
-        strategy: "oauth_google",
+      const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+        strategy,
         redirectUrl: AuthSession.makeRedirectUri(),
       });
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId, navigate: () => {} });
+      if (!createdSessionId || !setActive) return;
+      // Extract the email Clerk resolved for this OAuth user
+      const oauthEmail =
+        (signIn?.identifier ?? signUp?.emailAddress ?? "").toLowerCase().trim();
+      if (oauthEmail && bannedEmails.map((e) => e.toLowerCase()).includes(oauthEmail)) {
+        Alert.alert("Account blocked", BANNED_EMAIL_MSG);
+        return; // Do NOT call setActive — leave the Clerk session uncreated
       }
+      await setActive({ session: createdSessionId, navigate: () => {} });
     } catch (err) {
       console.error(JSON.stringify(err, null, 2));
     }
-  }, [startSSOFlow]);
+  }, [startSSOFlow, bannedEmails]);
 
-  const handleAppleAuth = useCallback(async () => {
-    try {
-      const { createdSessionId, setActive } = await startSSOFlow({
-        strategy: "oauth_apple",
-        redirectUrl: AuthSession.makeRedirectUri(),
-      });
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId, navigate: () => {} });
-      }
-    } catch (err) {
-      console.error(JSON.stringify(err, null, 2));
-    }
-  }, [startSSOFlow]);
+  const handleGoogleAuth = useCallback(() => checkAndActivateOAuth("oauth_google"), [checkAndActivateOAuth]);
+  const handleAppleAuth = useCallback(() => checkAndActivateOAuth("oauth_apple"), [checkAndActivateOAuth]);
 
   const switchMode = (next: AuthMode) => {
     setMode(next);
