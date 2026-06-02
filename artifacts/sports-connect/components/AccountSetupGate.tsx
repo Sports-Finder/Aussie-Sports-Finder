@@ -259,7 +259,23 @@ export function AccountSetupGate() {
       socialId,
     });
     if (!created) return;
-    Alert.alert("Account created", "Welcome to Aussie Sports Club Finder! Your profile has been submitted.");
+
+    const roleLabel =
+      role === "guardian"
+        ? "parent/guardian"
+        : role === "coach"
+          ? "coach"
+          : "player";
+
+    if (role === "club") {
+      Alert.alert("Account created", "Your club account has been submitted and is awaiting approval.");
+    } else {
+      Alert.alert(
+        "Account created",
+        `By creating this ${roleLabel} account, you agree to use this application and your account only for its intended and lawful purpose and agree to our Terms & Conditions. Any misuse, unauthorized activity, or violation of our terms may result in immediate suspension or permanent banning of your account and associated email address.`,
+        [{ text: "OK" }],
+      );
+    }
   };
 
   return (
