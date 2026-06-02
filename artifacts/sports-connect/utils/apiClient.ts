@@ -1,7 +1,4 @@
-const API_BASE = typeof process !== "undefined" && process.env?.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
-  : "/api";
-
+import { customFetch } from "@workspace/api-client-react";
 
 export class ApiError extends Error {
   status: number;
@@ -13,18 +10,8 @@ export class ApiError extends Error {
   }
 }
 
-async function apiFetch(path: string, options?: RequestInit) {
-  const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
-    ...options,
-  });
-  if (!res.ok) {
-    let body: Record<string, unknown> = {};
-    try { body = await res.json(); } catch { body = { message: await res.text().catch(() => "") }; }
-    throw new ApiError(res.status, body);
-  }
-  return res.json();
+async function apiFetch(path: string, options?: RequestInit): Promise<any> {
+  return customFetch<any>(`/api${path}`, options);
 }
 
 export const api = {
