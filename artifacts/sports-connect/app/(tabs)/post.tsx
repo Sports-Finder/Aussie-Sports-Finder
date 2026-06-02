@@ -678,12 +678,12 @@ export default function PostScreen() {
 
   // ── Subscription gating ──────────────────────────────────────────────────
   // Free clubs: max 1 active advert
-  // Free players/coaches: can post 1 advert (player-looking / coach-looking)
+  // Free players/coaches: NO adverts allowed (only 3 outgoing connections)
   // Paid clubs: unlimited adverts
   // Paid players/coaches: 1 active advert
   const activeMyAdverts = myAdverts.filter((a) => a.status !== "closed");
   const isClubFreeTrialLimited = isClub && !isSubscribed && activeMyAdverts.length >= 1 && !editingId;
-  const isPlayerFreeLimited = !isClub && !isSubscribed && activeMyAdverts.length >= 1 && !editingId;
+  const isPlayerFreeLimited = !isClub && !isSubscribed && !editingId;
 
   const requiresSubscription = isClubFreeTrialLimited || isPlayerFreeLimited;
 
@@ -776,7 +776,7 @@ export default function PostScreen() {
       openPaywallForFeature(
         isClub
           ? "Free clubs are limited to 1 active advert. Upgrade for unlimited."
-          : "Free accounts are limited to 1 advert. Upgrade for unlimited connections too."
+          : "Free accounts cannot post adverts. Upgrade to post adverts and get unlimited connections."
       );
       return;
     }
