@@ -39,35 +39,23 @@ function useWarmUpBrowser() {
 
 type AuthMode = "signin" | "signup";
 
-export function OnboardingGate() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const {
-    isAdmin,
-    isModerator,
-    adminLogin,
-    adminSignOut,
-    moderatorLogin,
-    moderatorSignOut,
-    bannedEmails,
-  } = useSportsConnect();
+// ---------------------------------------------------------------------------
+// OAuthButtons — isolated in its own component so that useSSO() (which
+// internally calls legacy useSignIn + useSignUp from @clerk/react/legacy) does
+// NOT share a hook-call stack with OnboardingGate's v3 useSignIn/useSignUp.
+// Mixing the two Clerk generations in one component causes a variable hook
+// count during Clerk initialisation, triggering "Rendered fewer hooks than
+// expected" in the parent.
+// ---------------------------------------------------------------------------
+type OAuthButtonsProps = {
+  bannedEmails: string[];
+  colors: ReturnType<typeof useColors>;
+};
 
-  const { signIn, errors: siErrors, fetchStatus: siFetching } = useSignIn();
-  const { signUp, errors: suErrors, fetchStatus: suFetching } = useSignUp();
+function OAuthButtons({ bannedEmails, colors }: OAuthButtonsProps) {
   const { startSSOFlow } = useSSO();
 
-  useWarmUpBrowser();
-
-  const [mode, setMode] = useState<AuthMode>("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [showAdminModal, setShowAdminModal] = useState(false);
-  const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
-  const [bannedEmailError, setBannedEmailError] = useState(false);
-
-  // All hooks must be declared before any conditional returns
-  const checkAndActivateOAuth = useCallback(async (strategy: "oauth_google" | "oauth_apple") => {
+  const handleOAuth = useCallback(async (strategy: "oauth_google" | "oauth_apple") => {
     try {
       const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
         strategy,
@@ -86,8 +74,70 @@ export function OnboardingGate() {
     }
   }, [startSSOFlow, bannedEmails]);
 
-  const handleGoogleAuth = useCallback(() => checkAndActivateOAuth("oauth_google"), [checkAndActivateOAuth]);
-  const handleAppleAuth = useCallback(() => checkAndActivateOAuth("oauth_apple"), [checkAndActivateOAuth]);
+  return (
+    <>
+      <View style={styles.divider}>
+        <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+        <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
+        <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+      </View>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.oauthBtn,
+          { backgroundColor: colors.secondary, borderColor: colors.border },
+          pressed && styles.btnDisabled,
+        ]}
+        onPress={() => handleOAuth("oauth_google")}
+      >
+        <Text style={[styles.oauthBtnText, { color: colors.secondaryForeground }]}>
+          Continue with Google
+        </Text>
+      </Pressable>
+
+      {Platform.OS === "ios" && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.oauthBtn,
+            { backgroundColor: "#000", borderColor: colors.border },
+            pressed && styles.btnDisabled,
+          ]}
+          onPress={() => handleOAuth("oauth_apple")}
+        >
+          <Text style={[styles.oauthBtnText, { color: "#fff" }]}>
+            Continue with Apple
+          </Text>
+        </Pressable>
+      )}
+    </>
+  );
+}
+
+export function OnboardingGate() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const {
+    isAdmin,
+    isModerator,
+    adminLogin,
+    adminSignOut,
+    moderatorLogin,
+    moderatorSignOut,
+    bannedEmails,
+  } = useSportsConnect();
+
+  const { signIn, errors: siErrors, fetchStatus: siFetching } = useSignIn();
+  const { signUp, errors: suErrors, fetchStatus: suFetching } = useSignUp();
+
+  useWarmUpBrowser();
+
+  const [mode, setMode] = useState<AuthMode>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
+  const [bannedEmailError, setBannedEmailError] = useState(false);
 
   // Admin/moderator bypass — passcode-based, independent of Clerk auth
   if (isAdmin) return <AdminPage onExit={() => adminSignOut()} />;
@@ -246,38 +296,7 @@ export function OnboardingGate() {
                 </Text>
               </Pressable>
 
-              <View style={styles.divider}>
-                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-                <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
-                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              </View>
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.oauthBtn,
-                  { backgroundColor: colors.secondary, borderColor: colors.border },
-                  pressed && styles.btnDisabled,
-                ]}
-                onPress={handleGoogleAuth}
-              >
-                <Text style={[styles.oauthBtnText, { color: colors.secondaryForeground }]}>
-                  Continue with Google
-                </Text>
-              </Pressable>
-              {Platform.OS === "ios" && (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.oauthBtn,
-                    { backgroundColor: "#000", borderColor: colors.border },
-                    pressed && styles.btnDisabled,
-                  ]}
-                  onPress={handleAppleAuth}
-                >
-                  <Text style={[styles.oauthBtnText, { color: "#fff" }]}>
-                    Continue with Apple
-                  </Text>
-                </Pressable>
-              )}
+              <OAuthButtons bannedEmails={bannedEmails} colors={colors} />
             </>
           )}
 
@@ -370,38 +389,7 @@ export function OnboardingGate() {
                 </Text>
               </Pressable>
 
-              <View style={styles.divider}>
-                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-                <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>or</Text>
-                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              </View>
-
-              <Pressable
-                style={({ pressed }) => [
-                  styles.oauthBtn,
-                  { backgroundColor: colors.secondary, borderColor: colors.border },
-                  pressed && styles.btnDisabled,
-                ]}
-                onPress={handleGoogleAuth}
-              >
-                <Text style={[styles.oauthBtnText, { color: colors.secondaryForeground }]}>
-                  Continue with Google
-                </Text>
-              </Pressable>
-              {Platform.OS === "ios" && (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.oauthBtn,
-                    { backgroundColor: "#000", borderColor: colors.border },
-                    pressed && styles.btnDisabled,
-                  ]}
-                  onPress={handleAppleAuth}
-                >
-                  <Text style={[styles.oauthBtnText, { color: "#fff" }]}>
-                    Continue with Apple
-                  </Text>
-                </Pressable>
-              )}
+              <OAuthButtons bannedEmails={bannedEmails} colors={colors} />
 
               {/* Required for bot protection */}
               <View nativeID="clerk-captcha" />

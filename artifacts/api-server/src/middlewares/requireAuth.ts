@@ -7,8 +7,14 @@ import type { RequestHandler } from "express";
  * Apply after clerkMiddleware in the chain.
  */
 export const requireAuth: RequestHandler = (req, res, next) => {
-  const { userId } = getAuth(req);
-  if (!userId) {
+  const auth = getAuth(req);
+  const authHeader = req.headers["authorization"];
+  req.log.info({
+    authHeader: authHeader ? `${authHeader.slice(0, 30)}...` : "(none)",
+    userId: auth.userId ?? "(null)",
+    sessionId: auth.sessionId ?? "(null)",
+  }, "requireAuth check");
+  if (!auth.userId) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }

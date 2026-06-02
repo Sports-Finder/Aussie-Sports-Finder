@@ -763,7 +763,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       }, ...current]);
     }
     // Background sync to API
-    api.createAccount({ ...account, publicId }).catch(() => undefined);
+    api.createAccount({ ...account, publicId }).catch((e: unknown) => {
+      const status = (e as { status?: number } | null)?.status;
+      console.warn("[createAccount] API sync failed — status:", status ?? e);
+    });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return true;
   };

@@ -355,6 +355,12 @@ export async function customFetch<T = unknown>(
     const token = await _authTokenGetter();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
+    } else if (method !== "GET" && method !== "HEAD") {
+      console.warn(`[customFetch] auth getter returned null for ${method} ${resolveUrl(input)}`);
+    }
+  } else if (!_authTokenGetter && !headers.has("authorization")) {
+    if (method !== "GET" && method !== "HEAD") {
+      console.warn(`[customFetch] no auth getter registered for ${method} ${resolveUrl(input)}`);
     }
   }
 

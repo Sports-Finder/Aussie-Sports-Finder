@@ -8,7 +8,7 @@ import React from "react";
 import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 import { useAuth } from "@clerk/expo";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 import { useSportsConnect } from "@/context/SportsConnectContext";
@@ -140,9 +140,12 @@ function ClassicTabLayout() {
 export default function TabLayout() {
   const { getToken } = useAuth();
 
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+
   useEffect(() => {
-    setAuthTokenGetter(() => getToken());
-  }, [getToken]);
+    setAuthTokenGetter(() => getTokenRef.current());
+  }, []);
 
   if (Platform.OS === "ios" && isLiquidGlassAvailable()) {
     return <NativeTabLayout />;

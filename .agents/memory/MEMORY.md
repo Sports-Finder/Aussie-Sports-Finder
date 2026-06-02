@@ -1,1 +1,3 @@
 - [Clerk Expo auth setup](clerk-expo-setup.md) — ClerkProvider needs ClerkLoading+ClerkLoaded pair; bare ClerkLoaded shows blank screen during init.
+- [Clerk Expo v3 hooks isolation](clerk-expo-v3-hooks-isolation.md) — useSSO() uses legacy hooks internally; mixing with v3 useSignIn/useSignUp in one component causes variable hook count crash.
+- [Expo auth token getter — ref pattern](expo-auth-token-getter-pattern.md) — useRef pattern for setAuthTokenGetter avoids stale closures and Fast Refresh resets; never use useEffect([getToken]).

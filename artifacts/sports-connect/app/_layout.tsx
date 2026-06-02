@@ -10,7 +10,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Alert, ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -48,9 +48,18 @@ function AppContent() {
   const { user } = useUser();
   const { currentAccount, isHydrated, bannedEmails, autoRestoreSession } = useSportsConnect();
 
+  // Keep a ref to the latest getToken to avoid stale closures across renders,
+  // hot-reloads, and sign-in state transitions. Updating a ref during render
+  // is safe — React explicitly allows it for this pattern.
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+
   useEffect(() => {
-    setAuthTokenGetter(() => getToken());
-  }, [getToken]);
+    // Register once on mount; always calls the freshest getToken via ref.
+    setAuthTokenGetter(() => getTokenRef.current());
+    // No cleanup: leave the getter active so it remains valid even when
+    // TabLayout layers its own getter on top (both point to the singleton).
+  }, []);
 
   // Returning user: Clerk is authenticated but currentAccount was cleared by signOut.
   // Search the accounts list by email and restore the session without showing setup form.
