@@ -1311,7 +1311,13 @@ export default function PostScreen() {
           <CheckRow label="Trial required" value={trialRequired} onToggle={() => setTrialRequired(!trialRequired)} />
 
           <FormLabel text="Additional details" required />
-          <Field value={description} onChangeText={setDescription} label="" multiline placeholder="Describe exactly what you're looking for. Do not add personal details such as mobile numbers or email addresses." />
+          <Field value={description} onChangeText={(text) => {
+            const words = text.trim().split(/\s+/).filter(Boolean);
+            if (words.length <= 150) setDescription(text);
+          }} label="" multiline placeholder="Describe exactly what you're looking for. Do not add personal details such as mobile numbers or email addresses." />
+          <Text style={{ fontSize: 12, color: description.trim().split(/\s+/).filter(Boolean).length > 140 ? "#D9534F" : colors.mutedForeground, marginTop: 4, textAlign: "right" }}>
+            {description.trim().split(/\s+/).filter(Boolean).length} / 150 words
+          </Text>
         </View>
 
         {submitted && !editingId ? (
