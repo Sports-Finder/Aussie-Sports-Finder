@@ -1,22 +1,27 @@
+import { getAuth } from "@clerk/express";
 import type { RequestHandler } from "express";
 
 /**
- * Lightweight admin-key middleware for admin-only routes.
- * Requires an `X-Admin-Key` header matching the ADMIN_API_KEY env var.
- * If ADMIN_API_KEY is not configured the middleware always rejects (fail-closed).
- * Set ADMIN_API_KEY on the server and EXPO_PUBLIC_ADMIN_API_KEY in the Expo
- * app to the same value to enable admin endpoints.
+ * Server-side admin authorisation.
+ * Checks the authenticated Clerk userId against the ADMIN_USER_IDS env var
+ * (comma-separated list of Clerk user IDs that are permitted to call admin
+ * routes).  Requires requireAuth to have already run so that getAuth(req)
+ * returns a verified userId.
+ *
+ * If ADMIN_USER_IDS is not configured the middleware always rejects
+ * (fail-closed).  No secret is ever sent to or expected from the client.
  */
 export const requireAdmin: RequestHandler = (req, res, next) => {
-  const configuredKey = process.env.ADMIN_API_KEY;
-  if (!configuredKey) {
-    req.log.warn("ADMIN_API_KEY not configured — rejecting admin request");
-    res.status(403).json({ error: "Admin API not configured" });
+  const raw = process.env.ADMIN_USER_IDS ?? "";
+  const allowlist = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (allowlist.length === 0) {
+    req.log.warn("ADMIN_USER_IDS not configured — rejecting admin request");
+    res.status(403).json({ error: "Admin not configured" });
     return;
   }
-  const provided = req.headers["x-admin-key"];
-  if (!provided || provided !== configuredKey) {
-    req.log.warn("Invalid or missing X-Admin-Key header");
+  const auth = getAuth(req);
+  if (!auth.userId || !allowlist.includes(auth.userId)) {
+    req.log.warn({ userId: auth.userId ?? "(null)" }, "Admin check failed");
     res.status(403).json({ error: "Forbidden" });
     return;
   }
