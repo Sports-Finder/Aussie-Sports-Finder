@@ -25,6 +25,7 @@ export const advertsTable = pgTable("adverts", {
   trainingTimeFrom: text("training_time_from"),
   trainingTimeTo: text("training_time_to"),
   teamGender: text("team_gender"),
+  playerGender: text("player_gender"),
   status: text("status").notNull().default("active"),
   closedAt: timestamp("closed_at", { withTimezone: true }),
   closedReason: text("closed_reason"),

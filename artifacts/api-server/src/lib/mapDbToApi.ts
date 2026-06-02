@@ -56,6 +56,7 @@ export function mapAdvert(row: Record<string, unknown>) {
     trainingTimeFrom: row.trainingTimeFrom as string | undefined,
     trainingTimeTo: row.trainingTimeTo as string | undefined,
     teamGender: row.teamGender as string | undefined,
+    playerGender: row.playerGender as string | undefined,
     status: row.status as string,
     closedAt: row.closedAt ? new Date(row.closedAt as string).toISOString() : undefined,
     closedReason: row.closedReason as string | undefined,

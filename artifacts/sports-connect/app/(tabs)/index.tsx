@@ -95,6 +95,7 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
         </View>
         <Text style={[styles.adTitle, { color: colors.foreground }]}>{advert.title}</Text>
         {advert.teamGender ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.teamGender}</Text> : null}
+        {advert.playerGender ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.playerGender}</Text> : null}
         {advert.ageGroup ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.ageGroup}</Text> : null}
         <Text style={[styles.adExpiry, { color: expiry.expired ? "#D9534F" : colors.mutedForeground }]}>{expiry.label}</Text>
       </View>
@@ -184,6 +185,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               </View>
               {advert.level ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View> : null}
               {advert.teamGender ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.teamGender}</Text></View> : null}
+              {advert.playerGender ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.playerGender}</Text></View> : null}
               <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}>
                 <Text style={[styles.detailChipText, { color: colors.accentForeground }]}>{advert.distanceKm} km away</Text>
               </View>
@@ -273,6 +275,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
 
             {/* ── Standard fields ── */}
             {advert.teamGender ? <DetailRow label="Team Gender" value={advert.teamGender} /> : null}
+            {advert.playerGender ? <DetailRow label="Gender" value={advert.playerGender} /> : null}
             <DetailRow label="Level" value={advert.level} />
             {advert.availability && advert.availability !== "TBD | TBD" && !trainingSchedule && !gameSchedule
               ? <DetailRow label="Availability" value={advert.availability} />

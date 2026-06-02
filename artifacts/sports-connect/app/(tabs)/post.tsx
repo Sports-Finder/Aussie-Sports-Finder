@@ -26,7 +26,8 @@ const AGE_GROUPS: AgeGroup[] = [
   { label: "Senior Youth (Ages 16–20)", min: 16, max: 20 },
   { label: "Senior (Ages 21+)", min: 21, max: 50 },
 ];
-const TEAM_GENDERS = ["Boys", "Girls", "Men", "Women", "Mixed"];
+const TEAM_GENDERS = ["Female", "Male", "Mixed"];
+const PLAYER_GENDERS = ["Male", "Female"];
 
 function agesInGroup(group: AgeGroup) {
   return Array.from({ length: group.max - group.min + 1 }, (_, i) => group.min + i);
@@ -237,6 +238,7 @@ function MyAdvertDetail({
               <View style={[localStyles.chip, { backgroundColor: theme.soft }]}><Text style={[localStyles.chipText, { color: theme.primary }]}>{advert.sport}</Text></View>
               {advert.level ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View> : null}
               {advert.teamGender ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.teamGender}</Text></View> : null}
+              {advert.playerGender ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.playerGender}</Text></View> : null}
               {advert.ageGroup ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.ageGroup}</Text></View> : null}
               {advert.preferredAge ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>Age {advert.preferredAge}</Text></View> : null}
               {advert.trialRequired ? <View style={[localStyles.chip, { backgroundColor: colors.amberSoft }]}><Text style={[localStyles.chipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
@@ -376,6 +378,7 @@ export default function PostScreen() {
   const [coachSalaryText, setCoachSalaryText] = useState("");
   const [coachSalaryTbc, setCoachSalaryTbc] = useState(false);
   const [teamGender, setTeamGender] = useState<string>("");
+  const [playerGender, setPlayerGender] = useState<string>("");
   const [title, setTitle] = useState("");
 
   const allowedSportsKey = allowedSports.join(",");
@@ -423,12 +426,12 @@ export default function PostScreen() {
     const positionLabel = positions.length === 1 ? positions[0] : "";
     const levelLabel = level.trim() && level !== "Competitive amateur" ? level.trim() : "";
     const locationLabel = suburb.trim();
-    const genderLabel = teamGender.trim() || "";
+    const genderLabel = (isPlayersWanted || isClubTrials || isCoachWanted) ? teamGender.trim() : playerGender.trim();
     const ending = locationLabel ? `in ${[locationLabel, state].filter(Boolean).join(" ")}` : "";
     const parts = [genderLabel, ageLabel, coachTitleLabel, positionLabel, levelLabel, roleLabel, sportLabel].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" ");
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, coachTitle, coachRole, positions, level, suburb, state, teamGender]);
+  }, [sport, type, ageGroup, coachTitle, coachRole, positions, level, suburb, state, teamGender, playerGender]);
 
   const loadAdvertForEdit = (advert: Advert) => {
     setEditingId(advert.id);
@@ -464,6 +467,7 @@ export default function PostScreen() {
     setCoachSalaryText(advert.coachSalary ? String(advert.coachSalary) : "");
     setCoachSalaryTbc(advert.coachSalaryTbc ?? false);
     setTeamGender(advert.teamGender ?? "");
+    setPlayerGender(advert.playerGender ?? "");
     setSubmitted(false);
     setSelectedMyAdvert(null);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -497,6 +501,7 @@ export default function PostScreen() {
     setCoachSalaryText("");
     setCoachSalaryTbc(false);
     setTeamGender("");
+    setPlayerGender("");
     setSubmitted(false);
     setShowErrors(false);
   };
@@ -542,7 +547,7 @@ export default function PostScreen() {
   const hasTrialSlotErrors = trialSlotOrderErrors.some(Boolean) || trialSlotDuplicates.some(Boolean);
   const trialSlotsOk = !isClubTrials || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors);
   const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && coachExperienceLevel.trim().length > 0 && coachPositionTypes.length > 0);
-  const teamGenderOk = !isPlayersWanted && !isClubTrials && !isPlayerLooking || teamGender.trim().length > 0;
+  const teamGenderOk = !isPlayersWanted && !isClubTrials && !isCoachWanted || teamGender.trim().length > 0;
 
   const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && ageGroup !== null && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk;
 
@@ -558,7 +563,7 @@ export default function PostScreen() {
   if (isCoachWanted && !coachRole) validationErrors.push("Coach role must be selected");
   if (isCoachWanted && !coachExperienceLevel) validationErrors.push("Experience level must be selected");
   if (isCoachWanted && coachPositionTypes.length === 0) validationErrors.push("Position type must be selected");
-  if ((isPlayersWanted || isClubTrials || isPlayerLooking || isCoachLooking) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
+  if ((isPlayersWanted || isClubTrials || isCoachWanted) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
 
   function toggleDay(list: string[], day: string): string[] {
     return list.includes(day) ? list.filter((d) => d !== day) : [...list, day];
@@ -607,7 +612,8 @@ export default function PostScreen() {
       feesNegotiable,
       feesFree,
       trialRequired,
-      teamGender: teamGender.trim() || undefined,
+      teamGender: (isPlayersWanted || isClubTrials || isCoachWanted) ? teamGender.trim() || undefined : undefined,
+      playerGender: (isPlayerLooking || isCoachLooking) ? playerGender.trim() || undefined : undefined,
     };
     if (editingId) {
       updateAdvert(editingId, draft);
@@ -641,6 +647,7 @@ export default function PostScreen() {
     setCoachSalaryText("");
     setCoachSalaryTbc(false);
     setTeamGender("");
+    setPlayerGender("");
     setSubmitted(true);
     setShowErrors(false);
   };
@@ -725,7 +732,7 @@ export default function PostScreen() {
             ))}
           </View>
 
-          {ageGroup !== null && (isPlayersWanted || isClubTrials || isPlayerLooking || isCoachLooking) && (
+          {ageGroup !== null && (isPlayersWanted || isClubTrials || isCoachWanted) && (
             <>
               <FormLabel text="Team Gender" required />
               <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
@@ -742,6 +749,29 @@ export default function PostScreen() {
                     ]}
                   >
                     <Text style={[localStyles.choiceText, { color: teamGender === item ? "#FFFFFF" : colors.secondaryForeground }]}>{item}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
+
+          {ageGroup !== null && (isPlayerLooking || isCoachLooking) && (
+            <>
+              <FormLabel text={isCoachLooking ? "Coach Gender" : "Player Gender"} />
+              <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
+                {PLAYER_GENDERS.map((item) => (
+                  <Pressable
+                    key={item}
+                    onPress={() => setPlayerGender(playerGender === item ? "" : item)}
+                    style={({ pressed }) => [
+                      localStyles.choice,
+                      {
+                        backgroundColor: playerGender === item ? colors.primary : colors.secondary,
+                        opacity: pressed ? 0.75 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={[localStyles.choiceText, { color: playerGender === item ? "#FFFFFF" : colors.secondaryForeground }]}>{item}</Text>
                   </Pressable>
                 ))}
               </View>

@@ -132,6 +132,7 @@ export type Advert = {
   feesFree?: boolean;
   trialRequired?: boolean;
   teamGender?: string;
+  playerGender?: string;
   status?: "active" | "closed";
   closedAt?: string;
   closedReason?: string;
