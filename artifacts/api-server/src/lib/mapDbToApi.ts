@@ -120,6 +120,7 @@ export function mapAdvert(row: Record<string, unknown>) {
     originalExpiresAt: row.originalExpiresAt
       ? new Date(row.originalExpiresAt as string).toISOString()
       : undefined,
+    possibleDuplicate: (row.possibleDuplicate as boolean) ?? false,
     createdAt: new Date(row.createdAt as string).toISOString(),
   };
 }

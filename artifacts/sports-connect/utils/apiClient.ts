@@ -2,6 +2,16 @@ const API_BASE = typeof process !== "undefined" && process.env?.EXPO_PUBLIC_DOMA
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`
   : "/api";
 
+export class ApiError extends Error {
+  status: number;
+  body: Record<string, unknown>;
+  constructor(status: number, body: Record<string, unknown>) {
+    super(body.message as string ?? `API error ${status}`);
+    this.status = status;
+    this.body = body;
+  }
+}
+
 async function apiFetch(path: string, options?: RequestInit) {
   const url = `${API_BASE}${path}`;
   const res = await fetch(url, {
@@ -9,8 +19,9 @@ async function apiFetch(path: string, options?: RequestInit) {
     ...options,
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`API error ${res.status}: ${text}`);
+    let body: Record<string, unknown> = {};
+    try { body = await res.json(); } catch { body = { message: await res.text().catch(() => "") }; }
+    throw new ApiError(res.status, body);
   }
   return res.json();
 }

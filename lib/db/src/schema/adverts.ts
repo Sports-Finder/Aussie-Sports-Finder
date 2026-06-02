@@ -49,6 +49,7 @@ export const advertsTable = pgTable("adverts", {
   bumpedAt: timestamp("bumped_at", { withTimezone: true }),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   originalExpiresAt: timestamp("original_expires_at", { withTimezone: true }),
+  possibleDuplicate: boolean("possible_duplicate").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

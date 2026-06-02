@@ -8,6 +8,7 @@ import { Advert, AccountRole, useSportsConnect } from "@/context/SportsConnectCo
 import { getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
 import { useSubscription } from "@/lib/revenuecat";
+import { ApiError } from "@/utils/apiClient";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 type AgeGroup = { label: string; min: number; max: number };
@@ -159,6 +160,12 @@ function MyAdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void
   const expiry = getExpiryInfo(advert);
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [localStyles.myCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
+      {advert.possibleDuplicate ? (
+        <View style={[localStyles.expiryRow, { backgroundColor: "#FFFBEB", marginBottom: 4 }]}>
+          <Feather name="alert-triangle" size={12} color="#D97706" />
+          <Text style={[localStyles.expiryText, { color: "#92400E" }]}>Flagged for admin review — possible duplicate</Text>
+        </View>
+      ) : null}
       <View style={[localStyles.expiryRow, { backgroundColor: expiry.expired ? "#FDECEA" : colors.pitchSoft }]}>
         <Feather name="clock" size={12} color={expiry.expired ? "#D9534F" : colors.primary} />
         <Text style={[localStyles.expiryText, { color: expiry.expired ? "#D9534F" : colors.primary }]}>
@@ -344,6 +351,14 @@ export default function PostScreen() {
 
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [paywallHint, setPaywallHint] = useState<string | undefined>(undefined);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Server-returned duplicate / cooldown error
+  type DuplicateErrorState =
+    | { code: "DUPLICATE_ACTIVE"; existingAdvertId: string; message: string }
+    | { code: "REPOST_COOLDOWN"; repostAvailableAt: string; message: string };
+  const [duplicateError, setDuplicateError] = useState<DuplicateErrorState | null>(null);
+  // Client-side similarity warning before submit
+  const [similarityWarning, setSimilarityWarning] = useState<{ draft: Parameters<typeof createAdvert>[0] } | null>(null);
 
   const rawAllowedSports: string[] = activeProfile === "club"
     ? [currentAccount?.defaultSport || clubProfile.sport].filter(Boolean)
@@ -617,6 +632,80 @@ export default function PostScreen() {
     setPaywallVisible(true);
   };
 
+  // ── Similarity check ──────────────────────────────────────────────────────
+  // Returns a 0-1 score of token overlap between two strings.
+  function tokenOverlap(a: string, b: string): number {
+    const tokenize = (s: string) =>
+      new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean));
+    const tokA = tokenize(a);
+    const tokB = tokenize(b);
+    if (tokA.size === 0 || tokB.size === 0) return 0;
+    let shared = 0;
+    tokA.forEach((t) => { if (tokB.has(t)) shared++; });
+    return shared / Math.min(tokA.size, tokB.size);
+  }
+
+  function isSimilarToExisting(draftTitle: string, draftDesc: string): boolean {
+    if (!isClub || !isSubscribed) return false; // Only paid clubs can have multiple adverts
+    return activeMyAdverts.some((a) => {
+      if (a.sport !== sport || a.type !== type) return false;
+      const titleScore = tokenOverlap(draftTitle, a.title);
+      const descScore = tokenOverlap(draftDesc, a.description);
+      return titleScore >= 0.6 || (titleScore >= 0.4 && descScore >= 0.4);
+    });
+  }
+
+  function resetForm() {
+    setDescription("");
+    setPlayerDescription("");
+    setAgeGroup(null);
+    setPreferredAge(null);
+    setPositions([]);
+    setTrainingDays([]);
+    setTrainingFrom("");
+    setTrainingTo("");
+    setTrainingTbd(false);
+    setGameDays([]);
+    setGameFrom("");
+    setGameTo("");
+    setGameTbd(false);
+    setFeesFree(false);
+    setFeesNegotiable(false);
+    setSeasonFeesText("");
+    setTrialRequired(false);
+    setScheduleNote("");
+    setTrialSlots([{ date: "", timeFrom: "", timeTo: "" }]);
+    setCoachRole("Head Coach");
+    setCoachExperienceLevel("");
+    setCoachPositionTypes([]);
+    setCoachSalaryText("");
+    setCoachSalaryTbc(false);
+    setTeamGender("");
+    setPlayerGender("");
+    setSubmitted(true);
+    setShowErrors(false);
+    setDuplicateError(null);
+  }
+
+  async function doCreateAdvert(draft: Parameters<typeof createAdvert>[0]) {
+    setIsSubmitting(true);
+    try {
+      await createAdvert(draft);
+      setSelectedSport(sport);
+      resetForm();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const body = err.body as Record<string, unknown>;
+        setDuplicateError(body as DuplicateErrorState);
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
+      } else {
+        Alert.alert("Post failed", "Something went wrong. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   const submit = () => {
     if (!canSubmit || !ageGroup) return;
     if (allowedSports.length && !allowedSports.includes(sport)) return;
@@ -673,41 +762,20 @@ export default function PostScreen() {
     if (editingId) {
       updateAdvert(editingId, draft);
       setEditingId(null);
-    } else {
-      const affiliateExtras = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials")
-        ? { postedBy: postedByName, affiliatedClubId: currentAccount?.affiliatedClubId }
-        : {};
-      createAdvert({ ...draft, ...affiliateExtras });
-      setSelectedSport(sport);
+      resetForm();
+      return;
     }
-    setDescription("");
-    setPlayerDescription("");
-    setAgeGroup(null);
-    setPreferredAge(null);
-    setPositions([]);
-    setTrainingDays([]);
-    setTrainingFrom("");
-    setTrainingTo("");
-    setTrainingTbd(false);
-    setGameDays([]);
-    setGameFrom("");
-    setGameTo("");
-    setGameTbd(false);
-    setFeesFree(false);
-    setFeesNegotiable(false);
-    setSeasonFeesText("");
-    setTrialRequired(false);
-    setScheduleNote("");
-    setTrialSlots([{ date: "", timeFrom: "", timeTo: "" }]);
-    setCoachRole("Head Coach");
-    setCoachExperienceLevel("");
-    setCoachPositionTypes([]);
-    setCoachSalaryText("");
-    setCoachSalaryTbc(false);
-    setTeamGender("");
-    setPlayerGender("");
-    setSubmitted(true);
-    setShowErrors(false);
+    const affiliateExtras = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials")
+      ? { postedBy: postedByName, affiliatedClubId: currentAccount?.affiliatedClubId }
+      : {};
+    const finalDraft = { ...draft, ...affiliateExtras };
+
+    // Show similarity warning if draft closely matches an existing active advert.
+    if (isSimilarToExisting(title, description)) {
+      setSimilarityWarning({ draft: finalDraft });
+      return;
+    }
+    void doCreateAdvert(finalDraft);
   };
 
   const isClubLocked = currentAccount?.role === "club" && currentAccount?.clubApprovalStatus !== "approved";
@@ -746,6 +814,56 @@ export default function PostScreen() {
             <Text style={[localStyles.roleBadgeText, { color: colors.primary }]}>{activeProfile}</Text>
           </View>
         </View>
+
+        {/* ── Duplicate / cooldown error banners ── */}
+        {duplicateError?.code === "DUPLICATE_ACTIVE" ? (
+          <View style={[localStyles.dupBanner, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
+            <Feather name="alert-circle" size={18} color="#DC2626" />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={[localStyles.dupBannerTitle, { color: "#DC2626" }]}>Active advert already exists</Text>
+              <Text style={[localStyles.dupBannerText, { color: "#991B1B" }]}>
+                You already have an active advert for this sport and role. Edit or delete it before posting a new one.
+              </Text>
+              <Pressable
+                onPress={() => {
+                  const existing = adverts.find((a) => a.id === duplicateError.existingAdvertId);
+                  if (existing) setSelectedMyAdvert(existing);
+                  setDuplicateError(null);
+                }}
+                style={({ pressed }) => [localStyles.dupBannerAction, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={{ color: "#DC2626", fontWeight: "700", fontSize: 13 }}>View existing advert →</Text>
+              </Pressable>
+            </View>
+            <Pressable onPress={() => setDuplicateError(null)}>
+              <Feather name="x" size={18} color="#DC2626" />
+            </Pressable>
+          </View>
+        ) : null}
+
+        {duplicateError?.code === "REPOST_COOLDOWN" ? (() => {
+          const availableAt = new Date(duplicateError.repostAvailableAt);
+          const remainingMs = availableAt.getTime() - Date.now();
+          const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000));
+          const timeStr = remainingMs > 0
+            ? `${remainingHours}h remaining (available ${availableAt.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })} ${availableAt.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })})`
+            : "Repost available now";
+          return (
+            <View style={[localStyles.dupBanner, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
+              <Feather name="clock" size={18} color="#D97706" />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={[localStyles.dupBannerTitle, { color: "#92400E" }]}>48-hour repost cooldown</Text>
+                <Text style={[localStyles.dupBannerText, { color: "#78350F" }]}>
+                  To prevent flooding, you must wait 48 hours after your last advert expires before reposting the same sport and role.
+                </Text>
+                <Text style={[localStyles.dupBannerText, { color: "#92400E", fontWeight: "700" }]}>{timeStr}</Text>
+              </View>
+              <Pressable onPress={() => setDuplicateError(null)}>
+                <Feather name="x" size={18} color="#D97706" />
+              </Pressable>
+            </View>
+          );
+        })() : null}
 
         {/* ── Subscription status banner ── */}
         {isSubscribed ? (
@@ -1078,9 +1196,10 @@ export default function PostScreen() {
         ) : null}
 
         <PrimaryButton
-          label={editingId ? "Save changes" : "Post Advert"}
+          label={isSubmitting ? "Posting…" : editingId ? "Save changes" : "Post Advert"}
           icon={editingId ? "save" : "send"}
           onPress={() => {
+            if (isSubmitting) return;
             if (!canSubmit) { setShowErrors(true); return; }
             submit();
           }}
@@ -1114,6 +1233,43 @@ export default function PostScreen() {
         onClose={() => setPaywallVisible(false)}
         featureHint={paywallHint}
       />
+
+      {/* ── Similarity warning dialog ── */}
+      {similarityWarning ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setSimilarityWarning(null)}>
+          <View style={localStyles.modalScrim}>
+            <View style={[localStyles.simWarnCard, { backgroundColor: colors.card }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#FFFBEB", alignItems: "center", justifyContent: "center" }}>
+                  <Feather name="copy" size={20} color="#D97706" />
+                </View>
+                <Text style={{ fontWeight: "800", fontSize: 18, color: colors.foreground, flex: 1 }}>Possible duplicate</Text>
+              </View>
+              <Text style={{ fontWeight: "500", fontSize: 14, color: colors.mutedForeground, lineHeight: 22, marginBottom: 20 }}>
+                This advert looks similar to one you already have active for the same sport and role. Are you sure you want to post it as a new advert?
+              </Text>
+              <View style={{ gap: 10 }}>
+                <Pressable
+                  onPress={() => {
+                    const draft = similarityWarning.draft;
+                    setSimilarityWarning(null);
+                    void doCreateAdvert(draft);
+                  }}
+                  style={({ pressed }) => [localStyles.simWarnPrimary, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 15 }}>Yes, post as new advert</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setSimilarityWarning(null)}
+                  style={({ pressed }) => [localStyles.simWarnSecondary, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}
+                >
+                  <Text style={{ color: colors.secondaryForeground, fontWeight: "700", fontSize: 15 }}>Cancel — edit instead</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </ScreenShell>
   );
 }
@@ -1200,4 +1356,11 @@ const localStyles = StyleSheet.create({
   deleteConfirmCancelText: { fontWeight: "700", fontSize: 15 },
   deleteConfirmYes: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#D9534F", borderRadius: 14, paddingVertical: 12 },
   deleteConfirmYesText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
+  dupBanner: { flexDirection: "row", alignItems: "flex-start", gap: 10, borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12 },
+  dupBannerTitle: { fontWeight: "800", fontSize: 14, marginBottom: 2 },
+  dupBannerText: { fontWeight: "500", fontSize: 13, lineHeight: 19 },
+  dupBannerAction: { marginTop: 6 },
+  simWarnCard: { margin: 24, borderRadius: 28, padding: 24 },
+  simWarnPrimary: { borderRadius: 16, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
+  simWarnSecondary: { borderRadius: 16, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
 });

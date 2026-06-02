@@ -6,7 +6,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import { Alert, Platform } from "react-native";
 
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
-import { api } from "@/utils/apiClient";
+import { api, ApiError } from "@/utils/apiClient";
 
 type AdvertType = "player-looking" | "coach-looking" | "players-wanted" | "club-trials" | "coach-wanted";
 type ProfileType = "player" | "club";
@@ -160,6 +160,7 @@ export type Advert = {
   closedReason?: string;
   ownerSubscriptionStatus?: string;
   bumpedAt?: string;
+  possibleDuplicate?: boolean;
 };
 
 export type ForbiddenConnection = {
@@ -1182,8 +1183,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     try {
       const created = await api.createAdvert(body);
       setAdverts((current) => [created, ...current]);
-    } catch (_) {
-      // Fallback: keep local
+    } catch (err) {
+      // Re-throw structured server errors (e.g. 409 duplicate/cooldown) so
+      // the caller (PostScreen) can surface them in the UI.
+      if (err instanceof ApiError && err.status === 409) throw err;
+      // For all other errors, fall back to local-only storage.
       const advert: Advert = { ...body, id: body.publicId, status: body.status as "active" | "closed" };
       setAdverts((current) => [advert, ...current]);
     }
