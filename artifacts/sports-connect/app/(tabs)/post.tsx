@@ -404,7 +404,8 @@ export default function PostScreen() {
     if (editingId) return;
     const nextSport = currentAccount?.defaultSport || allowedSports[0] || selectedSport;
     setSport(nextSport);
-  }, [currentAccount?.defaultSport, allowedSports, selectedSport, editingId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentAccount?.defaultSport, allowedSportsKey, selectedSport, editingId]);
 
   useEffect(() => {
     const sportLabel = sport.includes(" (") ? sport.split(" (")[0] : sport;
