@@ -41,6 +41,7 @@ export type ClubApprovalStatus = "pending" | "approved" | "rejected";
 export type CoachAffiliateStatus = "pending" | "active" | "rejected" | "blocked";
 
 export type CoachAffiliate = {
+  id?: string;
   coachAccountId: string;
   teamName?: string;
   ageGroup?: string;
@@ -316,7 +317,7 @@ type SportsConnectState = {
   unblockCoachAffiliate: (clubAccountId: string, coachAccountId: string) => void;
 };
 
-const storageKey = "sports-connect-state-v10-coach-affiliates";
+const storageKey = "sports-connect-state-v11-api-migration";
 const adminStorageKey = "sports-connect-admin-v1";
 const sportsRegistryKey = "sports-connect-registry-v1";
 const defaultAdminPasscode = "admin6969";
@@ -1585,7 +1586,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         return;
       }
     }
+    const publicId = makeId();
     const affiliate: CoachAffiliate = {
+      id: publicId,
       coachAccountId,
       teamName,
       ageGroup,
@@ -1607,6 +1610,16 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         return { ...c, coachAffiliates: [...filtered, affiliate] };
       });
     }
+    api.createCoachAffiliate({
+      publicId,
+      clubAccountId: currentAccount.id,
+      coachAccountId,
+      teamName,
+      ageGroup,
+      status: "pending",
+      rejectionCount: affiliate.rejectionCount,
+      requestedAt: affiliate.requestedAt,
+    }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
@@ -1629,6 +1642,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         return acc;
       }));
       setCurrentAccount((c) => c ? { ...c, affiliatedClubId: clubAccountId, affiliatedClubName: club.clubName || "Club" } : c);
+      if (affiliate.id) {
+        api.updateCoachAffiliate(affiliate.id, { status: "active" }).catch(() => undefined);
+      }
+      if (currentAccount?.id) {
+        api.updateAccount(currentAccount.id, { affiliatedClubId: clubAccountId, affiliatedClubName: club.clubName || "Club" }).catch(() => undefined);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } else {
       const nextCount = affiliate.rejectionCount + 1;
@@ -1644,6 +1663,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
           if (!c) return c;
           return { ...c, affiliatedClubId: undefined, affiliatedClubName: undefined };
         });
+      }
+      if (affiliate.id) {
+        api.updateCoachAffiliate(affiliate.id, { status: nextStatus, rejectionCount: nextCount, rejectedAt: nextAffiliate.rejectedAt }).catch(() => undefined);
       }
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
     }
@@ -1684,11 +1706,17 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       if (acc.id !== coachAccountId) return acc;
       return { ...acc, affiliatedClubId: undefined, affiliatedClubName: undefined };
     }));
+    // Sync to API
+    if (affiliate.id) {
+      api.deleteCoachAffiliate(affiliate.id).catch(() => undefined);
+    }
+    api.updateAccount(coachAccountId, { affiliatedClubId: null, affiliatedClubName: null }).catch(() => undefined);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
   const updateCoachAffiliateDetails = (coachAccountId: string, teamName?: string, ageGroup?: string) => {
     if (!currentAccount || currentAccount.role !== "club") return;
+    const affiliate = currentAccount.coachAffiliates?.find((a) => a.coachAccountId === coachAccountId);
     setAccounts((current) => current.map((acc) => {
       if (acc.id !== currentAccount.id) return acc;
       const prev = acc.coachAffiliates ?? [];
@@ -1699,15 +1727,23 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       const prev = c.coachAffiliates ?? [];
       return { ...c, coachAffiliates: prev.map((a) => a.coachAccountId === coachAccountId ? { ...a, teamName, ageGroup } : a) };
     });
+    if (affiliate?.id) {
+      api.updateCoachAffiliate(affiliate.id, { teamName, ageGroup }).catch(() => undefined);
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
   const unblockCoachAffiliate = (clubAccountId: string, coachAccountId: string) => {
+    const club = accounts.find((a) => a.id === clubAccountId);
+    const affiliate = club?.coachAffiliates?.find((a) => a.coachAccountId === coachAccountId);
     setAccounts((current) => current.map((acc) => {
       if (acc.id !== clubAccountId) return acc;
       const prev = acc.coachAffiliates ?? [];
       return { ...acc, coachAffiliates: prev.filter((a) => a.coachAccountId !== coachAccountId) };
     }));
+    if (affiliate?.id) {
+      api.deleteCoachAffiliate(affiliate.id).catch(() => undefined);
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 

@@ -47,4 +47,8 @@ export const api = {
   banEmail: (email: string) => apiFetch("/banned-emails", { method: "POST", body: JSON.stringify({ email }) }),
   unbanEmail: (email: string) => apiFetch(`/banned-emails/${email}`, { method: "DELETE" }),
   wipeAll: () => apiFetch("/wipe", { method: "DELETE" }),
+
+  createCoachAffiliate: (body: any) => apiFetch("/coach-affiliates", { method: "POST", body: JSON.stringify(body) }),
+  updateCoachAffiliate: (publicId: string, body: any) => apiFetch(`/coach-affiliates/${publicId}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteCoachAffiliate: (publicId: string) => apiFetch(`/coach-affiliates/${publicId}`, { method: "DELETE" }),
 };

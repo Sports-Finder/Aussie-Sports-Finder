@@ -10,7 +10,7 @@ const router: IRouter = Router();
 router.get("/adverts", async (_req, res) => {
   try {
     const rows = await db.select().from(advertsTable);
-    res.json(rows.map(mapAdvert));
+    res.json(rows.map((row) => mapAdvert(row as unknown as Record<string, unknown>)));
   } catch (err) {
     logger.error({ err }, "Failed to fetch adverts");
     res.status(500).json({ error: "Failed to fetch adverts" });
@@ -21,7 +21,7 @@ router.post("/adverts", async (req, res) => {
   try {
     const body = req.body;
     const [created] = await db.insert(advertsTable).values(body).returning();
-    res.status(201).json(mapAdvert(created));
+    res.status(201).json(mapAdvert(created as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to create advert");
     res.status(500).json({ error: "Failed to create advert" });
@@ -31,7 +31,12 @@ router.post("/adverts", async (req, res) => {
 router.put("/adverts/:publicId", async (req, res) => {
   try {
     const publicId = req.params.publicId;
-    const body = normalizeDates(req.body, ["closedAt"]);
+    const body = normalizeDates(req.body, [
+      "closedAt",
+      "bumpedAt",
+      "expiresAt",
+      "originalExpiresAt",
+    ]);
     const [updated] = await db
       .update(advertsTable)
       .set(body)
@@ -41,7 +46,7 @@ router.put("/adverts/:publicId", async (req, res) => {
       res.status(404).json({ error: "Advert not found" });
       return;
     }
-    res.json(mapAdvert(updated));
+    res.json(mapAdvert(updated as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to update advert");
     res.status(500).json({ error: "Failed to update advert" });
@@ -51,8 +56,6 @@ router.put("/adverts/:publicId", async (req, res) => {
 router.delete("/adverts/:publicId", async (req, res) => {
   try {
     const publicId = req.params.publicId;
-    // Cascading delete: remove conversations + messages tied to this advert first,
-    // then delete the advert itself.
     await db.execute(sql`DELETE FROM ${messagesTable} WHERE ${messagesTable.conversationId} IN (
       SELECT ${conversationsTable.publicId} FROM ${conversationsTable} WHERE ${conversationsTable.advertId} = ${publicId}
     )`);

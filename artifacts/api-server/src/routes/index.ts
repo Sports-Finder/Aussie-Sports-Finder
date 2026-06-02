@@ -7,6 +7,7 @@ import profileImagesRouter from "./profileImages";
 import sportRequestsRouter from "./sportRequests";
 import bannedEmailsRouter from "./bannedEmails";
 import wipeRouter from "./wipe";
+import coachAffiliatesRouter from "./coachAffiliates";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
