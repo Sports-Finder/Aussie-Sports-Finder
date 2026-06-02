@@ -155,7 +155,7 @@ function MessageSender({ accountId, isMe }: { accountId?: string; isMe: boolean 
 export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId: string; onClose: () => void; asAdmin?: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations, sendMessage, broadcastMessage, adminSendMessage, markConversationRead, currentAccount, isAdmin } = useSportsConnect();
+  const { conversations, sendMessage, broadcastMessage, adminSendMessage, markConversationRead, denyConnection, currentAccount, isAdmin } = useSportsConnect();
   const conversation = conversations.find((c) => c.id === conversationId)!;
   const [draft, setDraft] = useState("");
   const [isBroadcast, setIsBroadcast] = useState(false);
@@ -166,9 +166,12 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
     (c) => c.advertId === conversation.advertId && c.status === "connected"
   );
   const isAffiliatedCoach = currentAccount?.role === "coach" && !!currentAccount?.affiliatedClubId;
+  const isOwnerOrAffiliated =
+    currentAccount?.id === conversation.ownerAccountId ||
+    (isAffiliatedCoach && conversation.affiliatedClubParticipants?.includes(currentAccount?.id));
   const canBroadcast =
-    (currentAccount?.role === "club" && currentAccount?.id === conversation.ownerAccountId) ||
-    (isAffiliatedCoach && conversation.affiliatedClubParticipants?.includes(currentAccount?.id)) &&
+    ((currentAccount?.role === "club" && currentAccount?.id === conversation.ownerAccountId) ||
+     (isAffiliatedCoach && conversation.affiliatedClubParticipants?.includes(currentAccount?.id))) &&
     connectedSiblings.length >= 2;
 
   useEffect(() => {
@@ -224,11 +227,28 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
                 {roomSubtitle}
               </Text>
             </View>
-            <View style={[styles.onlineDot, {
-              backgroundColor: conversation.status === "pending" ? "#F59E0B"
-                : conversation.status === "denied" ? colors.mutedForeground
-                : colors.primary,
-            }]} />
+            {isOwnerOrAffiliated && conversation.status === "connected" && !adminMode ? (
+              <Pressable
+                onPress={() => Alert.alert(
+                  "Close this chat?",
+                  "This will end the conversation. The other party will see that the connection was closed.",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Close Chat", style: "destructive", onPress: () => { denyConnection(conversationId); onClose(); } },
+                  ]
+                )}
+                style={({ pressed }) => [styles.backBtn, { backgroundColor: "#FEE2E2", opacity: pressed ? 0.75 : 1 }]}
+              >
+                <Feather name="x-circle" size={20} color="#DC2626" />
+              </Pressable>
+            ) : (
+              <View style={[styles.onlineDot, {
+                backgroundColor: conversation.status === "pending" ? "#F59E0B"
+                  : conversation.status === "denied" ? colors.mutedForeground
+                  : conversation.status === "closed" ? "#DC2626"
+                  : colors.primary,
+              }]} />
+            )}
           </View>
 
           <FlatList

@@ -21,10 +21,11 @@ export function SectionTitle({ title, action }: { title: string; action?: string
   );
 }
 
-export function Pill({ label, active, onPress, disabled }: { label: string; active?: boolean; onPress?: () => void; disabled?: boolean }) {
+export function Pill({ label, active, onPress, onPressWhenDisabled, disabled }: { label: string; active?: boolean; onPress?: () => void; onPressWhenDisabled?: () => void; disabled?: boolean }) {
   const colors = useColors();
+  const handlePress = disabled ? (onPressWhenDisabled ?? undefined) : onPress;
   return (
-    <Pressable onPress={disabled ? undefined : onPress} style={({ pressed }) => [styles.pill, { backgroundColor: active ? colors.primary : disabled ? colors.muted : colors.secondary, opacity: disabled ? 0.5 : pressed ? 0.75 : 1 }]}>
+    <Pressable onPress={handlePress} style={({ pressed }) => [styles.pill, { backgroundColor: active ? colors.primary : disabled ? colors.muted : colors.secondary, opacity: disabled ? 0.5 : pressed ? 0.75 : 1 }]}>
       <Text style={[styles.pillText, { color: active ? colors.primaryForeground : disabled ? colors.mutedForeground : colors.secondaryForeground }]}>{label}</Text>
     </Pressable>
   );

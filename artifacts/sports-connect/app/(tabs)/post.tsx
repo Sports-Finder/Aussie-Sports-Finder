@@ -517,7 +517,14 @@ export default function PostScreen() {
   const postedByName = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials")
     ? `${playerProfile.name} (Affiliated Coach \u2013 ${coachClubName})`
     : ownerName;
-  const myAdverts = adverts.filter((a) => (a.postedBy === ownerName || a.postedBy === postedByName || (isAffiliatedCoach && a.affiliatedClubId === currentAccount?.affiliatedClubId && a.ownerAccountId === currentAccount?.id)) && a.status !== "closed");
+  const isClub = accountRole === "club";
+  const myAdverts = adverts.filter((a) =>
+    (a.postedBy === ownerName ||
+     a.postedBy === postedByName ||
+     (isAffiliatedCoach && a.affiliatedClubId === currentAccount?.affiliatedClubId && a.ownerAccountId === currentAccount?.id) ||
+     (isClub && currentAccount?.id && a.affiliatedClubId === currentAccount.id)
+    ) && a.status !== "closed"
+  );
   const activeTheme = getSportTheme(sport, approvedSports);
   const sportChoices = rawAllowedSports.length ? approvedSports.filter((s) => allowedSports.includes(s.name)) : approvedSports;
   const availableTypes = advertTypesByRole[accountRole].map((item) => {
@@ -729,14 +736,11 @@ export default function PostScreen() {
                 label={item.label}
                 active={type === item.value}
                 disabled={(item as any).disabled}
+                onPressWhenDisabled={() => Alert.alert(
+                  "Affiliation required",
+                  "You need to be affiliated with a club to post this type of advert. Ask a club to send you an affiliate request from their Coach Affiliates section."
+                )}
                 onPress={() => {
-                  if ((item as any).disabled) {
-                    Alert.alert(
-                      "Affiliation required",
-                      "You need to be affiliated with a club to post this type of advert. Ask a club to send you an affiliate request from their Coach Affiliates section."
-                    );
-                    return;
-                  }
                   setType(item.value);
                   setPositions([]);
                 }}

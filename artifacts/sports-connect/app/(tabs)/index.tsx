@@ -109,11 +109,13 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert.createdAt);
   const isOwnAdvert = !!(currentAccount?.id && advert.ownerAccountId && advert.ownerAccountId === currentAccount.id);
+  const isAffiliatedClubParticipant = !isOwnAdvert && !!(currentAccount?.id && advert.affiliatedClubId && advert.affiliatedClubId === currentAccount.id);
+  const isOwnOrAffiliated = isOwnAdvert || isAffiliatedClubParticipant;
   const advertConvs = conversations.filter((c) => c.advertId === advert.id);
-  const connectedConvs = isOwnAdvert ? advertConvs.filter((c) => c.status === "connected") : [];
-  const pendingConvs = isOwnAdvert ? advertConvs.filter((c) => c.status === "pending") : [];
+  const connectedConvs = isOwnOrAffiliated ? advertConvs.filter((c) => c.status === "connected") : [];
+  const pendingConvs = isOwnOrAffiliated ? advertConvs.filter((c) => c.status === "pending") : [];
   const firstPending = pendingConvs[0] ?? null;
-  const myRequest = !isOwnAdvert ? advertConvs.find((c) => c.initiatorAccountId === currentAccount?.id) : undefined;
+  const myRequest = !isOwnOrAffiliated ? advertConvs.find((c) => c.initiatorAccountId === currentAccount?.id) : undefined;
   const isConnected = !isOwnAdvert && myRequest?.status === "connected";
   const isForbiddenPair = !isOwnAdvert && !!(currentAccount?.id && advert.ownerAccountId &&
     forbiddenConnections.some((f) =>
@@ -203,14 +205,14 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
             </View>
 
             {/* ── Connection notification ── */}
-            {isOwnAdvert && connectedConvs.length > 0 ? (
+            {isOwnOrAffiliated && connectedConvs.length > 0 ? (
               <View style={[styles.connectedBadge, { backgroundColor: colors.pitchSoft }]}>
                 <Feather name="check-circle" color={colors.primary} size={18} />
                 <Text style={[styles.connectedText, { color: colors.primary }]}>
                   {`You are connected to ${connectedConvs.length} ${convGroupLabel(connectedConvs)} — message ${connectedConvs.length === 1 ? "this person" : "these people"} in the Messages tab`}
                 </Text>
               </View>
-            ) : !isOwnAdvert && myRequest?.status === "connected" ? (
+            ) : !isOwnOrAffiliated && myRequest?.status === "connected" ? (
               <View style={[styles.connectedBadge, { backgroundColor: colors.pitchSoft }]}>
                 <Feather name="check-circle" color={colors.primary} size={18} />
                 <Text style={[styles.connectedText, { color: colors.primary }]}>You are connected — message in the Messages tab</Text>
@@ -292,7 +294,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
             <View style={{ height: 16 }} />
 
             {/* ── Connection section ── */}
-            {isOwnAdvert ? (
+            {isOwnOrAffiliated ? (
               <>
                 {pendingConvs.length > 0 ? (
                   <Text style={[styles.pendingCountText, { color: colors.foreground }]}>
