@@ -9,6 +9,7 @@ import { useAuth } from "@clerk/expo";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
+import CoachAffiliatesPage from "@/components/CoachAffiliatesPage";
 
 type Mode = "view" | "edit";
 const genders = ["Male", "Female", "Pref Not to Say"];
@@ -97,13 +98,16 @@ export default function ProfileScreen() {
     getImageUri,
     getImageStatus,
     approvedSports,
+    accounts,
     currentAccount,
     signOut,
     updateAccount,
     resetClubApprovalAfterEdit,
+    respondToAffiliationRequest,
   } = useSportsConnect();
 
   const [mode, setMode] = useState<Mode>("view");
+  const [showCoachAffiliates, setShowCoachAffiliates] = useState(false);
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [draftDob, setDraftDob] = useState("");
 
@@ -374,6 +378,46 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
+        {isCoach && (() => {
+          const pending = accounts
+            .filter((a) => a.role === "club" && a.clubApprovalStatus === "approved")
+            .flatMap((club) => (club.coachAffiliates ?? [])
+              .filter((aff) => aff.coachAccountId === currentAccount?.id && aff.status === "pending")
+              .map((aff) => ({ club, affiliate: aff })));
+          if (pending.length === 0) return null;
+          return (
+            <View style={[styles.card, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <Feather name="bell" size={18} color="#D97706" />
+                <Text style={{ fontWeight: "700", fontSize: 15, color: "#92400E" }}>Affiliation Request</Text>
+              </View>
+              {pending.map(({ club, affiliate }) => (
+                <View key={club.id} style={{ gap: 8, marginBottom: 8 }}>
+                  <Text style={{ fontWeight: "600", fontSize: 13, color: "#78350F" }}>
+                    {club.clubName || "A club"} wants to affiliate with you as a coach.
+                    {affiliate.teamName ? `\nTeam: ${affiliate.teamName}` : ""}
+                    {affiliate.ageGroup ? ` · Age: ${affiliate.ageGroup}` : ""}
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <Pressable
+                      onPress={() => respondToAffiliationRequest(club.id, true)}
+                      style={[styles.mapBtn, { backgroundColor: "#16A34A", flex: 1 }]}
+                    >
+                      <Text style={styles.mapBtnText}>Yes — Accept</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => respondToAffiliationRequest(club.id, false)}
+                      style={[styles.mapBtn, { backgroundColor: "#DC2626", flex: 1 }]}
+                    >
+                      <Text style={styles.mapBtnText}>No — Decline</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          );
+        })()}
+
         {isClub && currentAccount?.clubApprovalStatus !== "approved" && (
           <View style={[styles.card, {
             backgroundColor: currentAccount?.clubApprovalStatus === "rejected" ? "#FEF2F2" : "#FFFBEB",
@@ -402,6 +446,28 @@ export default function ProfileScreen() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
               <Feather name="check-circle" size={18} color="#16A34A" />
               <Text style={{ fontWeight: "700", fontSize: 14, color: "#15803D" }}>Club Approved — Full access enabled</Text>
+            </View>
+          </View>
+        )}
+
+        {isClub && currentAccount?.clubApprovalStatus === "approved" && (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={[styles.accountIcon, { backgroundColor: colors.pitchSoft }]}>
+                <Feather name="award" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cardTitle, { color: colors.foreground }]}>Coach Affiliates</Text>
+                <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
+                  {(currentAccount?.coachAffiliates?.filter((a) => a.status === "active").length ?? 0)} active · {(currentAccount?.coachAffiliates?.filter((a) => a.status === "pending").length ?? 0)} pending
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setShowCoachAffiliates(true)}
+                style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1, flex: 0, minWidth: 90 }]}
+              >
+                <Text style={styles.mapBtnText}>View/Edit</Text>
+              </Pressable>
             </View>
           </View>
         )}
@@ -726,6 +792,12 @@ export default function ProfileScreen() {
         {mode === "edit" ? <PrimaryButton label="Save profile" icon="check" onPress={save} /> : null}
 
       </ScrollView>
+
+      {showCoachAffiliates && (
+        <Modal visible animationType="slide" onRequestClose={() => setShowCoachAffiliates(false)}>
+          <CoachAffiliatesPage onBack={() => setShowCoachAffiliates(false)} />
+        </Modal>
+      )}
     </View>
   );
 }

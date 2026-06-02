@@ -745,7 +745,7 @@ function ChatsSection() {
 function AccountsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { accounts, bannedEmails, adminSetAccountStatus, adminApproveClub, adminRejectClub } = useSportsConnect();
+  const { accounts, bannedEmails, adminSetAccountStatus, adminApproveClub, adminRejectClub, unblockCoachAffiliate } = useSportsConnect();
   const { approveClubs, isFullAdmin } = useDashboardPermissions();
   const [role, setRole] = useState<AccountRole>("player");
   const [editing, setEditing] = useState<UserAccount | null>(null);
@@ -844,6 +844,47 @@ function AccountsSection() {
             {bannedEmails.length} email{bannedEmails.length === 1 ? "" : "s"} are currently banned. Manage them in Settings.
           </Text>
         ) : null}
+
+        {isFullAdmin && (() => {
+          const blocked = accounts
+            .filter((a) => a.role === "club")
+            .flatMap((club) => (club.coachAffiliates ?? [])
+              .filter((aff) => aff.status === "blocked")
+              .map((aff) => ({ club, affiliate: aff })));
+          if (blocked.length === 0) return null;
+          return (
+            <View style={{ gap: 10, marginTop: 12 }}>
+              <SectionTitle title="Blocked coach-club pairs" action={`${blocked.length} blocked`} />
+              {blocked.map(({ club, affiliate }) => {
+                const coach = accounts.find((a) => a.id === affiliate.coachAccountId);
+                return (
+                  <View key={`${club.id}-${affiliate.coachAccountId}`} style={[styles.itemCard, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
+                    <View style={styles.itemHeader}>
+                      <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
+                        {club.clubName || "Unknown club"} ↔ {coach?.fullName || coach?.email || "Unknown coach"}
+                      </Text>
+                    </View>
+                    <View style={styles.metaRow}>
+                      <Feather name="user-x" size={12} color="#991B1B" />
+                      <Text style={[styles.metaText, { color: "#991B1B" }]}>
+                        Blocked after {affiliate.rejectionCount} rejections
+                        {affiliate.rejectedAt ? ` · Last rejected ${new Date(affiliate.rejectedAt).toLocaleDateString()}` : ""}
+                      </Text>
+                    </View>
+                    <View style={styles.actionRow}>
+                      <ActionButton icon="unlock" label="Unblock" color="#10B981" onPress={() => {
+                        Alert.alert("Unblock affiliation", `Unblock this coach from "${club.clubName || "Unknown club"}"? They will be able to send new affiliation requests.`, [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Unblock", onPress: () => unblockCoachAffiliate(club.id, affiliate.coachAccountId) },
+                        ]);
+                      }} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })()}
       </ScrollView>
 
       {editing && <AccountEditModal account={editing} onClose={() => setEditing(null)} />}

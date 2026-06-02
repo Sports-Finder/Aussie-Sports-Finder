@@ -165,9 +165,10 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
   const connectedSiblings = conversations.filter(
     (c) => c.advertId === conversation.advertId && c.status === "connected"
   );
+  const isAffiliatedCoach = currentAccount?.role === "coach" && !!currentAccount?.affiliatedClubId;
   const canBroadcast =
-    currentAccount?.role === "club" &&
-    currentAccount?.id === conversation.ownerAccountId &&
+    (currentAccount?.role === "club" && currentAccount?.id === conversation.ownerAccountId) ||
+    (isAffiliatedCoach && conversation.affiliatedClubParticipants?.includes(currentAccount?.id)) &&
     connectedSiblings.length >= 2;
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
@@ -34,10 +34,14 @@ function agesInGroup(group: AgeGroup) {
 }
 
 
-const advertTypesByRole: Record<AccountRole, { value: Advert["type"]; label: string }[]> = {
+const advertTypesByRole: Record<AccountRole, { value: Advert["type"]; label: string; requiresAffiliation?: boolean }[]> = {
   player: [{ value: "player-looking", label: "Player looking for Club" }],
   guardian: [{ value: "player-looking", label: "Parent/Guardian's Player Looking for a Club" }],
-  coach: [{ value: "coach-looking", label: "Coach looking for Team or Club" }],
+  coach: [
+    { value: "coach-looking", label: "Coach looking for Team or Club" },
+    { value: "players-wanted", label: "Players Wanted for Team", requiresAffiliation: true },
+    { value: "club-trials", label: "Club Trials Info", requiresAffiliation: true },
+  ],
   club: [
     { value: "players-wanted", label: "Players Wanted for Team" },
     { value: "club-trials", label: "Club Trials Info" },
@@ -506,11 +510,20 @@ export default function PostScreen() {
     setShowErrors(false);
   };
 
+  const isCoach = accountRole === "coach";
+  const isAffiliatedCoach = isCoach && Boolean(currentAccount?.affiliatedClubId);
+  const coachClubName = currentAccount?.affiliatedClubName;
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
-  const myAdverts = adverts.filter((a) => a.postedBy === ownerName && a.status !== "closed");
+  const postedByName = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials")
+    ? `${playerProfile.name} (Affiliated Coach \u2013 ${coachClubName})`
+    : ownerName;
+  const myAdverts = adverts.filter((a) => (a.postedBy === ownerName || a.postedBy === postedByName || (isAffiliatedCoach && a.affiliatedClubId === currentAccount?.affiliatedClubId && a.ownerAccountId === currentAccount?.id)) && a.status !== "closed");
   const activeTheme = getSportTheme(sport, approvedSports);
   const sportChoices = rawAllowedSports.length ? approvedSports.filter((s) => allowedSports.includes(s.name)) : approvedSports;
-  const availableTypes = advertTypesByRole[accountRole];
+  const availableTypes = advertTypesByRole[accountRole].map((item) => {
+    const disabled = item.requiresAffiliation && isCoach && !isAffiliatedCoach;
+    return { ...item, disabled };
+  });
   const positionOptions = sportsRegistry.find((s) => s.name === sport)?.positions ?? ["General Player"];
 
   const isPlayerLooking = type === "player-looking";
@@ -619,7 +632,10 @@ export default function PostScreen() {
       updateAdvert(editingId, draft);
       setEditingId(null);
     } else {
-      createAdvert(draft);
+      const affiliateExtras = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials")
+        ? { postedBy: postedByName, affiliatedClubId: currentAccount?.affiliatedClubId }
+        : {};
+      createAdvert({ ...draft, ...affiliateExtras });
       setSelectedSport(sport);
     }
     setDescription("");
@@ -708,7 +724,23 @@ export default function PostScreen() {
           <Text style={[localStyles.formTitle, { color: colors.foreground }]}>Advert type</Text>
           <View style={localStyles.pillRow}>
             {availableTypes.map((item) => (
-              <Pill key={item.value} label={item.label} active={type === item.value} onPress={() => { setType(item.value); setPositions([]); }} />
+              <Pill
+                key={item.value}
+                label={item.label}
+                active={type === item.value}
+                disabled={(item as any).disabled}
+                onPress={() => {
+                  if ((item as any).disabled) {
+                    Alert.alert(
+                      "Affiliation required",
+                      "You need to be affiliated with a club to post this type of advert. Ask a club to send you an affiliate request from their Coach Affiliates section."
+                    );
+                    return;
+                  }
+                  setType(item.value);
+                  setPositions([]);
+                }}
+              />
             ))}
           </View>
 

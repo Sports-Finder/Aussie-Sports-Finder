@@ -38,6 +38,17 @@ export type HighlightLink = {
 
 export type AccountStatus = "active" | "closed" | "banned";
 export type ClubApprovalStatus = "pending" | "approved" | "rejected";
+export type CoachAffiliateStatus = "pending" | "active" | "rejected" | "blocked";
+
+export type CoachAffiliate = {
+  coachAccountId: string;
+  teamName?: string;
+  ageGroup?: string;
+  status: CoachAffiliateStatus;
+  rejectionCount: number;
+  rejectedAt?: string;
+  requestedAt: string;
+};
 
 export type ModeratorPermissions = {
   closeChats: boolean;
@@ -91,6 +102,9 @@ export type UserAccount = {
   socialId?: string;
   profileImageDeclines?: number;
   clubApprovalStatus?: ClubApprovalStatus;
+  coachAffiliates?: CoachAffiliate[];
+  affiliatedClubId?: string;
+  affiliatedClubName?: string;
 };
 
 export type Advert = {
@@ -133,6 +147,7 @@ export type Advert = {
   trialRequired?: boolean;
   teamGender?: string;
   playerGender?: string;
+  affiliatedClubId?: string;
   status?: "active" | "closed";
   closedAt?: string;
   closedReason?: string;
@@ -155,6 +170,7 @@ export type Conversation = {
   pendingRequest?: boolean;
   advertLocation?: string;
   advertPostedByType?: "player" | "club";
+  affiliatedClubParticipants?: string[];
 };
 
 export type Message = {
@@ -263,7 +279,7 @@ type SportsConnectState = {
   adminApproveClub: (accountId: string) => Promise<void>;
   adminRejectClub: (accountId: string) => Promise<void>;
   resetClubApprovalAfterEdit: () => void;
-  createAdvert: (draft: DraftAdvert) => Promise<void>;
+  createAdvert: (draft: DraftAdvert & { postedBy?: string; affiliatedClubId?: string }) => Promise<void>;
   updateAdvert: (id: string, patch: Partial<DraftAdvert>) => Promise<void>;
   deleteAdvert: (id: string) => Promise<void>;
   connectOnAdvert: (advert: Advert) => Promise<string>;
@@ -284,9 +300,14 @@ type SportsConnectState = {
   moderateHighlightLink: (linkId: string, status: ImageStatus) => void;
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
   getImageStatus: (imageId?: string) => ImageStatus | undefined;
+  requestCoachAffiliation: (coachAccountId: string, teamName?: string, ageGroup?: string) => void;
+  respondToAffiliationRequest: (clubAccountId: string, accept: boolean) => void;
+  removeCoachAffiliate: (coachAccountId: string) => void;
+  updateCoachAffiliateDetails: (coachAccountId: string, teamName?: string, ageGroup?: string) => void;
+  unblockCoachAffiliate: (clubAccountId: string, coachAccountId: string) => void;
 };
 
-const storageKey = "sports-connect-state-v9-team-gender";
+const storageKey = "sports-connect-state-v10-coach-affiliates";
 const adminStorageKey = "sports-connect-admin-v1";
 const sportsRegistryKey = "sports-connect-registry-v1";
 const defaultAdminPasscode = "admin6969";
@@ -1105,8 +1126,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
   };
 
-  const createAdvert = async (draft: DraftAdvert) => {
-    const owner = activeProfile === "club" ? clubProfile.name : playerProfile.name;
+  const createAdvert = async (draft: DraftAdvert & { postedBy?: string; affiliatedClubId?: string }) => {
+    const owner = draft.postedBy ?? (activeProfile === "club" ? clubProfile.name : playerProfile.name);
     const body = {
       ...draft,
       ownerAccountId: currentAccount?.id,
@@ -1159,7 +1180,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     if (existing) return existing.id;
     pendingConnectionIds.current.add(advert.id);
     const isClubAdvert = advert.postedByType === "club";
+    const hasAffiliatedClub = !!advert.affiliatedClubId;
     const convId = makeId();
+    const participants = hasAffiliatedClub && advert.ownerAccountId && advert.affiliatedClubId
+      ? [advert.ownerAccountId, advert.affiliatedClubId]
+      : undefined;
     const conversation: Conversation = {
       id: convId,
       advertId: advert.id,
@@ -1176,6 +1201,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       messages: [],
       requesterLocation: currentAccount?.location,
       requesterType: currentAccount?.role,
+      affiliatedClubParticipants: participants,
     };
     try {
       const created = await api.createConversation({ ...conversation, publicId: convId });
@@ -1484,6 +1510,150 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return image?.status;
   };
 
+  const requestCoachAffiliation = (coachAccountId: string, teamName?: string, ageGroup?: string) => {
+    if (!currentAccount || currentAccount.role !== "club") return;
+    const coach = accounts.find((a) => a.id === coachAccountId);
+    if (!coach || coach.role !== "coach") return;
+    const existing = currentAccount.coachAffiliates?.find((a) => a.coachAccountId === coachAccountId);
+    if (existing && existing.status === "blocked") {
+      Alert.alert("Cannot request", "This coach has permanently blocked affiliation requests from your club. Contact admin for assistance.");
+      return;
+    }
+    if (existing && existing.status === "rejected" && existing.rejectedAt) {
+      const rejectedDate = new Date(existing.rejectedAt);
+      const cooldownDays = 7;
+      const earliest = new Date(rejectedDate.getTime() + cooldownDays * 24 * 60 * 60 * 1000);
+      if (Date.now() < earliest.getTime()) {
+        Alert.alert("Cooldown period", `You can re-request this coach after ${earliest.toLocaleDateString()}.`);
+        return;
+      }
+    }
+    const affiliate: CoachAffiliate = {
+      coachAccountId,
+      teamName,
+      ageGroup,
+      status: "pending",
+      rejectionCount: existing?.rejectionCount ?? 0,
+      requestedAt: now(),
+    };
+    setAccounts((current) => current.map((acc) => {
+      if (acc.id !== currentAccount.id) return acc;
+      const prev = acc.coachAffiliates ?? [];
+      const filtered = prev.filter((a) => a.coachAccountId !== coachAccountId);
+      return { ...acc, coachAffiliates: [...filtered, affiliate] };
+    }));
+    if (currentAccount) {
+      setCurrentAccount((c) => {
+        if (!c) return c;
+        const prev = c.coachAffiliates ?? [];
+        const filtered = prev.filter((a) => a.coachAccountId !== coachAccountId);
+        return { ...c, coachAffiliates: [...filtered, affiliate] };
+      });
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const respondToAffiliationRequest = (clubAccountId: string, accept: boolean) => {
+    const club = accounts.find((a) => a.id === clubAccountId);
+    if (!club || club.role !== "club") return;
+    const affiliate = club.coachAffiliates?.find((a) => a.coachAccountId === currentAccount?.id);
+    if (!affiliate || affiliate.status !== "pending") return;
+
+    if (accept) {
+      const nextAffiliate: CoachAffiliate = { ...affiliate, status: "active" };
+      setAccounts((current) => current.map((acc) => {
+        if (acc.id === clubAccountId) {
+          const prev = acc.coachAffiliates ?? [];
+          return { ...acc, coachAffiliates: prev.map((a) => a.coachAccountId === currentAccount?.id ? nextAffiliate : a) };
+        }
+        if (acc.id === currentAccount?.id) {
+          return { ...acc, affiliatedClubId: clubAccountId, affiliatedClubName: club.clubName || "Club" };
+        }
+        return acc;
+      }));
+      setCurrentAccount((c) => c ? { ...c, affiliatedClubId: clubAccountId, affiliatedClubName: club.clubName || "Club" } : c);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } else {
+      const nextCount = affiliate.rejectionCount + 1;
+      const nextStatus: CoachAffiliateStatus = nextCount >= 3 ? "blocked" : "rejected";
+      const nextAffiliate: CoachAffiliate = { ...affiliate, status: nextStatus, rejectionCount: nextCount, rejectedAt: now() };
+      setAccounts((current) => current.map((acc) => {
+        if (acc.id !== clubAccountId) return acc;
+        const prev = acc.coachAffiliates ?? [];
+        return { ...acc, coachAffiliates: prev.map((a) => a.coachAccountId === currentAccount?.id ? nextAffiliate : a) };
+      }));
+      if (currentAccount?.id) {
+        setCurrentAccount((c) => {
+          if (!c) return c;
+          return { ...c, affiliatedClubId: undefined, affiliatedClubName: undefined };
+        });
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+    }
+  };
+
+  const removeCoachAffiliate = (coachAccountId: string) => {
+    if (!currentAccount || currentAccount.role !== "club") return;
+    const affiliate = currentAccount.coachAffiliates?.find((a) => a.coachAccountId === coachAccountId);
+    if (!affiliate) return;
+    // Close adverts from this coach
+    const nowStr = now();
+    setAdverts((current) => current.map((a) => {
+      if (a.ownerAccountId === coachAccountId && a.affiliatedClubId === currentAccount.id) {
+        return { ...a, status: "closed", closedAt: nowStr, closedReason: "Coach removed from club affiliates" };
+      }
+      return a;
+    }));
+    // Close connected chats
+    setConversations((current) => current.map((c) => {
+      if (c.affiliatedClubParticipants?.includes(coachAccountId) && (c.status === "pending" || c.status === "connected")) {
+        return { ...c, status: "denied" };
+      }
+      return c;
+    }));
+    // Remove from club account
+    setAccounts((current) => current.map((acc) => {
+      if (acc.id !== currentAccount.id) return acc;
+      const prev = acc.coachAffiliates ?? [];
+      return { ...acc, coachAffiliates: prev.filter((a) => a.coachAccountId !== coachAccountId) };
+    }));
+    setCurrentAccount((c) => {
+      if (!c) return c;
+      const prev = c.coachAffiliates ?? [];
+      return { ...c, coachAffiliates: prev.filter((a) => a.coachAccountId !== coachAccountId) };
+    });
+    // Clear coach's affiliation
+    setAccounts((current) => current.map((acc) => {
+      if (acc.id !== coachAccountId) return acc;
+      return { ...acc, affiliatedClubId: undefined, affiliatedClubName: undefined };
+    }));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
+  };
+
+  const updateCoachAffiliateDetails = (coachAccountId: string, teamName?: string, ageGroup?: string) => {
+    if (!currentAccount || currentAccount.role !== "club") return;
+    setAccounts((current) => current.map((acc) => {
+      if (acc.id !== currentAccount.id) return acc;
+      const prev = acc.coachAffiliates ?? [];
+      return { ...acc, coachAffiliates: prev.map((a) => a.coachAccountId === coachAccountId ? { ...a, teamName, ageGroup } : a) };
+    }));
+    setCurrentAccount((c) => {
+      if (!c) return c;
+      const prev = c.coachAffiliates ?? [];
+      return { ...c, coachAffiliates: prev.map((a) => a.coachAccountId === coachAccountId ? { ...a, teamName, ageGroup } : a) };
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const unblockCoachAffiliate = (clubAccountId: string, coachAccountId: string) => {
+    setAccounts((current) => current.map((acc) => {
+      if (acc.id !== clubAccountId) return acc;
+      const prev = acc.coachAffiliates ?? [];
+      return { ...acc, coachAffiliates: prev.filter((a) => a.coachAccountId !== coachAccountId) };
+    }));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
   const value = useMemo<SportsConnectState>(() => {
     const myConversations = isAdmin || isModerator
       ? conversations
@@ -1491,7 +1661,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       ? conversations.filter((c) =>
           !c.initiatorAccountId ||
           c.initiatorAccountId === currentAccount.id ||
-          c.ownerAccountId === currentAccount.id
+          c.ownerAccountId === currentAccount.id ||
+          c.affiliatedClubParticipants?.includes(currentAccount.id)
         )
       : conversations;
     const approvedSports = sportsRegistry.filter((s) => s.enabled);
@@ -1572,6 +1743,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     moderateHighlightLink,
     getImageUri,
     getImageStatus,
+    requestCoachAffiliation,
+    respondToAffiliationRequest,
+    removeCoachAffiliate,
+    updateCoachAffiliateDetails,
+    unblockCoachAffiliate,
     };
   }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField]);
 
