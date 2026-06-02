@@ -7,10 +7,16 @@ import profileImagesRouter from "./profileImages";
 import sportRequestsRouter from "./sportRequests";
 import bannedEmailsRouter from "./bannedEmails";
 import wipeRouter from "./wipe";
+import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
 
+// Health check is public — no auth required
 router.use(healthRouter);
+
+// All routes below this point require a valid Clerk session
+router.use(requireAuth);
+
 router.use(accountsRouter);
 router.use(advertsRouter);
 router.use(conversationsRouter);

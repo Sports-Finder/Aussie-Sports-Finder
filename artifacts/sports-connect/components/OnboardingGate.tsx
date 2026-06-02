@@ -114,6 +114,20 @@ export function OnboardingGate() {
     }
   }, [startSSOFlow]);
 
+  const handleAppleAuth = useCallback(async () => {
+    try {
+      const { createdSessionId, setActive } = await startSSOFlow({
+        strategy: "oauth_apple",
+        redirectUrl: AuthSession.makeRedirectUri(),
+      });
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId, navigate: () => {} });
+      }
+    } catch (err) {
+      console.error(JSON.stringify(err, null, 2));
+    }
+  }, [startSSOFlow]);
+
   const switchMode = (next: AuthMode) => {
     setMode(next);
     setCode("");
@@ -238,6 +252,20 @@ export function OnboardingGate() {
                   Continue with Google
                 </Text>
               </Pressable>
+              {Platform.OS === "ios" && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.oauthBtn,
+                    { backgroundColor: "#000", borderColor: colors.border },
+                    pressed && styles.btnDisabled,
+                  ]}
+                  onPress={handleAppleAuth}
+                >
+                  <Text style={[styles.oauthBtnText, { color: "#fff" }]}>
+                    Continue with Apple
+                  </Text>
+                </Pressable>
+              )}
             </>
           )}
 
@@ -346,6 +374,20 @@ export function OnboardingGate() {
                   Continue with Google
                 </Text>
               </Pressable>
+              {Platform.OS === "ios" && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.oauthBtn,
+                    { backgroundColor: "#000", borderColor: colors.border },
+                    pressed && styles.btnDisabled,
+                  ]}
+                  onPress={handleAppleAuth}
+                >
+                  <Text style={[styles.oauthBtnText, { color: "#fff" }]}>
+                    Continue with Apple
+                  </Text>
+                </Pressable>
+              )}
 
               {/* Required for bot protection */}
               <View nativeID="clerk-captcha" />

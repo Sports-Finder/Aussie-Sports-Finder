@@ -18,6 +18,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Configure API client base URL (side effect)
 import "@/lib/api-client";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OnboardingGate } from "@/components/OnboardingGate";
@@ -40,7 +41,11 @@ function RootLayoutNav() {
 }
 
 function AppContent() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
+
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+  }, [getToken]);
 
   if (!isLoaded) {
     return (
