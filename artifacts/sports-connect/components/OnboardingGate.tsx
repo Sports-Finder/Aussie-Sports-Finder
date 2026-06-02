@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
-const logo = require("@/assets/images/icon.png");
+const logo = require("@/assets/images/icon.png") as number;
 
 export function OnboardingGate() {
   const colors = useColors();
