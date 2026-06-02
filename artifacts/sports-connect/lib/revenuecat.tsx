@@ -34,36 +34,77 @@ export function initializeRevenueCat(userId?: string) {
   console.log("Configured RevenueCat");
 }
 
+// Module-level flag: true once Purchases.logIn() has resolved for the current
+// Clerk user, so entitlement queries/sync never run against anonymous data.
+let _userIdentified = false;
+// Callbacks registered by SubscriptionProvider to react when logIn resolves.
+const _identifyListeners: Array<() => void> = [];
+
 export function identifyRevenueCatUser(userId: string) {
   if (!_initialized) return;
-  Purchases.logIn(userId).catch((err) => console.warn("RevenueCat logIn failed:", err));
+  _userIdentified = false;
+  Purchases.logIn(userId)
+    .then(() => {
+      _userIdentified = true;
+      // Notify all active SubscriptionProvider instances.
+      _identifyListeners.forEach((cb) => cb());
+    })
+    .catch((err) => {
+      console.warn("RevenueCat logIn failed:", err);
+      // Treat a failed logIn as "identified" so the app is never permanently
+      // locked — entitlements will just come back empty for this user.
+      _userIdentified = true;
+      _identifyListeners.forEach((cb) => cb());
+    });
 }
 
 function useSubscriptionContext() {
   const qc = useQueryClient();
 
-  // Local ready flag — flipped to true by markInitialized() which is called
-  // from _layout.tsx after initializeRevenueCat() succeeds.
+  // ready: SDK configured. userIdentified: logIn() resolved for the Clerk user.
   const [ready, setReady] = useState(_initialized);
+  const [userIdentified, setUserIdentified] = useState(_userIdentified);
+
   const markInitialized = () => {
     _initialized = true;
     setReady(true);
-    // Immediately kick off the queries now that the SDK is configured.
+    // Kick off queries only if logIn has already resolved (or no user yet).
     qc.invalidateQueries({ queryKey: ["revenuecat"] });
   };
+
+  // Subscribe to logIn completion events for the lifetime of this context.
+  React.useEffect(() => {
+    const cb = () => {
+      setUserIdentified(true);
+      qc.invalidateQueries({ queryKey: ["revenuecat"] });
+    };
+    _identifyListeners.push(cb);
+    // Sync with current global state in case logIn already resolved.
+    if (_userIdentified) setUserIdentified(true);
+    return () => {
+      const idx = _identifyListeners.indexOf(cb);
+      if (idx !== -1) _identifyListeners.splice(idx, 1);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Queries are enabled only once SDK is configured AND the Clerk user is
+  // logged into RC. This prevents stale anonymous customerInfo from being
+  // treated as authoritative and causing a false "inactive" downgrade.
+  const queriesEnabled = ready && userIdentified;
 
   const customerInfoQuery = useQuery({
     queryKey: ["revenuecat", "customer-info"],
     queryFn: () => Purchases.getCustomerInfo(),
     staleTime: 60 * 1000,
-    enabled: ready,
+    enabled: queriesEnabled,
   });
 
   const offeringsQuery = useQuery({
     queryKey: ["revenuecat", "offerings"],
     queryFn: () => Purchases.getOfferings(),
     staleTime: 300 * 1000,
-    enabled: ready,
+    enabled: queriesEnabled,
   });
 
   const purchaseMutation = useMutation({
@@ -106,7 +147,8 @@ function useSubscriptionContext() {
     playerMonthlyPackage,
     playerAnnualPackage,
     isSubscribed,
-    isLoading: customerInfoQuery.isLoading || offeringsQuery.isLoading,
+    userIdentified,
+    isLoading: !queriesEnabled || customerInfoQuery.isLoading || offeringsQuery.isLoading,
     purchase: purchaseMutation.mutateAsync,
     restore: restoreMutation.mutateAsync,
     isPurchasing: purchaseMutation.isPending,

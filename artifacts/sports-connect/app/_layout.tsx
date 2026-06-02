@@ -103,12 +103,13 @@ function AppContent() {
     // TabLayout layers its own getter on top (both point to the singleton).
   }, []);
 
-  // Identify the RevenueCat user whenever the account is resolved.
+  // Identify the RevenueCat user with the stable Clerk user ID so entitlements
+  // are never fragmented across anonymous / local account identities.
   useEffect(() => {
-    if (currentAccount?.id) {
-      identifyRevenueCatUser(currentAccount.id);
+    if (user?.id) {
+      identifyRevenueCatUser(user.id);
     }
-  }, [currentAccount?.id]);
+  }, [user?.id]);
 
   // Returning user: Clerk is authenticated but currentAccount was cleared by signOut.
   // Search the accounts list by email and restore the session without showing setup form.
