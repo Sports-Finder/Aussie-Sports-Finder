@@ -146,6 +146,7 @@ export type Advert = {
   gameTbd?: boolean;
   scheduleNote?: string;
   trialSlots?: { date: string; timeFrom: string; timeTo: string }[];
+  focusArea?: string;
   coachRole?: string;
   coachExperienceLevel?: string;
   coachPositionTypes?: string[];

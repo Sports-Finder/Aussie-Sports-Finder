@@ -104,6 +104,7 @@ export function mapAdvert(row: Record<string, unknown>) {
     scheduleNote: row.scheduleNote as string | undefined,
     trialSlots:
       (row.trialSlots as { date: string; timeFrom: string; timeTo: string }[]) ?? undefined,
+    focusArea: row.focusArea as string | undefined,
     coachRole: row.coachRole as string | undefined,
     coachExperienceLevel: row.coachExperienceLevel as string | undefined,
     coachPositionTypes: (row.coachPositionTypes as string[]) ?? undefined,

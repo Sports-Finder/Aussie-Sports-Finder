@@ -23,6 +23,7 @@ const COACH_EXPERIENCE_LEVELS = [
   { value: "Level 4", label: "High Performance / Senior (Level 4)" },
 ];
 const COACH_POSITION_TYPES = ["Paid Full-time", "Paid Part-time", "One off payment", "Unpaid Volunteer"];
+const FOCUS_AREAS = ["Club", "Junior Development", "Senior", "Women's Program"];
 const AGE_GROUPS: AgeGroup[] = [
   { label: "Tiny Tots / Minis (Ages 3–6)", min: 3, max: 6 },
   { label: "Junior (Ages 7–11)", min: 7, max: 11 },
@@ -179,7 +180,7 @@ function MyAdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void
       </View>
       <Text style={[localStyles.cardTitle, { color: colors.foreground }]}>{advert.title}</Text>
       <Text style={[localStyles.cardText, { color: colors.mutedForeground }]}>{advert.sport} · {advert.location}</Text>
-      {advert.ageGroup ? <Text style={[localStyles.cardText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.ageGroup}</Text> : null}
+      {advert.focusArea ? <Text style={[localStyles.cardText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.focusArea}</Text> : advert.ageGroup ? <Text style={[localStyles.cardText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.ageGroup}</Text> : null}
       <View style={localStyles.cardFooter}>
         <Feather name="eye" size={13} color={colors.mutedForeground} />
         <Text style={[localStyles.cardFooterText, { color: colors.mutedForeground }]}>Tap to view, edit or delete</Text>
@@ -265,6 +266,7 @@ function MyAdvertDetail({
               {advert.level ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View> : null}
               {advert.teamGender ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.teamGender}</Text></View> : null}
               {advert.playerGender ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.playerGender}</Text></View> : null}
+              {advert.focusArea ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.focusArea}</Text></View> : null}
               {advert.ageGroup ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.ageGroup}</Text></View> : null}
               {advert.preferredAge ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>Age {advert.preferredAge}</Text></View> : null}
               {advert.trialRequired ? <View style={[localStyles.chip, { backgroundColor: colors.amberSoft }]}><Text style={[localStyles.chipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
@@ -441,6 +443,7 @@ export default function PostScreen() {
   const [scheduleNote, setScheduleNote] = useState("");
   const [trialSlots, setTrialSlots] = useState<TrialSlot[]>([{ date: "", timeFrom: "", timeTo: "" }]);
   const [coachRole, setCoachRole] = useState("Head Coach");
+  const [focusArea, setFocusArea] = useState("");
   const [coachExperienceLevel, setCoachExperienceLevel] = useState("");
   const [coachPositionTypes, setCoachPositionTypes] = useState<string[]>([]);
   const [coachSalaryText, setCoachSalaryText] = useState("");
@@ -497,7 +500,7 @@ export default function PostScreen() {
       rolePhrase = "Player Trials by Club";
     } else if (type === "coach-wanted") {
       middleSlot = coachRole.trim();
-      rolePhrase = "Staff Wanted by Club";
+      rolePhrase = "Wanted for Club";
     } else if (type === "player-looking") {
       middleSlot = positionLabel;
       rolePhrase = "Player Looking for Club";
@@ -508,10 +511,12 @@ export default function PostScreen() {
 
     const locationLabel = suburb.trim();
     const ending = locationLabel ? `in ${[locationLabel, state].filter(Boolean).join(" ")}` : "";
-    const parts = [genderLabel, ageLabel, middleSlot, sportLabel, rolePhrase].filter(Boolean);
+    const parts = isCoachWanted
+      ? [genderLabel, sportLabel, focusArea, middleSlot, rolePhrase].filter(Boolean)
+      : [genderLabel, ageLabel, middleSlot, sportLabel, rolePhrase].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim();
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender]);
+  }, [sport, type, ageGroup, focusArea, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender]);
 
   const loadAdvertForEdit = (advert: Advert) => {
     setEditingId(advert.id);
@@ -540,6 +545,7 @@ export default function PostScreen() {
     setScheduleNote(advert.scheduleNote || "");
     setTrialSlots(advert.trialSlots?.length ? advert.trialSlots : [{ date: "", timeFrom: "", timeTo: "" }]);
     setCoachRole(advert.coachRole || "");
+    setFocusArea(advert.focusArea || "");
     setCoachExperienceLevel(advert.coachExperienceLevel || "");
     setCoachPositionTypes(advert.coachPositionTypes ?? []);
     setCoachSalaryText(advert.coachSalary ? String(advert.coachSalary) : "");
@@ -640,21 +646,22 @@ export default function PostScreen() {
   );
   const hasTrialSlotErrors = trialSlotOrderErrors.some(Boolean) || trialSlotDuplicates.some(Boolean);
   const trialSlotsOk = !isClubTrials || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors);
-  const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && coachExperienceLevel.trim().length > 0 && coachPositionTypes.length > 0);
+  const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && focusArea.trim().length > 0 && coachExperienceLevel.trim().length > 0 && coachPositionTypes.length > 0);
   const teamGenderOk = !isPlayersWanted && !isClubTrials && !isCoachWanted || teamGender.trim().length > 0;
 
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && ageGroup !== null && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk;
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && (isCoachWanted ? focusArea.trim().length > 0 : ageGroup !== null) && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk;
 
   const validationErrors: string[] = [];
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
   if (state.trim().length <= 1) validationErrors.push("State is missing — add it to your profile");
-  if (ageGroup === null) validationErrors.push("Age Group must be selected");
+  if (!isCoachWanted && ageGroup === null) validationErrors.push("Age Group must be selected");
   if (description.trim().length <= 10) validationErrors.push("Additional Details must be at least 10 characters");
   if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick TBD)");
   if (showSchedule && !gameDaysOk) validationErrors.push("Game days must be selected (or tick TBD)");
   if (isClubTrials && trialSlots[0].date.trim().length === 0) validationErrors.push("At least one trial date is required");
   if (isClubTrials && hasTrialSlotErrors) validationErrors.push("Trial dates must be in chronological order with no duplicates");
-  if (isCoachWanted && !coachRole) validationErrors.push("Coach role must be selected");
+  if (isCoachWanted && !coachRole) validationErrors.push("Club role must be selected");
+  if (isCoachWanted && !focusArea) validationErrors.push("Focus area must be selected");
   if (isCoachWanted && !coachExperienceLevel) validationErrors.push("Experience level must be selected");
   if (isCoachWanted && coachPositionTypes.length === 0) validationErrors.push("Position type must be selected");
   if ((isPlayersWanted || isClubTrials || isCoachWanted) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
@@ -727,6 +734,7 @@ export default function PostScreen() {
     setScheduleNote("");
     setTrialSlots([{ date: "", timeFrom: "", timeTo: "" }]);
     setCoachRole("Head Coach");
+    setFocusArea("");
     setCoachExperienceLevel("");
     setCoachPositionTypes([]);
     setCoachSalaryText("");
@@ -758,7 +766,7 @@ export default function PostScreen() {
   }
 
   const submit = () => {
-    if (!canSubmit || !ageGroup) return;
+    if (!canSubmit || (isCoachWanted ? focusArea.trim().length === 0 : !ageGroup)) return;
     if (allowedSports.length && !allowedSports.includes(sport)) return;
 
     // Gate: free-tier advert limit
@@ -783,7 +791,7 @@ export default function PostScreen() {
         : trainingTbd && gameTbd ? "TBD" : [trainingDays.join("/") || "TBD", gameDays.join("/") || "TBD"].join(" | "),
       description,
       needs: isPlayersWanted ? "Players wanted" : isClubTrials ? "Club trials" : isCoachWanted ? "Coach wanted" : "Player looking",
-      ageGroup: ageGroup.label,
+      ageGroup: ageGroup?.label,
       preferredAge: preferredAge ?? undefined,
       positions: showCoachTitle ? [] : positions,
       coachTitle: showCoachTitle ? coachTitle : undefined,
@@ -798,6 +806,7 @@ export default function PostScreen() {
       gameTbd,
       scheduleNote: isPlayerLooking ? scheduleNote.trim() || undefined : undefined,
       trialSlots: isClubTrials ? trialSlots.filter((s) => s.date.trim()) : undefined,
+      focusArea: isCoachWanted ? focusArea || undefined : undefined,
       coachRole: isCoachWanted ? coachRole || undefined : undefined,
       coachExperienceLevel: isCoachWanted ? coachExperienceLevel || undefined : undefined,
       coachPositionTypes: isCoachWanted ? coachPositionTypes : undefined,
@@ -1031,6 +1040,18 @@ export default function PostScreen() {
             ))}
           </View>
 
+          {/* ── Club Role / Coach Role (first for coach-wanted) ── */}
+          {isCoachWanted && (
+            <>
+              <FormLabel text="Club Role" required />
+              <View style={localStyles.pillRow}>
+                {COACH_ROLES.map((r) => (
+                  <Pill key={r} label={r} active={coachRole === r} onPress={() => setCoachRole(r)} />
+                ))}
+              </View>
+            </>
+          )}
+
           <FormLabel text="Sport" />
           <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>{activeProfile === "club" ? "Clubs can only post for their single club sport." : "Only your selected sports are available here."}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={localStyles.sportPickerScroll}>
@@ -1053,17 +1074,30 @@ export default function PostScreen() {
             <Text style={[localStyles.titlePreviewHint, { color: colors.mutedForeground }]}>Location is taken from your profile</Text>
           </View>
 
-          <FormLabel text="Age Group" required />
-          <View style={{ gap: 6 }}>
-            {AGE_GROUPS.map((g) => (
-              <Pressable key={g.label} onPress={() => { setAgeGroup(g); setPreferredAge(null); }} style={[localStyles.ageGroupRow, { backgroundColor: ageGroup?.label === g.label ? colors.primary : colors.secondary, borderColor: ageGroup?.label === g.label ? colors.primary : colors.border }] }>
-                <Text style={[localStyles.ageGroupText, { color: ageGroup?.label === g.label ? "#FFF" : colors.secondaryForeground }]}>{g.label}</Text>
-                {ageGroup?.label === g.label ? <Feather name="check" color="#FFF" size={14} /> : null}
-              </Pressable>
-            ))}
-          </View>
+          {isCoachWanted ? (
+            <>
+              <FormLabel text="Focus Area" required />
+              <View style={localStyles.pillRow}>
+                {FOCUS_AREAS.map((f) => (
+                  <Pill key={f} label={f} active={focusArea === f} onPress={() => setFocusArea(f)} />
+                ))}
+              </View>
+            </>
+          ) : (
+            <>
+              <FormLabel text="Age Group" required />
+              <View style={{ gap: 6 }}>
+                {AGE_GROUPS.map((g) => (
+                  <Pressable key={g.label} onPress={() => { setAgeGroup(g); setPreferredAge(null); }} style={[localStyles.ageGroupRow, { backgroundColor: ageGroup?.label === g.label ? colors.primary : colors.secondary, borderColor: ageGroup?.label === g.label ? colors.primary : colors.border }] }>
+                    <Text style={[localStyles.ageGroupText, { color: ageGroup?.label === g.label ? "#FFF" : colors.secondaryForeground }]}>{g.label}</Text>
+                    {ageGroup?.label === g.label ? <Feather name="check" color="#FFF" size={14} /> : null}
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
 
-          {ageGroup !== null && (isPlayersWanted || isClubTrials || isCoachWanted) && (
+          {(isCoachWanted || (ageGroup !== null && (isPlayersWanted || isClubTrials || isCoachWanted))) && (
             <>
               <FormLabel text="Team Gender" required />
               <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
@@ -1109,7 +1143,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {ageGroup !== null && (
+          {ageGroup !== null && !isCoachWanted && (
             <>
               <FormLabel text="Preferred age (optional)" />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={localStyles.sportPickerScroll}>
@@ -1230,13 +1264,6 @@ export default function PostScreen() {
 
           {isCoachWanted && (
             <>
-              <FormLabel text="Coach role" required />
-              <View style={localStyles.pillRow}>
-                {COACH_ROLES.map((r) => (
-                  <Pill key={r} label={r} active={coachRole === r} onPress={() => setCoachRole(r)} />
-                ))}
-              </View>
-
               <FormLabel text="Experience level required" required />
               <View style={{ gap: 6 }}>
                 {COACH_EXPERIENCE_LEVELS.map((l) => (

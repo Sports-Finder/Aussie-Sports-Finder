@@ -31,6 +31,7 @@ export const advertsTable = pgTable("adverts", {
   gameTbd: boolean("game_tbd"),
   scheduleNote: text("schedule_note"),
   trialSlots: jsonb("trial_slots").$type<{ date: string; timeFrom: string; timeTo: string }[]>(),
+  focusArea: text("focus_area"),
   coachRole: text("coach_role"),
   coachExperienceLevel: text("coach_experience_level"),
   coachPositionTypes: jsonb("coach_position_types").$type<string[]>(),

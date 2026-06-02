@@ -397,7 +397,12 @@ function AdvertsSection() {
                     <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{advert.availability}</Text>
                   </View>
                 ) : null}
-                {advert.ageGroup ? (
+                {advert.focusArea ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="users" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Focus area: {advert.focusArea}</Text>
+                  </View>
+                ) : advert.ageGroup ? (
                   <View style={styles.metaRow}>
                     <Feather name="users" size={12} color={colors.mutedForeground} />
                     <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Age group: {advert.ageGroup}</Text>
@@ -579,6 +584,7 @@ function AdvertEditModal({ advert, onClose, onSave }: { advert: Advert; onClose:
   const [gameTimeFrom, setGameTimeFrom] = useState(advert.gameTimeFrom ?? "");
   const [gameTimeTo, setGameTimeTo] = useState(advert.gameTimeTo ?? "");
   const [scheduleNote, setScheduleNote] = useState(advert.scheduleNote ?? "");
+  const [focusArea, setFocusArea] = useState(advert.focusArea ?? "");
   const [coachRole, setCoachRole] = useState(advert.coachRole ?? "");
   const [coachExperienceLevel, setCoachExperienceLevel] = useState(advert.coachExperienceLevel ?? "");
   const [coachPositionTypes, setCoachPositionTypes] = useState(advert.coachPositionTypes?.join(", ") ?? "");
@@ -679,6 +685,7 @@ function AdvertEditModal({ advert, onClose, onSave }: { advert: Advert; onClose:
             gameTimeFrom: gameTimeFrom.trim() || undefined,
             gameTimeTo: gameTimeTo.trim() || undefined,
             scheduleNote: scheduleNote.trim() || undefined,
+            focusArea: focusArea.trim() || undefined,
             coachRole: coachRole.trim() || undefined,
             coachExperienceLevel: coachExperienceLevel.trim() || undefined,
             coachPositionTypes: coachPositionTypes.split(",").map((s) => s.trim()).filter(Boolean),

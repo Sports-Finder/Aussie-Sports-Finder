@@ -111,7 +111,7 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
         <Text style={[styles.adTitle, { color: colors.foreground }]}>{advert.title}</Text>
         {advert.teamGender ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.teamGender}</Text> : null}
         {advert.playerGender ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.playerGender}</Text> : null}
-        {advert.ageGroup ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.ageGroup}</Text> : null}
+        {advert.focusArea ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.focusArea}</Text> : advert.ageGroup ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.ageGroup}</Text> : null}
         <Text style={[styles.adExpiry, { color: expiry.expired ? "#D9534F" : colors.mutedForeground }]}>{expiry.label}</Text>
       </View>
     </Pressable>
@@ -220,6 +220,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}>
                 <Text style={[styles.detailChipText, { color: colors.accentForeground }]}>{advert.distanceKm} km away</Text>
               </View>
+              {advert.focusArea ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.focusArea}</Text></View> : null}
               {advert.ageGroup ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.ageGroup}</Text></View> : null}
               {advert.preferredAge ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>Age {advert.preferredAge}</Text></View> : null}
               {advert.trialRequired ? <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}><Text style={[styles.detailChipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
