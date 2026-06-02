@@ -8,6 +8,7 @@ import {
 import { ClerkLoaded, ClerkLoading, ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Notifications from "expo-notifications";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
@@ -31,6 +32,18 @@ import {
   useSubscription,
 } from "@/lib/revenuecat";
 import colors from "@/constants/colors";
+
+// Configure how local notifications are presented when received in the foreground.
+// Must be called before any notification is scheduled or received.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 // Initialize RevenueCat SDK at module load time (before any React trees mount).
 // Track whether configure() succeeded so SubscriptionSync doesn't mark the

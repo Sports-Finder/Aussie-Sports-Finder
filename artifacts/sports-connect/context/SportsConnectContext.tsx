@@ -1234,21 +1234,33 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       setCurrentAccount((acc) => acc ? { ...acc, lastAdvertClosedAt: closedAt } : acc);
 
       // Schedule a local push notification at the 72h unlock time.
+      // Request permissions first — required on iOS and Android 13+.
       try {
         const prevId = await AsyncStorage.getItem("sports-connect-cooldown-notif-id");
         if (prevId) await Notifications.cancelScheduledNotificationAsync(prevId).catch(() => undefined);
-        const unlockDate = new Date(Date.now() + 72 * 60 * 60 * 1000);
-        const notifId = await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Posting unlocked!",
-            body: "You can now post a new advert — tap to get started.",
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: unlockDate,
-          },
-        });
-        await AsyncStorage.setItem("sports-connect-cooldown-notif-id", notifId);
+
+        // `PermissionResponse.granted` exists at runtime but is missing from
+        // the d.ts in this expo-notifications version — cast to access it.
+        type PermResult = { granted: boolean };
+        const perms = await (Notifications.getPermissionsAsync() as unknown as Promise<PermResult>);
+        const finalPerms = perms.granted
+          ? perms
+          : await (Notifications.requestPermissionsAsync() as unknown as Promise<PermResult>);
+
+        if (finalPerms.granted) {
+          const unlockDate = new Date(Date.now() + 72 * 60 * 60 * 1000);
+          const notifId = await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Posting unlocked!",
+              body: "You can now post a new advert — tap to get started.",
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.DATE,
+              date: unlockDate,
+            },
+          });
+          await AsyncStorage.setItem("sports-connect-cooldown-notif-id", notifId);
+        }
       } catch (_) { /* notifications not available or not permitted */ }
     }
 
