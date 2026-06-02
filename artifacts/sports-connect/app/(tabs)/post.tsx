@@ -662,11 +662,11 @@ export default function PostScreen() {
     <ScreenShell>
       <ScrollView ref={scrollRef} contentContainerStyle={[localStyles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 116 }]} keyboardShouldPersistTaps="handled">
         <View style={localStyles.headerRow}>
-          <View>
+          <View style={{ flex: 1, paddingRight: 12 }}>
             <Text style={[localStyles.kicker, { color: colors.primary }]}>Post advert</Text>
             <Text style={[localStyles.title, { color: colors.foreground }]}>Post Your Advertisement</Text>
           </View>
-          <View style={[localStyles.roleBadge, { backgroundColor: colors.pitchSoft }]}> 
+          <View style={[localStyles.roleBadge, { backgroundColor: colors.pitchSoft, flexShrink: 0 }]}> 
             <Feather name={activeProfile === "club" ? "shield" : "user"} color={colors.primary} size={16} />
             <Text style={[localStyles.roleBadgeText, { color: colors.primary }]}>{activeProfile}</Text>
           </View>
