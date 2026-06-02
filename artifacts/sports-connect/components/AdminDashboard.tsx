@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React, { createContext, useContext, useMemo, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChatRoom } from "@/app/(tabs)/messages";
@@ -1116,7 +1116,15 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
               <Text style={[styles.badgeText, { color: "#92400E" }]}>Pending</Text>
             </View>
           </View>
-          <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>{link.url}</Text>
+          <Pressable
+            onPress={() => {
+              Linking.openURL(link.url).catch(() => {
+                Alert.alert("Cannot open link", "The URL could not be opened in a browser.");
+              });
+            }}
+          >
+            <Text style={[styles.metaText, { color: colors.primary }]} numberOfLines={1}>{link.url}</Text>
+          </Pressable>
           <View style={styles.actionRow}>
             <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => moderateHighlightLink(link.id, "approved")} />
             <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => moderateHighlightLink(link.id, "rejected")} />
