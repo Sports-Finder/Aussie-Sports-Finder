@@ -94,6 +94,7 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
           <Text style={[styles.adDistance, { color: colors.mutedForeground }]}>{advert.distanceKm} km</Text>
         </View>
         <Text style={[styles.adTitle, { color: colors.foreground }]}>{advert.title}</Text>
+        {advert.teamGender ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.teamGender}</Text> : null}
         {advert.ageGroup ? <Text style={[styles.adText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.ageGroup}</Text> : null}
         <Text style={[styles.adExpiry, { color: expiry.expired ? "#D9534F" : colors.mutedForeground }]}>{expiry.label}</Text>
       </View>
@@ -182,6 +183,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                 <Text style={[styles.detailChipText, { color: theme.primary }]}>{advert.sport}</Text>
               </View>
               {advert.level ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View> : null}
+              {advert.teamGender ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.teamGender}</Text></View> : null}
               <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}>
                 <Text style={[styles.detailChipText, { color: colors.accentForeground }]}>{advert.distanceKm} km away</Text>
               </View>
@@ -270,6 +272,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
             ) : null}
 
             {/* ── Standard fields ── */}
+            {advert.teamGender ? <DetailRow label="Team Gender" value={advert.teamGender} /> : null}
             <DetailRow label="Level" value={advert.level} />
             {advert.availability && advert.availability !== "TBD | TBD" && !trainingSchedule && !gameSchedule
               ? <DetailRow label="Availability" value={advert.availability} />

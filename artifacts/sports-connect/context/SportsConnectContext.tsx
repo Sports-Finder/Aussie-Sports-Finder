@@ -131,6 +131,7 @@ export type Advert = {
   feesNegotiable?: boolean;
   feesFree?: boolean;
   trialRequired?: boolean;
+  teamGender?: string;
   status?: "active" | "closed";
   closedAt?: string;
   closedReason?: string;
@@ -284,7 +285,7 @@ type SportsConnectState = {
   getImageStatus: (imageId?: string) => ImageStatus | undefined;
 };
 
-const storageKey = "sports-connect-state-v8-clean";
+const storageKey = "sports-connect-state-v9-team-gender";
 const adminStorageKey = "sports-connect-admin-v1";
 const sportsRegistryKey = "sports-connect-registry-v1";
 const defaultAdminPasscode = "admin6969";
