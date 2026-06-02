@@ -458,11 +458,10 @@ export default function PostScreen() {
   }, [allowedSportsKey, currentAccount?.defaultSport, selectedSport]);
 
   useEffect(() => {
-    if (editingId) return;
     const loc = currentAccount?.location ?? "";
     setSuburb(stripStateFromLocation(loc));
     setState(stateFromLocation(loc));
-  }, [currentAccount?.id, editingId]);
+  }, [currentAccount?.id]);
 
   useEffect(() => {
     const nextType = advertTypesByRole[activeProfile][0].value;
@@ -483,30 +482,41 @@ export default function PostScreen() {
 
   useEffect(() => {
     const sportLabel = sport.includes(" (") ? sport.split(" (")[0] : sport;
-    const roleLabel =
-      type === "players-wanted" ? "Players wanted" :
-      type === "club-trials" ? "Club trials" :
-      type === "coach-wanted" ? (coachRole || "Staff Wanted") :
-      type === "coach-looking" ? "Coach seeking club" :
-      "Player seeking club";
     const ageLabel = ageGroup ? ageGroup.label.replace(/\(.*\)/, "").trim() : "";
-    const coachTitleLabel = type === "coach-looking" ? coachTitle : "";
+    const isClubSide = type === "players-wanted" || type === "club-trials" || type === "coach-wanted";
+    const genderLabel = isClubSide ? teamGender.trim() : playerGender.trim();
     const positionLabel = positions.length === 1 ? positions[0] : "";
-    const levelLabel = level.trim() && level !== "Competitive amateur" ? level.trim() : "";
+
+    let middleSlot = "";
+    let rolePhrase = "";
+    if (type === "players-wanted") {
+      middleSlot = positionLabel;
+      rolePhrase = "Players Wanted by Club";
+    } else if (type === "club-trials") {
+      middleSlot = positionLabel;
+      rolePhrase = "Player Trials by Club";
+    } else if (type === "coach-wanted") {
+      middleSlot = coachRole.trim();
+      rolePhrase = "Staff Wanted by Club";
+    } else if (type === "player-looking") {
+      middleSlot = positionLabel;
+      rolePhrase = "Player Looking for Club";
+    } else if (type === "coach-looking") {
+      middleSlot = coachTitle.trim();
+      rolePhrase = "Coach Looking for Club";
+    }
+
     const locationLabel = suburb.trim();
-    const genderLabel = (isPlayersWanted || isClubTrials || isCoachWanted) ? teamGender.trim() : playerGender.trim();
     const ending = locationLabel ? `in ${[locationLabel, state].filter(Boolean).join(" ")}` : "";
-    const parts = [genderLabel, ageLabel, coachTitleLabel, positionLabel, levelLabel, roleLabel, sportLabel].filter(Boolean);
-    const titleBody = parts.join(" ").replace(/\s+/g, " ").trim().split(" ").slice(0, 10).join(" ");
+    const parts = [genderLabel, ageLabel, middleSlot, sportLabel, rolePhrase].filter(Boolean);
+    const titleBody = parts.join(" ").replace(/\s+/g, " ").trim();
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, coachTitle, coachRole, positions, level, suburb, state, teamGender, playerGender]);
+  }, [sport, type, ageGroup, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender]);
 
   const loadAdvertForEdit = (advert: Advert) => {
     setEditingId(advert.id);
     setType(advert.type);
     setSport(advert.sport);
-    setSuburb(stripStateFromLocation(advert.location));
-    setState(stateFromLocation(advert.location));
     setLevel(advert.level || "Competitive amateur");
     setDescription(advert.description || "");
     setPlayerDescription(advert.playerDescription || "");
@@ -636,8 +646,8 @@ export default function PostScreen() {
   const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && ageGroup !== null && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk;
 
   const validationErrors: string[] = [];
-  if (suburb.trim().length <= 1) validationErrors.push("Location (suburb or town) is required");
-  if (state.trim().length <= 1) validationErrors.push("State must be selected");
+  if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
+  if (state.trim().length <= 1) validationErrors.push("State is missing — add it to your profile");
   if (ageGroup === null) validationErrors.push("Age Group must be selected");
   if (description.trim().length <= 10) validationErrors.push("Additional Details must be at least 10 characters");
   if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick TBD)");
@@ -1031,6 +1041,18 @@ export default function PostScreen() {
             ))}
           </ScrollView>
 
+          {/* ── Generated title preview ── */}
+          <View style={[localStyles.titlePreviewCard, { backgroundColor: colors.secondary, borderColor: activeTheme.soft }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <Feather name="lock" size={13} color={colors.mutedForeground} />
+              <Text style={[localStyles.titlePreviewLabel, { color: colors.mutedForeground }]}>Your advert title</Text>
+            </View>
+            <Text style={[localStyles.titlePreviewText, { color: colors.foreground }]} numberOfLines={3}>
+              {title || "Fill in the form below to generate your title"}
+            </Text>
+            <Text style={[localStyles.titlePreviewHint, { color: colors.mutedForeground }]}>Location is taken from your profile</Text>
+          </View>
+
           <FormLabel text="Age Group" required />
           <View style={{ gap: 6 }}>
             {AGE_GROUPS.map((g) => (
@@ -1255,22 +1277,8 @@ export default function PostScreen() {
 
           <CheckRow label="Trial required" value={trialRequired} onToggle={() => setTrialRequired(!trialRequired)} />
 
-          <FormLabel text="Location (suburb)" required />
-          <Field value={suburb} onChangeText={setSuburb} label="" placeholder="e.g. Richmond" />
-          <FormLabel text="State" required />
-          <View style={localStyles.stateRow}>
-            {AU_STATES.map((s) => (
-              <Pressable key={s} onPress={() => setState(s)} style={[localStyles.stateChip, { backgroundColor: state === s ? colors.primary : colors.secondary }]}>
-                <Text style={[localStyles.stateChipText, { color: state === s ? "#FFF" : colors.secondaryForeground }]}>{s}</Text>
-              </Pressable>
-            ))}
-          </View>
-
           <FormLabel text="Additional details" required />
           <Field value={description} onChangeText={setDescription} label="" multiline placeholder="Describe what you're looking for, your experience, goals…" />
-
-          <FormLabel text="Generated title (tap to edit)" />
-          <Field value={title} onChangeText={setTitle} label="" />
         </View>
 
         {submitted && !editingId ? (
@@ -1409,9 +1417,10 @@ const localStyles = StyleSheet.create({
   timeInput: { borderWidth: 1, borderRadius: 12, minHeight: 44, paddingHorizontal: 12, fontWeight: "600", fontSize: 14 },
   addSlotButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 14, padding: 12 },
   addSlotText: { fontWeight: "700", fontSize: 14 },
-  stateRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
-  stateChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
-  stateChipText: { fontWeight: "700", fontSize: 13 },
+  titlePreviewCard: { borderWidth: 1, borderRadius: 16, padding: 14, marginTop: 8, marginBottom: 4, gap: 4 },
+  titlePreviewLabel: { fontWeight: "600", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
+  titlePreviewText: { fontWeight: "700", fontSize: 15, lineHeight: 22 },
+  titlePreviewHint: { fontWeight: "400", fontSize: 12, marginTop: 4, fontStyle: "italic" },
   successBox: { borderWidth: 1, borderRadius: 24, padding: 20, alignItems: "center", gap: 8 },
   successTitle: { fontWeight: "800", fontSize: 18 },
   successText: { fontWeight: "500", fontSize: 14, lineHeight: 21, textAlign: "center" },
