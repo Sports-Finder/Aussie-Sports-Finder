@@ -5,7 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { ClerkLoaded, ClerkLoading, ClerkProvider, useAuth } from "@clerk/expo";
+import { ClerkLoaded, ClerkLoading, ClerkProvider, useAuth, useUser } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
@@ -45,11 +45,26 @@ const BANNED_EMAIL_MSG = "Your account has been banned by an administrator and a
 
 function AppContent() {
   const { isSignedIn, isLoaded, getToken, signOut } = useAuth();
-  const { currentAccount, isHydrated, bannedEmails } = useSportsConnect();
+  const { user } = useUser();
+  const { currentAccount, isHydrated, bannedEmails, autoRestoreSession } = useSportsConnect();
 
   useEffect(() => {
     setAuthTokenGetter(() => getToken());
   }, [getToken]);
+
+  // Returning user: Clerk is authenticated but currentAccount was cleared by signOut.
+  // Search the accounts list by email and restore the session without showing setup form.
+  useEffect(() => {
+    if (!isSignedIn || !isHydrated || currentAccount || !user) return;
+    const email = user.primaryEmailAddress?.emailAddress ?? user.emailAddresses?.[0]?.emailAddress;
+    if (!email) return;
+    const externalAccount = user.externalAccounts?.[0];
+    const authMethod = externalAccount?.provider === "google" ? "google"
+      : externalAccount?.provider === "apple" ? "apple"
+      : "email";
+    const socialId = externalAccount?.providerUserId ?? undefined;
+    autoRestoreSession(email, authMethod, socialId);
+  }, [isSignedIn, isHydrated, currentAccount, user, autoRestoreSession]);
 
   // Detect returning users whose email was banned after account creation
   useEffect(() => {

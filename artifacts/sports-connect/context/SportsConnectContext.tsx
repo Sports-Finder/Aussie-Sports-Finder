@@ -238,6 +238,7 @@ type SportsConnectState = {
   bannedEmails: string[];
   loginWithEmail: (email: string, password: string) => boolean;
   loginWithSocial: (authMethod: AuthMethod, socialId: string) => boolean;
+  autoRestoreSession: (email: string, authMethod: AuthMethod, socialId?: string) => boolean;
   createAccount: (draft: DraftAccount) => boolean;
   signOut: () => void;
   signOutResetToken: number;
@@ -876,6 +877,35 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return true;
   };
 
+  const autoRestoreSession = (emailInput: string, authMethod: AuthMethod, socialId?: string): boolean => {
+    const normalizedEmail = emailInput.toLowerCase().trim();
+    const match = accounts.find((acc) => acc.email.toLowerCase() === normalizedEmail);
+    if (!match) return false;
+    if (match.status === "banned" || match.status === "closed") return false;
+    setCurrentAccount(match);
+    setSelectedSport(match.defaultSport);
+    setActiveProfile(match.role === "club" ? "club" : "player");
+    if (match.role === "club") {
+      setClubProfile((current) => ({
+        ...current,
+        name: match.clubName || current.name,
+        sport: match.defaultSport,
+        location: match.location || current.location,
+        mapAddress: match.clubAddress || current.mapAddress,
+        imageId: match.profileImageId,
+      }));
+    } else {
+      setPlayerProfile((current) => ({
+        ...current,
+        name: match.role === "guardian" ? match.playerName || current.name : match.fullName || match.playerName || current.name,
+        sports: match.sports.join(", "),
+        location: match.location || current.location,
+        imageId: match.profileImageId,
+      }));
+    }
+    return true;
+  };
+
   const updateAccount = (profile: Partial<UserAccount>) => {
     setCurrentAccount((current) => {
       if (!current) return current;
@@ -1440,6 +1470,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     bannedEmails,
     loginWithEmail,
     loginWithSocial,
+    autoRestoreSession,
     createAccount,
     signOut,
     signOutResetToken,
