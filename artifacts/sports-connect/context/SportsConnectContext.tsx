@@ -226,6 +226,10 @@ type SportsConnectState = {
   addModerator: (mod: Omit<ModeratorAccount, "id">) => boolean;
   deleteModerator: (modId: string) => void;
   isHydrated: boolean;
+  showMemberStats: boolean;
+  toggleShowMemberStats: () => void;
+  showSportRequestField: boolean;
+  toggleShowSportRequestField: () => void;
   setSelectedSport: (sport: string) => void;
   setActiveProfile: (profile: ProfileType) => void;
   requestSport: (name: string) => void;
@@ -510,6 +514,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [moderators, setModerators] = useState<ModeratorAccount[]>([]);
   const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
   const [bannedEmails, setBannedEmails] = useState<string[]>([]);
+  const [showMemberStats, setShowMemberStats] = useState(false);
+  const [showSportRequestField, setShowSportRequestField] = useState(true);
   const [signOutResetToken, setSignOutResetToken] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -538,16 +544,18 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     AsyncStorage.getItem(adminStorageKey).then((stored) => {
       if (!stored) return;
-      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[]; moderators?: ModeratorAccount[] };
+      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[]; moderators?: ModeratorAccount[]; showMemberStats?: boolean; showSportRequestField?: boolean };
       if (parsed.adminPasscode) setAdminPasscode(parsed.adminPasscode);
       if (Array.isArray(parsed.bannedEmails)) setBannedEmails(parsed.bannedEmails);
       if (Array.isArray(parsed.moderators)) setModerators(parsed.moderators);
+      if (typeof parsed.showMemberStats === "boolean") setShowMemberStats(parsed.showMemberStats);
+      if (typeof parsed.showSportRequestField === "boolean") setShowSportRequestField(parsed.showSportRequestField);
     }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails, moderators })).catch(() => undefined);
-  }, [adminPasscode, bannedEmails, moderators]);
+    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField })).catch(() => undefined);
+  }, [adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField]);
 
   useEffect(() => {
     let cancelled = false;
@@ -785,9 +793,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setSelectedSport(defaultState.selectedSport);
     setActiveProfile(defaultState.activeProfile);
     setBannedEmails([]);
+    setShowMemberStats(false);
+    setShowSportRequestField(true);
     setIsAdmin(false);
     setSignOutResetToken((t) => t + 1);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const toggleShowMemberStats = () => {
+    setShowMemberStats((current) => !current);
+  };
+
+  const toggleShowSportRequestField = () => {
+    setShowSportRequestField((current) => !current);
   };
 
   const loginWithEmail = (emailInput: string, passwordInput: string): boolean => {
@@ -1458,6 +1476,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     addModerator,
     deleteModerator,
     isHydrated,
+    showMemberStats,
+    toggleShowMemberStats,
+    showSportRequestField,
+    toggleShowSportRequestField,
     setSelectedSport,
     setActiveProfile,
     requestSport,
@@ -1508,7 +1530,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     getImageUri,
     getImageStatus,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

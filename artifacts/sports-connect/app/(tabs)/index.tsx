@@ -352,7 +352,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
 export default function DiscoverScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { adverts, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport, currentAccount, isAdmin } = useSportsConnect();
+  const { adverts, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport, currentAccount, isAdmin, accounts, showMemberStats, showSportRequestField } = useSportsConnect();
   const [filter, setFilter] = useState<Filter>("all");
   const [stateFilter, setStateFilter] = useState<AustralianStateFilter>("All");
   const [selected, setSelected] = useState<Advert | null>(null);
@@ -368,7 +368,7 @@ export default function DiscoverScreen() {
     if (filter === "all") return true;
     if (filter === "near") return advert.distanceKm <= notificationSettings.radiusKm;
     return advert.type === filter;
-  }), [adverts, currentAccount, filter, notificationSettings.radiusKm, selectedSport, stateFilter, isAdmin]);
+  }), [adverts, currentAccount, filter, notificationSettings.radiusKm, selectedSport, stateFilter, isAdmin, accounts]);
 
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
 
@@ -431,13 +431,34 @@ export default function DiscoverScreen() {
               </Pressable>
             ))}
           </ScrollView>
-          <View style={styles.addSportRow}>
-            <TextInput value={sportRequest} onChangeText={setSportRequest} placeholder="Add a sport for admin approval" placeholderTextColor={colors.mutedForeground} style={[styles.addSportInput, { backgroundColor: colors.background, borderColor: activeTheme?.soft ?? colors.border, color: colors.foreground }]} />
-            <Pressable onPress={submitSportRequest} style={({ pressed }) => [styles.addSportButton, { backgroundColor: activeTheme?.button ?? colors.primary, opacity: pressed ? 0.75 : 1 }]}>
-              <Feather name="plus" color="#FFFFFF" size={18} />
-            </Pressable>
-          </View>
+          {showSportRequestField && (
+            <View style={styles.addSportRow}>
+              <TextInput value={sportRequest} onChangeText={setSportRequest} placeholder="Add a sport for admin approval" placeholderTextColor={colors.mutedForeground} style={[styles.addSportInput, { backgroundColor: colors.background, borderColor: activeTheme?.soft ?? colors.border, color: colors.foreground }]} />
+              <Pressable onPress={submitSportRequest} style={({ pressed }) => [styles.addSportButton, { backgroundColor: activeTheme?.button ?? colors.primary, opacity: pressed ? 0.75 : 1 }]}>
+                <Feather name="plus" color="#FFFFFF" size={18} />
+              </Pressable>
+            </View>
+          )}
         </View>
+
+        {showMemberStats && (
+          <View style={[styles.statsBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{accounts.filter((a) => a.role === "club").length}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Clubs</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{accounts.filter((a) => a.role === "player" || a.role === "guardian").length}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Players</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{accounts.filter((a) => a.role === "coach").length}</Text>
+              <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Coaches</Text>
+            </View>
+          </View>
+        )}
 
         <ImageBackground source={heroImage} imageStyle={styles.heroImage} style={styles.hero} resizeMode="cover">
           <View style={styles.heroOverlay} />
@@ -495,6 +516,11 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 14 },
   kicker: { fontWeight: "700", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 },
   title: { fontWeight: "700", fontSize: 34, lineHeight: 38, letterSpacing: -1, maxWidth: 290, marginTop: 4 },
+  statsBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderWidth: 1, borderRadius: 24, paddingVertical: 14, paddingHorizontal: 12, marginTop: 4 },
+  statItem: { alignItems: "center", gap: 2, flex: 1 },
+  statValue: { fontWeight: "800", fontSize: 22, letterSpacing: -0.5 },
+  statLabel: { fontWeight: "600", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 },
+  statDivider: { width: 1, height: 32, opacity: 0.6 },
   hero: { height: 178, borderRadius: 30, overflow: "hidden", justifyContent: "flex-end" },
   heroImage: { borderRadius: 30 },
   heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(5,24,22,0.45)" },
