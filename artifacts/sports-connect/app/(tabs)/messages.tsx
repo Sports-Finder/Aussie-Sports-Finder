@@ -334,6 +334,13 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
                 <Text style={[styles.deniedBannerText, { color: colors.mutedForeground }]}>Connection was not agreed — messaging disabled</Text>
               </View>
             </View>
+          ) : conversation.status === "closed" ? (
+            <View style={[styles.composer, { borderTopColor: "#EF4444", paddingBottom: insets.bottom + 10, borderTopWidth: 2 }]}>
+              <View style={[styles.deniedBanner, { backgroundColor: "#FEF2F2" }]}>
+                <Feather name="shield" color="#DC2626" size={16} />
+                <Text style={[styles.deniedBannerText, { color: "#DC2626" }]}>This chat has been closed by an admin and cannot be reopened</Text>
+              </View>
+            </View>
           ) : (
             <View style={[styles.composerWrap, { borderTopColor: isBroadcast ? colors.primary : colors.border, paddingBottom: insets.bottom + 10 }]}>
               {canBroadcast && (

@@ -105,7 +105,7 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
 
 function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void }) {
   const colors = useColors();
-  const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount, accounts } = useSportsConnect();
+  const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount, accounts, forbiddenConnections } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert.createdAt);
   const isOwnAdvert = !!(currentAccount?.id && advert.ownerAccountId && advert.ownerAccountId === currentAccount.id);
@@ -115,6 +115,13 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
   const firstPending = pendingConvs[0] ?? null;
   const myRequest = !isOwnAdvert ? advertConvs.find((c) => c.initiatorAccountId === currentAccount?.id) : undefined;
   const isConnected = !isOwnAdvert && myRequest?.status === "connected";
+  const isForbiddenPair = !isOwnAdvert && !!(currentAccount?.id && advert.ownerAccountId &&
+    forbiddenConnections.some((f) =>
+      f.advertId === advert.id &&
+      ((f.accountIdA === currentAccount.id && f.accountIdB === advert.ownerAccountId) ||
+       (f.accountIdA === advert.ownerAccountId && f.accountIdB === currentAccount.id))
+    )
+  );
 
   const posterLabel = isConnected
     ? advert.postedBy
@@ -321,6 +328,11 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                   </View>
                 )}
               </>
+            ) : myRequest?.status === "closed" || isForbiddenPair ? (
+              <View style={[styles.connectedBadge, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5", borderWidth: 1 }]}>
+                <Feather name="slash" color="#DC2626" size={18} />
+                <Text style={[styles.connectedText, { color: "#DC2626" }]}>Connection not available — this chat was closed by an admin</Text>
+              </View>
             ) : myRequest?.status === "pending" ? (
               <View style={[styles.connectedBadge, { backgroundColor: colors.amberSoft }]}>
                 <Feather name="clock" color="#F59E0B" size={18} />

@@ -153,6 +153,12 @@ export type Advert = {
   closedReason?: string;
 };
 
+export type ForbiddenConnection = {
+  advertId: string;
+  accountIdA: string;
+  accountIdB: string;
+};
+
 export type Conversation = {
   id: string;
   advertId: string;
@@ -161,7 +167,8 @@ export type Conversation = {
   initiatorAccountId?: string;
   clubName: string;
   playerName: string;
-  status: "pending" | "connected" | "denied";
+  status: "pending" | "connected" | "denied" | "closed";
+  closedByAdmin?: boolean;
   messages: Message[];
   hasUnread?: boolean;
   sport?: string;
@@ -276,6 +283,8 @@ type SportsConnectState = {
   adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string, deleteChats?: boolean) => Promise<void>;
   adminSendMessage: (conversationId: string, body: string) => Promise<void>;
   adminDeleteConversation: (conversationId: string) => Promise<void>;
+  adminCloseConversation: (conversationId: string) => Promise<void>;
+  forbiddenConnections: ForbiddenConnection[];
   adminApproveClub: (accountId: string) => Promise<void>;
   adminRejectClub: (accountId: string) => Promise<void>;
   resetClubApprovalAfterEdit: () => void;
@@ -540,6 +549,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [moderators, setModerators] = useState<ModeratorAccount[]>([]);
   const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
   const [bannedEmails, setBannedEmails] = useState<string[]>([]);
+  const [forbiddenConnections, setForbiddenConnections] = useState<ForbiddenConnection[]>([]);
   const [showMemberStats, setShowMemberStats] = useState(false);
   const [showSportRequestField, setShowSportRequestField] = useState(true);
   const [signOutResetToken, setSignOutResetToken] = useState(0);
@@ -570,18 +580,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     AsyncStorage.getItem(adminStorageKey).then((stored) => {
       if (!stored) return;
-      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[]; moderators?: ModeratorAccount[]; showMemberStats?: boolean; showSportRequestField?: boolean };
+      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[]; moderators?: ModeratorAccount[]; showMemberStats?: boolean; showSportRequestField?: boolean; forbiddenConnections?: ForbiddenConnection[] };
       if (parsed.adminPasscode) setAdminPasscode(parsed.adminPasscode);
       if (Array.isArray(parsed.bannedEmails)) setBannedEmails(parsed.bannedEmails);
       if (Array.isArray(parsed.moderators)) setModerators(parsed.moderators);
       if (typeof parsed.showMemberStats === "boolean") setShowMemberStats(parsed.showMemberStats);
       if (typeof parsed.showSportRequestField === "boolean") setShowSportRequestField(parsed.showSportRequestField);
+      if (Array.isArray(parsed.forbiddenConnections)) setForbiddenConnections(parsed.forbiddenConnections);
     }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField })).catch(() => undefined);
-  }, [adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField]);
+    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections })).catch(() => undefined);
+  }, [adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1126,6 +1137,44 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
   };
 
+  const adminCloseConversation = async (conversationId: string) => {
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return;
+    const advertTitle = conv.advertTitle ?? "this advert";
+    const noticeMsg: Message = {
+      id: makeId(),
+      sender: "them",
+      isAdmin: true,
+      body: `The Admin closed your chat for "${advertTitle}" due to violations of our conduct guidelines.`,
+      createdAt: now(),
+    };
+    setConversations((current) => current.map((c) =>
+      c.id === conversationId
+        ? { ...c, status: "closed", closedByAdmin: true, hasUnread: true, messages: [noticeMsg, ...c.messages] }
+        : c
+    ));
+    if (conv.ownerAccountId && conv.initiatorAccountId) {
+      const pair: ForbiddenConnection = {
+        advertId: conv.advertId,
+        accountIdA: conv.ownerAccountId,
+        accountIdB: conv.initiatorAccountId,
+      };
+      setForbiddenConnections((current) => {
+        const exists = current.some((f) =>
+          f.advertId === pair.advertId &&
+          ((f.accountIdA === pair.accountIdA && f.accountIdB === pair.accountIdB) ||
+           (f.accountIdA === pair.accountIdB && f.accountIdB === pair.accountIdA))
+        );
+        return exists ? current : [...current, pair];
+      });
+    }
+    try {
+      await api.createMessage(conversationId, { senderAccountId: "admin", sender: "them", body: noticeMsg.body, isAdmin: true });
+      await api.updateConversation(conversationId, { status: "closed" });
+    } catch (_) { /* silent */ }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
   const createAdvert = async (draft: DraftAdvert & { postedBy?: string; affiliatedClubId?: string }) => {
     const owner = draft.postedBy ?? (activeProfile === "club" ? clubProfile.name : playerProfile.name);
     const body = {
@@ -1178,6 +1227,14 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     if (pendingConnectionIds.current.has(advert.id)) return "";
     const existing = conversations.find((c) => c.advertId === advert.id && c.initiatorAccountId === currentAccount?.id);
     if (existing) return existing.id;
+    if (currentAccount?.id && advert.ownerAccountId) {
+      const blocked = forbiddenConnections.some((f) =>
+        f.advertId === advert.id &&
+        ((f.accountIdA === currentAccount.id && f.accountIdB === advert.ownerAccountId) ||
+         (f.accountIdA === advert.ownerAccountId && f.accountIdB === currentAccount.id))
+      );
+      if (blocked) return "";
+    }
     pendingConnectionIds.current.add(advert.id);
     const isClubAdvert = advert.postedByType === "club";
     const hasAffiliatedClub = !!advert.affiliatedClubId;
@@ -1719,6 +1776,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     adminSetAdvertStatus,
     adminSendMessage,
     adminDeleteConversation,
+    adminCloseConversation,
+    forbiddenConnections,
     adminApproveClub,
     adminRejectClub,
     resetClubApprovalAfterEdit,
@@ -1749,7 +1808,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     updateCoachAffiliateDetails,
     unblockCoachAffiliate,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

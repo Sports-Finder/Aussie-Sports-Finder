@@ -677,7 +677,7 @@ function AdvertEditModal({ advert, onClose, onSave }: { advert: Advert; onClose:
 function ChatsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations, adminDeleteConversation } = useSportsConnect();
+  const { conversations, adminDeleteConversation, adminCloseConversation } = useSportsConnect();
   const [openedId, setOpenedId] = useState<string | null>(null);
   const opened = openedId ? conversations.find((c) => c.id === openedId) ?? null : null;
 
@@ -694,13 +694,15 @@ function ChatsSection() {
               ? { bg: "#DCFCE7", fg: "#166534", label: "Connected" }
               : status === "pending"
               ? { bg: "#FEF3C7", fg: "#92400E", label: "Pending" }
+              : status === "closed"
+              ? { bg: "#FEE2E2", fg: "#991B1B", label: "Closed by Admin" }
               : { bg: "#E5E7EB", fg: "#4B5563", label: "Denied" };
             const last = conv.messages[0];
             return (
               <Pressable
                 key={conv.id}
                 onPress={() => setOpenedId(conv.id)}
-                style={({ pressed }) => [styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [styles.itemCard, { backgroundColor: colors.card, borderColor: conv.closedByAdmin ? "#FCA5A5" : colors.border, opacity: pressed ? 0.85 : 1 }]}
               >
                 <View style={styles.itemHeader}>
                   <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
@@ -725,6 +727,18 @@ function ChatsSection() {
                 ) : null}
                 <View style={styles.actionRow}>
                   <ActionButton icon="message-circle" label="Open as Admin" color={colors.primary} onPress={() => setOpenedId(conv.id)} />
+                  {conv.status !== "closed" && (
+                    <ActionButton icon="slash" label="Close chat" color="#DC2626" onPress={() => {
+                      Alert.alert(
+                        "Close chat permanently?",
+                        `This will close the conversation, notify both parties, and permanently block them from reconnecting on this advert. This cannot be undone.`,
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Close & Block", style: "destructive", onPress: () => { adminCloseConversation(conv.id); } },
+                        ]
+                      );
+                    }} />
+                  )}
                   <ActionButton icon="trash-2" label="Delete chat" color="#EF4444" onPress={() => {
                     Alert.alert("Delete chat?", `This will permanently remove the conversation and all ${conv.messages.length} message${conv.messages.length === 1 ? "" : "s"}.`, [
                       { text: "Cancel", style: "cancel" },
