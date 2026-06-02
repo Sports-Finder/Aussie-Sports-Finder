@@ -45,5 +45,7 @@ export async function getUncachableRevenueCatClient() {
       makeRequest<T>("GET", resolveUrl(url, path, query)),
     patch: <T>({ url, path, body }: { url: string; path?: Record<string, string>; body?: unknown }) =>
       makeRequest<T>("PATCH", resolveUrl(url, path), body),
+    delete: <T>({ url, path }: { url: string; path?: Record<string, string> }) =>
+      makeRequest<T>("DELETE", resolveUrl(url, path)),
   };
 }
