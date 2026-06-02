@@ -621,41 +621,24 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         setProfileImages(fetchedProfileImages);
         setPendingSportRequests(fetchedSportRequests);
         setBannedEmails(fetchedBannedEmails);
-        // Restore local-only state (currentAccount, clubProfile, playerProfile, selectedSport, activeProfile)
-        // from AsyncStorage so profile pics and settings survive across reloads.
-        // Also merge passwords back from local accounts — passwords are never sent to/returned from the API.
+        setAccounts(fetchedAccounts);
+        // Restore lightweight local-only preferences from AsyncStorage
         try {
           const stored = await AsyncStorage.getItem(storageKey);
           if (stored) {
-            const parsed = JSON.parse(stored) as typeof defaultState;
-            const localAccounts: UserAccount[] = parsed.accounts ?? [];
-            // Merge API accounts with local passwords so loginWithEmail still works
-            const mergedAccounts = (fetchedAccounts as UserAccount[]).map((acc) => {
-              const local = localAccounts.find((la) => la.id === acc.id);
-              return local?.password ? { ...acc, password: local.password } : acc;
-            });
-            setAccounts(mergedAccounts);
-            if (parsed.currentAccount) {
-              // Merge with fetched account data so profileImageId etc stays current
-              const fresh = mergedAccounts.find((a) => a.id === parsed.currentAccount?.id);
-              setCurrentAccount(fresh ? {
-                ...parsed.currentAccount,
-                ...fresh,
-                profileImageId: fresh.profileImageId ?? parsed.currentAccount.profileImageId,
-                profileImageDeclines: fresh.profileImageDeclines ?? parsed.currentAccount.profileImageDeclines,
-              } : parsed.currentAccount);
-            }
-            if (parsed.clubProfile) setClubProfile(parsed.clubProfile);
-            if (parsed.playerProfile) setPlayerProfile(parsed.playerProfile);
+            const parsed = JSON.parse(stored) as {
+              selectedSport?: string;
+              activeProfile?: ProfileType;
+              notificationSettings?: NotificationSettings;
+              pendingHighlightLinks?: HighlightLink[];
+            };
             if (parsed.selectedSport) setSelectedSport(parsed.selectedSport);
             if (parsed.activeProfile) setActiveProfile(parsed.activeProfile);
             if (parsed.notificationSettings) setNotificationSettings(parsed.notificationSettings);
             if (parsed.pendingHighlightLinks?.length) setPendingHighlightLinks(parsed.pendingHighlightLinks);
-          } else {
-            setAccounts(fetchedAccounts);
           }
         } catch (_) {
-          setAccounts(fetchedAccounts);
+          // ignore
         }
       } catch (_e) {
         // API unreachable, will fall back to AsyncStorage below
@@ -666,21 +649,15 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
           const stored = await AsyncStorage.getItem(storageKey);
           if (stored) {
             const parsed = JSON.parse(stored) as {
-              currentAccount?: UserAccount;
-              clubProfile?: ClubProfile;
-              playerProfile?: PlayerProfile;
-              notificationSettings?: NotificationSettings;
-              pendingHighlightLinks?: HighlightLink[];
               selectedSport?: string;
               activeProfile?: ProfileType;
+              notificationSettings?: NotificationSettings;
+              pendingHighlightLinks?: HighlightLink[];
             };
-            if (parsed.currentAccount) setCurrentAccount(parsed.currentAccount);
-            if (parsed.clubProfile) setClubProfile(parsed.clubProfile);
-            if (parsed.playerProfile) setPlayerProfile(parsed.playerProfile);
-            if (parsed.notificationSettings) setNotificationSettings(parsed.notificationSettings);
-            if (parsed.pendingHighlightLinks?.length) setPendingHighlightLinks(parsed.pendingHighlightLinks);
             if (parsed.selectedSport) setSelectedSport(parsed.selectedSport);
             if (parsed.activeProfile) setActiveProfile(parsed.activeProfile);
+            if (parsed.notificationSettings) setNotificationSettings(parsed.notificationSettings);
+            if (parsed.pendingHighlightLinks?.length) setPendingHighlightLinks(parsed.pendingHighlightLinks);
           }
         } catch (_) {
           // ignore
@@ -693,9 +670,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
-    const snapshot = { currentAccount, clubProfile, playerProfile, notificationSettings, pendingHighlightLinks, selectedSport, activeProfile };
+    const snapshot = { selectedSport, activeProfile, pendingHighlightLinks, notificationSettings };
     AsyncStorage.setItem(storageKey, JSON.stringify(snapshot)).catch(() => undefined);
-  }, [currentAccount, clubProfile, playerProfile, notificationSettings, pendingHighlightLinks, selectedSport, activeProfile]);
+  }, [selectedSport, activeProfile, pendingHighlightLinks, notificationSettings]);
 
   const requestSport = (name: string) => {
     const trimmed = name.trim();
@@ -980,6 +957,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       if (profile.defaultSport) setSelectedSport(profile.defaultSport);
       return next;
     });
+    if (currentAccount?.id) {
+      api.updateAccount(currentAccount.id, profile).catch(() => undefined);
+    }
   };
 
   const adminLogin = (passcode: string): boolean => {
