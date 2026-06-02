@@ -1072,7 +1072,9 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
           <View key={img.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.itemHeader}>
               <Pressable onPress={() => { if (account) Alert.alert(account.role === "club" ? account.clubName || "Club" : account.fullName || account.playerName || "Player", `Role: ${account.role}\nEmail: ${account.email}\nStatus: ${account.status}`); }} style={{ flex: 1 }}>
-                <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{img.owner}</Text>
+                <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
+                  {account ? `${account.role === "club" ? account.clubName || "Club" : account.fullName || account.playerName || "Player"} (${account.role === "club" ? "Club" : account.role === "guardian" ? "Parent/Guardian" : account.role === "coach" ? "Coach" : account.role === "player" ? "Player" : account.role})` : img.owner}
+                </Text>
               </Pressable>
               <View style={[styles.badge, { backgroundColor: "#FEF3C7" }]}>
                 <Text style={[styles.badgeText, { color: "#92400E" }]}>Pending</Text>
@@ -1108,10 +1110,14 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
       {approveHighlights && <SectionTitle title="Highlight reels" action={`${pendingHighlights.length} pending`} />}
       {approveHighlights && (pendingHighlights.length === 0 ? (
         <EmptyState icon="video" title="No highlight reels to review" text="Submitted highlight links will appear here." />
-      ) : pendingHighlights.map((link) => (
+      ) : pendingHighlights.map((link) => {
+        const account = accounts.find((a) => a.highlightReelUrl === link.url);
+        return (
         <View key={link.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.itemHeader}>
-            <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{link.owner}</Text>
+            <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
+              {account ? `${account.role === "club" ? account.clubName || "Club" : account.fullName || account.playerName || "Player"} (${account.role === "club" ? "Club" : account.role === "guardian" ? "Parent/Guardian" : account.role === "coach" ? "Coach" : account.role === "player" ? "Player" : account.role})` : link.owner}
+            </Text>
             <View style={[styles.badge, { backgroundColor: "#FEF3C7" }]}>
               <Text style={[styles.badgeText, { color: "#92400E" }]}>Pending</Text>
             </View>
@@ -1130,7 +1136,7 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
             <ActionButton icon="x" label="Reject" color="#EF4444" onPress={() => moderateHighlightLink(link.id, "rejected")} />
           </View>
         </View>
-      )))}
+      )}))}
 
       {approveSports && <SectionTitle title="Sport requests" action={`${pendingSports.length} pending`} />}
       {approveSports && (pendingSports.length === 0 ? (
