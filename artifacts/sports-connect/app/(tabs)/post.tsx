@@ -197,10 +197,20 @@ function MyAdvertDetail({
   onEdit: () => void;
 }) {
   const colors = useColors();
-  const { approvedSports, deleteAdvert } = useSportsConnect();
+  const { approvedSports, deleteAdvert, currentAccount } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const isPaidPlayerCoach =
+    currentAccount?.subscriptionStatus === "active" &&
+    currentAccount?.role !== "club";
+
+  const cooldownUnlockTime = (() => {
+    if (!isPaidPlayerCoach) return null;
+    const unlockDate = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    return `${unlockDate.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })} on ${unlockDate.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}`;
+  })();
 
   const trainingSchedule = (() => {
     if (!advert.trainingDays?.length && !advert.trainingTbd) return null;
@@ -317,6 +327,17 @@ function MyAdvertDetail({
 
             {confirmingDelete ? (
               <View style={[localStyles.deleteConfirmBox, { backgroundColor: "#FEF2F2", borderColor: "#D9534F" }]}>
+                {cooldownUnlockTime ? (
+                  <View style={{ backgroundColor: "#FFFBEB", borderRadius: 8, borderWidth: 1, borderColor: "#FDE68A", padding: 10, marginBottom: 8, flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
+                    <Feather name="clock" size={15} color="#D97706" style={{ marginTop: 1 }} />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: "#92400E" }}>72-hour posting cooldown starts now</Text>
+                      <Text style={{ fontSize: 12, color: "#78350F", lineHeight: 17 }}>
+                        Deleting starts a 72-hour cooldown. You won't be able to post again until {cooldownUnlockTime}.
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
                 <Text style={localStyles.deleteConfirmText}>This cannot be undone. Permanently delete this advert?</Text>
                 <View style={localStyles.deleteConfirmRow}>
                   <Pressable onPress={() => setConfirmingDelete(false)} style={({ pressed }) => [localStyles.deleteConfirmCancel, { backgroundColor: colors.secondary, opacity: pressed ? 0.7 : 1 }]}>
@@ -345,7 +366,7 @@ export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
+  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount, repostCooldownUntil } = useSportsConnect();
   const { isSubscribed } = useSubscription();
   const accountRole = currentAccount?.role ?? activeProfile;
 
@@ -355,7 +376,8 @@ export default function PostScreen() {
   // Server-returned duplicate / cooldown error
   type DuplicateErrorState =
     | { code: "DUPLICATE_ACTIVE"; existingAdvertId: string; message: string }
-    | { code: "REPOST_COOLDOWN"; repostAvailableAt: string; message: string };
+    | { code: "REPOST_COOLDOWN"; repostAvailableAt: string; message: string }
+    | { code: "PLAYER_COOLDOWN"; repostAvailableAt: string; message: string };
   const [duplicateError, setDuplicateError] = useState<DuplicateErrorState | null>(null);
   // Client-side similarity warning before submit
   const [similarityWarning, setSimilarityWarning] = useState<{ draft: Parameters<typeof createAdvert>[0] } | null>(null);
@@ -781,6 +803,38 @@ export default function PostScreen() {
   const isClubLocked = currentAccount?.role === "club" && currentAccount?.clubApprovalStatus !== "approved";
   const clubLockStatus = currentAccount?.clubApprovalStatus ?? "pending";
 
+  // Player/coach 72h cooldown lock — paid accounts must wait 72h after closing an advert
+  if (repostCooldownUntil && activeProfile !== "club") {
+    const unlockDate = new Date(repostCooldownUntil);
+    const remainingMs = unlockDate.getTime() - Date.now();
+    const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000));
+    const unlockTimeStr = unlockDate.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" });
+    const unlockDateStr = unlockDate.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" });
+    return (
+      <ScreenShell>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 }}>
+          <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#FFFBEB", alignItems: "center", justifyContent: "center" }}>
+            <Feather name="clock" size={32} color="#D97706" />
+          </View>
+          <Text style={{ fontWeight: "700", fontSize: 22, color: colors.foreground, textAlign: "center", letterSpacing: -0.4 }}>
+            72-Hour Posting Cooldown
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: "center", lineHeight: 22 }}>
+            You recently closed an advert. To keep the listings fair, premium accounts must wait 72 hours before posting again.
+          </Text>
+          <View style={{ backgroundColor: "#FFFBEB", borderRadius: 12, borderWidth: 1, borderColor: "#FDE68A", padding: 16, alignItems: "center", gap: 4, width: "100%" }}>
+            <Text style={{ fontSize: 13, color: "#92400E", fontWeight: "600" }}>Posting unlocks in</Text>
+            <Text style={{ fontSize: 26, fontWeight: "800", color: "#D97706", letterSpacing: -0.5 }}>{remainingHours}h</Text>
+            <Text style={{ fontSize: 13, color: "#92400E" }}>{unlockTimeStr} on {unlockDateStr}</Text>
+          </View>
+          <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: "center", lineHeight: 18 }}>
+            You'll receive a push notification when posting is unlocked.
+          </Text>
+        </View>
+      </ScreenShell>
+    );
+  }
+
   if (isClubLocked) {
     return (
       <ScreenShell>
@@ -855,6 +909,30 @@ export default function PostScreen() {
                 <Text style={[localStyles.dupBannerTitle, { color: "#92400E" }]}>48-hour repost cooldown</Text>
                 <Text style={[localStyles.dupBannerText, { color: "#78350F" }]}>
                   To prevent flooding, you must wait 48 hours after your last advert expires before reposting the same sport and role.
+                </Text>
+                <Text style={[localStyles.dupBannerText, { color: "#92400E", fontWeight: "700" }]}>{timeStr}</Text>
+              </View>
+              <Pressable onPress={() => setDuplicateError(null)}>
+                <Feather name="x" size={18} color="#D97706" />
+              </Pressable>
+            </View>
+          );
+        })() : null}
+
+        {duplicateError?.code === "PLAYER_COOLDOWN" ? (() => {
+          const availableAt = new Date(duplicateError.repostAvailableAt);
+          const remainingMs = availableAt.getTime() - Date.now();
+          const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000));
+          const timeStr = remainingMs > 0
+            ? `${remainingHours}h remaining (${availableAt.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })} ${availableAt.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })})`
+            : "Posting available now";
+          return (
+            <View style={[localStyles.dupBanner, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
+              <Feather name="clock" size={18} color="#D97706" />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={[localStyles.dupBannerTitle, { color: "#92400E" }]}>72-hour posting cooldown</Text>
+                <Text style={[localStyles.dupBannerText, { color: "#78350F" }]}>
+                  You recently closed an advert. Premium accounts must wait 72 hours before posting again to keep listings fair.
                 </Text>
                 <Text style={[localStyles.dupBannerText, { color: "#92400E", fontWeight: "700" }]}>{timeStr}</Text>
               </View>

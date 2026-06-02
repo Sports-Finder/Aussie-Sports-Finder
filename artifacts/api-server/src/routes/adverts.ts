@@ -7,7 +7,8 @@ import { normalizeDates } from "../lib/normalizeDates";
 
 const router: IRouter = Router();
 
-const COOLDOWN_MS = 48 * 60 * 60 * 1000; // 48 hours
+const CLUB_COOLDOWN_MS = 48 * 60 * 60 * 1000; // 48 hours — clubs
+const PLAYER_COOLDOWN_MS = 72 * 60 * 60 * 1000; // 72 hours — paid players & coaches
 
 router.get("/adverts", async (_req, res) => {
   try {
@@ -27,34 +28,51 @@ router.post("/adverts", async (req, res) => {
     const sport = body.sport as string | undefined;
     const type = body.type as string | undefined;
     const now = new Date();
-    const cutoff = new Date(now.getTime() - COOLDOWN_MS);
 
-    // Determine if this is a paid club poster.
-    // Prefer the server-side account record as the trusted source; fall back to
-    // the client-provided hint only when the account has not yet been synced to
-    // the server DB (e.g. first advert posted immediately after sign-up).
-    let isPaidClub = false;
-    if (ownerAccountId && postedByType === "club") {
-      const [ownerAccount] = await db
-        .select({ subscriptionStatus: accountsTable.subscriptionStatus })
+    // Look up the account once — used by both player/coach and club checks.
+    let ownerAccount: { subscriptionStatus: string | null; lastAdvertClosedAt: Date | null } | undefined;
+    if (ownerAccountId) {
+      const [row] = await db
+        .select({ subscriptionStatus: accountsTable.subscriptionStatus, lastAdvertClosedAt: accountsTable.lastAdvertClosedAt })
         .from(accountsTable)
         .where(eq(accountsTable.publicId, ownerAccountId))
         .limit(1);
-
-      const serverStatus = ownerAccount?.subscriptionStatus;
-      const clientStatus = body.ownerSubscriptionStatus as string | undefined;
-      isPaidClub = (serverStatus ?? clientStatus) === "active";
+      ownerAccount = row;
     }
 
-    // Duplicate prevention only applies to paid club accounts.
-    // Free-trial and unsubscribed clubs are unaffected so they are never gated.
+    const clientSubscriptionStatus = body.ownerSubscriptionStatus as string | undefined;
+    const serverSubscriptionStatus = ownerAccount?.subscriptionStatus ?? null;
+    const resolvedStatus = serverSubscriptionStatus ?? clientSubscriptionStatus;
+    const isPaid = resolvedStatus === "active";
+
+    // ── Player / coach 72h repost cooldown ──────────────────────────────────
+    // Applies to paid player and coach accounts only. Prevents gaming expiry
+    // by closing then immediately reposting to stay at the top of the list.
+    if (isPaid && ownerAccountId && postedByType !== "club") {
+      const lastClosed = ownerAccount?.lastAdvertClosedAt;
+      if (lastClosed) {
+        const repostAvailableAt = new Date(lastClosed.getTime() + PLAYER_COOLDOWN_MS);
+        if (repostAvailableAt > now) {
+          res.status(409).json({
+            code: "PLAYER_COOLDOWN",
+            repostAvailableAt: repostAvailableAt.toISOString(),
+            message: `You must wait 72 hours after closing an advert before posting a new one. You can post again at ${repostAvailableAt.toISOString()}.`,
+          });
+          return;
+        }
+      }
+    }
+
+    // ── Club duplicate / expiry-cooldown checks ──────────────────────────────
+    // Applies to paid club accounts only. Free/trial clubs are unaffected.
+    const isPaidClub = isPaid && postedByType === "club";
     if (isPaidClub && ownerAccountId && sport && type) {
+      const clubCutoff = new Date(now.getTime() - CLUB_COOLDOWN_MS);
+
       // Key lifecycle invariant:
       //   • Naturally expired adverts stay status="active" in the DB — the client
       //     stops showing them once expiresAt passes, but never sends a close event.
       //   • Admin-closed adverts have status="closed".
-      // This lets us distinguish natural expiry from admin action purely by
-      // checking (status="active" AND expiresAt < now).
 
       // 1. Active-role lock: reject if the club has a live advert for this
       //    sport + type (status="active" AND expiresAt is in the future, or
@@ -84,8 +102,6 @@ router.post("/adverts", async (req, res) => {
 
       // 2. Post-expiry cooldown: if a naturally-expired advert for the same
       //    sport + type exists within the 48h window, enforce the cooldown.
-      //    Natural expiry = status="active" AND expiresAt < now (client-side
-      //    expiry; the DB record was never closed by admin action).
       const [recentlyExpired] = await db
         .select({ expiresAt: advertsTable.expiresAt })
         .from(advertsTable)
@@ -97,7 +113,7 @@ router.post("/adverts", async (req, res) => {
             eq(advertsTable.status, "active"),
             isNotNull(advertsTable.expiresAt),
             lt(advertsTable.expiresAt, now),
-            gt(advertsTable.expiresAt, cutoff),
+            gt(advertsTable.expiresAt, clubCutoff),
           ),
         )
         .orderBy(sql`${advertsTable.expiresAt} DESC`)
@@ -105,7 +121,7 @@ router.post("/adverts", async (req, res) => {
 
       if (recentlyExpired?.expiresAt) {
         const repostAvailableAt = new Date(
-          recentlyExpired.expiresAt.getTime() + COOLDOWN_MS,
+          recentlyExpired.expiresAt.getTime() + CLUB_COOLDOWN_MS,
         ).toISOString();
         res.status(409).json({
           code: "REPOST_COOLDOWN",
@@ -116,7 +132,7 @@ router.post("/adverts", async (req, res) => {
       }
 
       // 3. Soft-flag: if any naturally-expired advert for the same sport
-      //    (any role) exists within the 48h window, flag for admin review.
+      //    exists within the 48h window, flag for admin review.
       const [anyRecentlyExpired] = await db
         .select({ publicId: advertsTable.publicId })
         .from(advertsTable)
@@ -127,7 +143,7 @@ router.post("/adverts", async (req, res) => {
             eq(advertsTable.status, "active"),
             isNotNull(advertsTable.expiresAt),
             lt(advertsTable.expiresAt, now),
-            gt(advertsTable.expiresAt, cutoff),
+            gt(advertsTable.expiresAt, clubCutoff),
           ),
         )
         .limit(1);
@@ -173,11 +189,37 @@ router.put("/adverts/:publicId", async (req, res) => {
 router.delete("/adverts/:publicId", async (req, res) => {
   try {
     const publicId = req.params.publicId;
+
+    // Before deleting, look up the advert and owner so we can record
+    // lastAdvertClosedAt for paid player/coach accounts.
+    const [advert] = await db
+      .select({ ownerAccountId: advertsTable.ownerAccountId, postedByType: advertsTable.postedByType })
+      .from(advertsTable)
+      .where(eq(advertsTable.publicId, publicId))
+      .limit(1);
+
     await db.execute(sql`DELETE FROM ${messagesTable} WHERE ${messagesTable.conversationId} IN (
       SELECT ${conversationsTable.publicId} FROM ${conversationsTable} WHERE ${conversationsTable.advertId} = ${publicId}
     )`);
     await db.delete(conversationsTable).where(eq(conversationsTable.advertId, publicId));
     await db.delete(advertsTable).where(eq(advertsTable.publicId, publicId));
+
+    // Record close timestamp for paid player/coach accounts so the 72h
+    // cooldown can be enforced on their next post attempt.
+    if (advert?.ownerAccountId && advert.postedByType !== "club") {
+      const [ownerAcc] = await db
+        .select({ subscriptionStatus: accountsTable.subscriptionStatus })
+        .from(accountsTable)
+        .where(eq(accountsTable.publicId, advert.ownerAccountId))
+        .limit(1);
+      if (ownerAcc?.subscriptionStatus === "active") {
+        await db
+          .update(accountsTable)
+          .set({ lastAdvertClosedAt: new Date(), updatedAt: new Date() })
+          .where(eq(accountsTable.publicId, advert.ownerAccountId));
+      }
+    }
+
     res.status(204).send();
   } catch (err) {
     logger.error({ err }, "Failed to delete advert");

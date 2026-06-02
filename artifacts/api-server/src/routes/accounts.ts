@@ -48,6 +48,7 @@ router.put("/accounts/:publicId", async (req, res) => {
       "trialStartedAt",
       "trialExpiresAt",
       "subscriptionExpiresAt",
+      "lastAdvertClosedAt",
     ]);
     const [updated] = await db
       .update(accountsTable)

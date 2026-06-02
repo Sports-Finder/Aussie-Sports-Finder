@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
 
@@ -112,6 +113,7 @@ export type UserAccount = {
   trialStartedAt?: string;
   trialExpiresAt?: string;
   subscriptionExpiresAt?: string;
+  lastAdvertClosedAt?: string;
 };
 
 export type Advert = {
@@ -301,6 +303,7 @@ type SportsConnectState = {
   createAdvert: (draft: DraftAdvert & { postedBy?: string; affiliatedClubId?: string }) => Promise<void>;
   updateAdvert: (id: string, patch: Partial<DraftAdvert>) => Promise<void>;
   deleteAdvert: (id: string) => Promise<void>;
+  repostCooldownUntil: string | null;
   connectOnAdvert: (advert: Advert) => Promise<string>;
   acceptConnection: (conversationId: string) => void;
   denyConnection: (conversationId: string) => void;
@@ -1207,8 +1210,39 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const deleteAdvert = async (id: string) => {
+    const advert = adverts.find((a) => a.id === id);
+    const isPaidPlayerCoach =
+      currentAccount?.subscriptionStatus === "active" &&
+      currentAccount?.role !== "club" &&
+      advert?.ownerAccountId === currentAccount?.id;
+
     setAdverts((current) => current.filter((a) => a.id !== id));
     try { await api.deleteAdvert(id); } catch (_) { /* silent */ }
+
+    // Record close timestamp locally so the Post tab lock state is immediate.
+    if (isPaidPlayerCoach) {
+      const closedAt = new Date().toISOString();
+      setCurrentAccount((acc) => acc ? { ...acc, lastAdvertClosedAt: closedAt } : acc);
+
+      // Schedule a local push notification at the 72h unlock time.
+      try {
+        const prevId = await AsyncStorage.getItem("sports-connect-cooldown-notif-id");
+        if (prevId) await Notifications.cancelScheduledNotificationAsync(prevId).catch(() => undefined);
+        const unlockDate = new Date(Date.now() + 72 * 60 * 60 * 1000);
+        const notifId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Posting unlocked!",
+            body: "Your 72-hour cooldown has ended. You can now post a new advert.",
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: unlockDate,
+          },
+        });
+        await AsyncStorage.setItem("sports-connect-cooldown-notif-id", notifId);
+      } catch (_) { /* notifications not available or not permitted */ }
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
@@ -1830,6 +1864,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     createAdvert,
     updateAdvert,
     deleteAdvert,
+    repostCooldownUntil: (() => {
+      if (!currentAccount?.lastAdvertClosedAt) return null;
+      if (currentAccount.role === "club") return null;
+      if (currentAccount.subscriptionStatus !== "active") return null;
+      const end = new Date(new Date(currentAccount.lastAdvertClosedAt).getTime() + 72 * 60 * 60 * 1000);
+      return end > new Date() ? end.toISOString() : null;
+    })(),
     connectOnAdvert,
     acceptConnection,
     denyConnection,

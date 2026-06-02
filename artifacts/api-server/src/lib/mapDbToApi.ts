@@ -64,6 +64,9 @@ export function mapAccount(
       ? new Date(row.subscriptionExpiresAt as string).toISOString()
       : undefined,
     verifiedBadge: (row.verifiedBadge as boolean) ?? false,
+    lastAdvertClosedAt: row.lastAdvertClosedAt
+      ? new Date(row.lastAdvertClosedAt as string).toISOString()
+      : undefined,
     coachAffiliates: affiliates,
     createdAt: new Date(row.createdAt as string).toISOString(),
     updatedAt: new Date(row.updatedAt as string).toISOString(),
