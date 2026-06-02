@@ -93,6 +93,7 @@ export default function ProfileScreen() {
     updatePlayerProfile,
     updateClubProfile,
     pickProfileImage,
+    clearProfileImage,
     getImageUri,
     getImageStatus,
     approvedSports,
@@ -537,6 +538,15 @@ export default function ProfileScreen() {
               disabled={(currentAccount?.profileImageDeclines ?? 0) >= 3}
               onPressWhenDisabled={() => Alert.alert("Upload blocked", "You have exceeded the maximum number of profile picture upload attempts. Contact admin for assistance.")}
             />
+            {clubImagePending && (
+              <PrimaryButton
+                label="Clear club image"
+                icon="trash-2"
+                onPress={() => {
+                  if (clubProfile.imageId) clearProfileImage(clubProfile.imageId);
+                }}
+              />
+            )}
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Recommended 400 x 400 px. Minimum 200 x 200 px. Maximum file size 2 MB.</Text>
           </View>
         ) : (
@@ -695,6 +705,15 @@ export default function ProfileScreen() {
               disabled={(currentAccount?.profileImageDeclines ?? 0) >= 3}
               onPressWhenDisabled={() => Alert.alert("Upload blocked", "You have exceeded the maximum number of profile picture upload attempts. Contact admin for assistance.")}
             />
+            {playerImagePending && (
+              <PrimaryButton
+                label="Clear profile image"
+                icon="trash-2"
+                onPress={() => {
+                  if (playerProfile.imageId) clearProfileImage(playerProfile.imageId);
+                }}
+              />
+            )}
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Recommended 400 x 400 px. Minimum 200 x 200 px. Maximum file size 2 MB.</Text>
             {currentAccount && currentAccount.profileImageDeclines ? (
               <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 13, marginTop: 4 }}>

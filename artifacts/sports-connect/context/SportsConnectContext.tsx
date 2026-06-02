@@ -276,7 +276,8 @@ type SportsConnectState = {
   updatePlayerProfile: (profile: PlayerProfile) => void;
   updateAccount: (profile: Partial<UserAccount>) => void;
   pickProfileImage: (owner: "club" | "player") => Promise<void>;
-  pickAccountImage: (owner: string) => Promise<string | undefined>;
+  pickAccountImage: (owner: string, previousImageId?: string) => Promise<string | undefined>;
+  clearProfileImage: (imageId: string) => Promise<void>;
   moderateImage: (imageId: string, status: ImageStatus) => Promise<void>;
   moderateHighlightLink: (linkId: string, status: ImageStatus) => void;
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
@@ -1334,6 +1335,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       : currentAccount?.role === "guardian"
         ? (currentAccount.playerName || currentAccount.parentGuardianName || "Player")
         : (currentAccount?.fullName || currentAccount?.playerName || "Player");
+    // If replacing an existing pending image, clear the old one first
+    const previousImageId = owner === "club" ? clubProfile.imageId : playerProfile.imageId;
+    if (previousImageId) {
+      await clearProfileImage(previousImageId);
+    }
     const image: ProfileImage = { id: makeId(), owner: displayName, uri: asset.uri, status: "pending", submittedAt: now() };
     setProfileImages((current) => [image, ...current]);
     if (owner === "club") setClubProfile((current) => ({ ...current, imageId: image.id }));
@@ -1346,7 +1352,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
-  const pickAccountImage = async (owner: string) => {
+  const pickAccountImage = async (owner: string, previousImageId?: string) => {
     const declines = currentAccount?.profileImageDeclines ?? 0;
     if (declines >= 3) {
       Alert.alert("Upload blocked", "You have exceeded the maximum number of profile picture upload attempts. Contact admin for assistance.");
@@ -1364,6 +1370,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     if (validationError) {
       Alert.alert("Image not accepted", validationError);
       return undefined;
+    }
+    // If replacing a previous unapproved image, clear it first
+    if (previousImageId) {
+      await clearProfileImage(previousImageId);
     }
     const displayName = currentAccount?.role === "club"
       ? (currentAccount.clubName || "Club")
@@ -1429,6 +1439,29 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     try { await api.deleteProfileImage(imageId); } catch (_) { /* silent */ }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const clearProfileImage = async (imageId: string) => {
+    // Remove from local state
+    setProfileImages((current) => current.filter((img) => img.id !== imageId));
+    // Clear all account references
+    const targetAccount = accounts.find((a) => a.profileImageId === imageId) ??
+      (currentAccount?.profileImageId === imageId ? currentAccount : undefined);
+    if (targetAccount) {
+      setAccounts((current) => current.map((acc) => acc.id === targetAccount.id ? { ...acc, profileImageId: undefined } : acc));
+      if (targetAccount.id === currentAccount?.id) {
+        setCurrentAccount((current) => current ? { ...current, profileImageId: undefined } : current);
+      }
+      if (targetAccount.role === "club") {
+        setClubProfile((current) => ({ ...current, imageId: undefined }));
+      } else {
+        setPlayerProfile((current) => ({ ...current, imageId: undefined }));
+      }
+      // Sync to API
+      api.updateAccount(targetAccount.id, { profileImageId: null }).catch(() => undefined);
+    }
+    // Delete from API
+    api.deleteProfileImage(imageId).catch(() => undefined);
   };
 
   const moderateHighlightLink = (linkId: string, status: ImageStatus) => {
@@ -1532,6 +1565,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     updateAccount,
     pickProfileImage,
     pickAccountImage,
+    clearProfileImage,
     moderateImage,
     moderateHighlightLink,
     getImageUri,

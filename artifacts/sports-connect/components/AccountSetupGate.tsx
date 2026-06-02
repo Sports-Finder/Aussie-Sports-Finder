@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { PrimaryButton } from "@/components/SportsUI";
+import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { useColors } from "@/hooks/useColors";
@@ -95,7 +95,7 @@ export function AccountSetupGate() {
   const { signOut } = useAuth();
   const { user } = useUser();
 
-  const { bannedEmails, createAccount, approvedSports, pickAccountImage } = useSportsConnect();
+  const { bannedEmails, createAccount, approvedSports, pickAccountImage, clearProfileImage, getImageUri, getImageStatus } = useSportsConnect();
 
   // Derive identity from Clerk
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
@@ -220,8 +220,15 @@ export function AccountSetupGate() {
       : role === "guardian"
       ? form.playerName || "Guardian player account"
       : form.fullName || `${role} account`;
-    const imageId = await pickAccountImage(owner);
+    const imageId = await pickAccountImage(owner, profileImageId);
     if (imageId) setProfileImageId(imageId);
+  };
+
+  const handleClearImage = async () => {
+    if (profileImageId) {
+      await clearProfileImage(profileImageId);
+      setProfileImageId(undefined);
+    }
   };
 
   const submit = () => {
@@ -560,20 +567,46 @@ export function AccountSetupGate() {
             )}
 
             {/* Profile picture */}
-            <View style={styles.avatarPreviewRow}>
-              <Image source={getDefaultAvatar(role, form.gender)} style={styles.avatarPreviewImg} contentFit="cover" />
-              <View style={styles.avatarPreviewInfo}>
-                <Text style={[styles.avatarPreviewLabel, { color: colors.foreground }]}>Your default profile picture</Text>
-                <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
-                  Shown until your own photo is approved by an admin.
-                </Text>
+            {profileImageId ? (
+              <View style={styles.avatarPreviewRow}>
+                <ProfileAvatar
+                  uri={getImageUri(profileImageId, true)}
+                  fallback={getDefaultAvatar(role, form.gender)}
+                  size={72}
+                  pending={true}
+                />
+                <View style={styles.avatarPreviewInfo}>
+                  <Text style={[styles.avatarPreviewLabel, { color: colors.foreground }]}>
+                    Profile pic submitted for approval
+                  </Text>
+                  <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
+                    Your image is awaiting admin approval.
+                  </Text>
+                </View>
               </View>
-            </View>
+            ) : (
+              <View style={styles.avatarPreviewRow}>
+                <Image source={getDefaultAvatar(role, form.gender)} style={styles.avatarPreviewImg} contentFit="cover" />
+                <View style={styles.avatarPreviewInfo}>
+                  <Text style={[styles.avatarPreviewLabel, { color: colors.foreground }]}>Your default profile picture</Text>
+                  <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
+                    Shown until your own photo is approved by an admin.
+                  </Text>
+                </View>
+              </View>
+            )}
             <PrimaryButton
-              label={profileImageId ? "Profile pic submitted for approval" : "Add profile pic for admin approval"}
+              label={profileImageId ? "Change profile pic" : "Add profile pic for admin approval"}
               icon="image"
               onPress={pickImage}
             />
+            {profileImageId && (
+              <PrimaryButton
+                label="Clear profile pic"
+                icon="trash-2"
+                onPress={handleClearImage}
+              />
+            )}
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
               Recommended 400 × 400 px. Min 200 × 200 px. Max 2 MB.
             </Text>
