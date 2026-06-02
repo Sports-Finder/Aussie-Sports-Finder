@@ -18,6 +18,7 @@ import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { useColors } from "@/hooks/useColors";
+import { detectContactInfo } from "@/utils/contactDetection";
 
 const logo = require("@/assets/images/icon.png") as number;
 const states = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
@@ -434,6 +435,7 @@ export function AccountSetupGate() {
                   }}
                   multiline
                 />
+                {detectContactInfo(form.bio) ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{detectContactInfo(form.bio)}</Text> : null}
               </>
             ) : (
               <>
@@ -549,6 +551,7 @@ export function AccountSetupGate() {
                   }}
                   multiline
                 />
+                {detectContactInfo(form.bio) ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{detectContactInfo(form.bio)}</Text> : null}
 
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>
                   {role === "guardian" ? "Player sports played (required)" : role === "coach" ? "Sports coached (required)" : "Sports played (required)"}
@@ -644,7 +647,7 @@ export function AccountSetupGate() {
               label="Create account"
               icon="user-check"
               onPress={submit}
-              disabled={!requiredDetailsValid || !socialLinksValid || (isClub && !form.agreed)}
+              disabled={!requiredDetailsValid || !socialLinksValid || (isClub && !form.agreed) || !!detectContactInfo(form.bio)}
             />
           </View>
         )}

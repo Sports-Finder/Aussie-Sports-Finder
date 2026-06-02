@@ -9,6 +9,7 @@ import { useAuth } from "@clerk/expo";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
+import { detectContactInfo } from "@/utils/contactDetection";
 import CoachAffiliatesPage from "@/components/CoachAffiliatesPage";
 import { useSubscription } from "@/lib/revenuecat";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
@@ -655,6 +656,7 @@ export default function ProfileScreen() {
               const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
               if (wordCount <= 200) setClubBio(value);
             }} multiline />
+            {detectContactInfo(clubBio) ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4, marginBottom: 4 }}>{detectContactInfo(clubBio)}</Text> : null}
             <Field label="Club website" value={currentAccount?.clubWebsite ?? ""} onChangeText={(v) => updateAccount({ clubWebsite: v })} />
 
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Social links (optional)</Text>
@@ -803,6 +805,9 @@ export default function ProfileScreen() {
               }}
               multiline
             />
+            {detectContactInfo(isClub ? clubBio : isCoach ? coachBio : isGuardian ? guardianBio : playerBio)
+              ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4, marginBottom: 4 }}>{detectContactInfo(isClub ? clubBio : isCoach ? coachBio : isGuardian ? guardianBio : playerBio)}</Text>
+              : null}
 
             <Text style={[styles.label, { color: colors.mutedForeground }]}>
               {isGuardian ? "Player sports played (required)" : isCoach ? "Sports coached (required)" : "Sports played (required)"}
@@ -865,7 +870,7 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {mode === "edit" ? <PrimaryButton label="Save profile" icon="check" onPress={save} /> : null}
+        {mode === "edit" ? <PrimaryButton label="Save profile" icon="check" onPress={save} disabled={!!(detectContactInfo(isClub ? clubBio : isCoach ? coachBio : isGuardian ? guardianBio : playerBio))} /> : null}
 
       </ScrollView>
 

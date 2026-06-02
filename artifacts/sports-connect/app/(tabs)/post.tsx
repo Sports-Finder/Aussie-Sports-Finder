@@ -10,6 +10,7 @@ import { getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
 import { useSubscription } from "@/lib/revenuecat";
 import { ApiError } from "@/utils/apiClient";
+import { detectContactInfo } from "@/utils/contactDetection";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 type AgeGroup = { label: string; min: number; max: number };
@@ -651,7 +652,9 @@ export default function PostScreen() {
   const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && (!isTechnicalDirector || focusArea.trim().length > 0) && (isTechnicalDirector || coachExperienceLevel.trim().length > 0) && coachPositionTypes.length > 0);
   const teamGenderOk = (!isPlayersWanted && !isClubTrials && !isCoachWanted) || teamGender.trim().length > 0;
 
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && (isTechnicalDirector ? focusArea.trim().length > 0 : ageGroup !== null) && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk;
+  const descContactWarning = detectContactInfo(description);
+  const playerDescContactWarning = detectContactInfo(playerDescription);
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && (isTechnicalDirector ? focusArea.trim().length > 0 : ageGroup !== null) && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning;
 
   const validationErrors: string[] = [];
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
@@ -1195,6 +1198,7 @@ export default function PostScreen() {
             <>
               <FormLabel text={isCoachLooking ? "About the coach" : "About the player"} />
               <Field value={playerDescription} onChangeText={setPlayerDescription} label="" multiline placeholder="Describe the player or coach, experience, goals…" />
+              {playerDescContactWarning ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{playerDescContactWarning}</Text> : null}
             </>
           )}
 
@@ -1317,6 +1321,7 @@ export default function PostScreen() {
             const words = text.trim().split(/\s+/).filter(Boolean);
             if (words.length <= 150) setDescription(text);
           }} label="" multiline placeholder={isPlayerLooking ? "Describe yourself as a player and what you're looking for. Please do not share any of your personal information including mobile or email addresses." : isCoachLooking ? "Describe yourself as a coach and what you're looking for. Please do not share any of your personal information including mobile or email addresses." : "Describe exactly what you're looking for. Do not add personal details such as mobile numbers or email addresses."} />
+          {descContactWarning ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{descContactWarning}</Text> : null}
           <Text style={{ fontSize: 12, color: description.trim().split(/\s+/).filter(Boolean).length > 140 ? "#D9534F" : colors.mutedForeground, marginTop: 4, textAlign: "right" }}>
             {description.trim().split(/\s+/).filter(Boolean).length} / 150 words
           </Text>
