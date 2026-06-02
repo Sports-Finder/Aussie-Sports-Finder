@@ -311,17 +311,27 @@ function AdvertsSection() {
   const insets = useSafeAreaInsets();
   const { adverts, accounts, conversations, adminSetAdvertStatus, updateAdvert } = useSportsConnect();
   const { isFullAdmin } = useDashboardPermissions();
-  const [filter, setFilter] = useState<"all" | "active" | "closed">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "closed" | "duplicates">("all");
   const [editing, setEditing] = useState<Advert | null>(null);
+
+  const duplicatesCount = useMemo(() => adverts.filter((a) => a.possibleDuplicate).length, [adverts]);
 
   const filtered = useMemo(() => {
     return adverts
       .filter((a) => {
         if (filter === "active") return a.status !== "closed";
         if (filter === "closed") return a.status === "closed";
+        if (filter === "duplicates") return !!a.possibleDuplicate;
         return true;
       })
-      .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+      .sort((a, b) => {
+        // Flagged duplicates float to the top when showing all adverts
+        if (filter === "all") {
+          if (a.possibleDuplicate && !b.possibleDuplicate) return -1;
+          if (!a.possibleDuplicate && b.possibleDuplicate) return 1;
+        }
+        return b.createdAt > a.createdAt ? 1 : -1;
+      });
   }, [adverts, filter]);
 
   const ownerName = (advert: Advert) => {
@@ -338,6 +348,11 @@ function AdvertsSection() {
           <Pill label="All" active={filter === "all"} onPress={() => setFilter("all")} />
           <Pill label="Active" active={filter === "active"} onPress={() => setFilter("active")} />
           <Pill label="Closed" active={filter === "closed"} onPress={() => setFilter("closed")} />
+          <Pill
+            label={duplicatesCount > 0 ? `Duplicates (${duplicatesCount})` : "Duplicates"}
+            active={filter === "duplicates"}
+            onPress={() => setFilter("duplicates")}
+          />
         </View>
 
         {filtered.length === 0 ? (
@@ -347,7 +362,13 @@ function AdvertsSection() {
             const isClosed = advert.status === "closed";
             const badge = statusBadgeColor(isClosed ? "closed" : "active");
             return (
-              <View key={advert.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View key={advert.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: advert.possibleDuplicate ? "#FDE68A" : colors.border }]}>
+                {advert.possibleDuplicate ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#FFFBEB", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 8 }}>
+                    <Feather name="alert-triangle" size={13} color="#D97706" />
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: "#92400E", flex: 1 }}>Possible duplicate — review before approving</Text>
+                  </View>
+                ) : null}
                 <View style={styles.itemHeader}>
                   <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={2}>{advert.title}</Text>
                   <View style={[styles.badge, { backgroundColor: badge.bg }]}>

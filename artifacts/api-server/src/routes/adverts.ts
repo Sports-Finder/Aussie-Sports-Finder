@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq, gt, ne, sql } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { db, advertsTable, conversationsTable, messagesTable, type InsertAdvert } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapAdvert } from "../lib/mapDbToApi";
@@ -27,8 +27,11 @@ router.post("/adverts", async (req, res) => {
     const sport = body.sport as string | undefined;
     const type = body.type as string | undefined;
 
-    // Duplicate prevention only applies to club accounts posting adverts.
-    if (ownerAccountId && postedByType === "club" && sport && type) {
+    const ownerSubscriptionStatus = body.ownerSubscriptionStatus as string | undefined;
+
+    // Duplicate prevention only applies to paid club accounts (subscriptionStatus === "active").
+    // Free-trial and unsubscribed clubs are unaffected.
+    if (ownerAccountId && postedByType === "club" && ownerSubscriptionStatus === "active" && sport && type) {
       const cutoff = new Date(Date.now() - COOLDOWN_MS);
 
       // 1. Active-role lock: reject if the club already has an active advert for
@@ -55,8 +58,9 @@ router.post("/adverts", async (req, res) => {
         return;
       }
 
-      // 2. Post-expiry cooldown: if an advert with the same sport + type expired
-      //    within the last 48 hours, enforce the cooldown.
+      // 2. Post-expiry cooldown: only applies when the advert expired naturally
+      //    (closedReason = "expired"). Admin closures and user deletions do not
+      //    trigger the cooldown so clubs aren't penalised for moderation actions.
       const [recentlyClosed] = await db
         .select({ closedAt: advertsTable.closedAt, createdAt: advertsTable.createdAt })
         .from(advertsTable)
@@ -65,7 +69,7 @@ router.post("/adverts", async (req, res) => {
             eq(advertsTable.ownerAccountId, ownerAccountId),
             eq(advertsTable.sport, sport),
             eq(advertsTable.type, type),
-            ne(advertsTable.status, "active"),
+            eq(advertsTable.closedReason, "expired"),
             gt(advertsTable.closedAt, cutoff),
           ),
         )
@@ -84,9 +88,9 @@ router.post("/adverts", async (req, res) => {
         return;
       }
 
-      // 3. Soft-flag: if a recently-closed advert (same sport, ANY matching role
-      //    grouping) exists within the cooldown window, mark the new advert as a
-      //    possible duplicate so admins can review it.
+      // 3. Soft-flag: if a recently-expired advert (same sport, any role) exists
+      //    within the cooldown window, mark the new advert for admin review.
+      //    Only natural expiry qualifies — admin closures are excluded.
       const [anyClosed] = await db
         .select({ publicId: advertsTable.publicId })
         .from(advertsTable)
@@ -94,7 +98,7 @@ router.post("/adverts", async (req, res) => {
           and(
             eq(advertsTable.ownerAccountId, ownerAccountId),
             eq(advertsTable.sport, sport),
-            ne(advertsTable.status, "active"),
+            eq(advertsTable.closedReason, "expired"),
             gt(advertsTable.closedAt, cutoff),
           ),
         )
