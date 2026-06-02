@@ -1003,12 +1003,13 @@ export default function PostScreen() {
           >
             <Feather name="lock" size={15} color="#D97706" />
             <Text style={[localStyles.subBannerText, { color: "#92400E" }]}>
-              {isClub ? "Free trial — 1 advert limit. Tap to upgrade." : "Free — 1 advert limit. Tap to upgrade."}
+              {isClub ? "Free trial — 1 advert limit. Tap to upgrade." : "Free accounts cannot post adverts, only respond to Club Adverts. Tap to upgrade."}
             </Text>
             <Feather name="chevron-right" size={15} color="#D97706" style={{ marginLeft: "auto" }} />
           </Pressable>
         )}
 
+        <View style={isPlayerFreeLimited ? { opacity: 0.4, pointerEvents: "none" } : undefined}>
         <View style={[localStyles.sportHeader, { backgroundColor: activeTheme.background, borderColor: activeTheme.soft }]}> 
           <Text style={[localStyles.sportHeaderKicker, { color: activeTheme.primary }]}>Posting under</Text>
           <Text style={[localStyles.sportHeaderTitle, { color: activeTheme.text }]}>{sport}</Text>
@@ -1355,6 +1356,7 @@ export default function PostScreen() {
             submit();
           }}
         />
+        </View>
 
         {myAdverts.length > 0 ? (
           <>
