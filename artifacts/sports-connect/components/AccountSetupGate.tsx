@@ -294,6 +294,22 @@ export function AccountSetupGate() {
           <Text style={[styles.brandText, { color: colors.mutedForeground }]}>
             Welcome! Choose your account type and complete your profile to get started.
           </Text>
+          <Pressable
+            onPress={() => {
+              Alert.alert(
+                "Sign out",
+                "Are you sure you want to sign out?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Sign out", style: "destructive", onPress: () => { void signOut(); } },
+                ],
+              );
+            }}
+            style={({ pressed }) => [styles.signOutLink, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Feather name="log-out" size={13} color={colors.mutedForeground} />
+            <Text style={[styles.signOutText, { color: colors.mutedForeground }]}>Sign out</Text>
+          </Pressable>
         </View>
 
         {/* ── Role selection step ── */}
@@ -683,6 +699,8 @@ const styles = StyleSheet.create({
   logo: { width: 180, height: 180, borderRadius: 44 },
   brandTitle: { fontWeight: "800", fontSize: 26, textAlign: "center", letterSpacing: -0.7 },
   brandText: { fontWeight: "500", fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 340 },
+  signOutLink: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4, paddingVertical: 4, paddingHorizontal: 10 },
+  signOutText: { fontWeight: "600", fontSize: 13 },
   card: { borderWidth: 1, borderRadius: 30, padding: 18, gap: 14 },
   cardTitle: { fontWeight: "800", fontSize: 23, letterSpacing: -0.4 },
   roleCard: { borderRadius: 22, padding: 16, gap: 4 },
