@@ -14,8 +14,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+// Configure API client base URL and auth token getter (side effects)
+import "@/lib/api-client";
+
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { OnboardingGate } from "@/components/OnboardingGate";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { SportsConnectProvider } from "@/context/SportsConnectContext";
 import colors from "@/constants/colors";
 
@@ -51,6 +55,27 @@ function LaunchScreen() {
   );
 }
 
+function AppContent() {
+  const { user, isLoading, isAuthenticated } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={[styles.launchScreen, { backgroundColor: colors.light.pitch }]}>
+        <ActivityIndicator color={colors.light.accent} size="large" />
+        <Text style={[styles.launchText, { color: colors.light.primaryForeground }]}>
+          Checking your session…
+        </Text>
+      </View>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return <OnboardingGate />;
+  }
+
+  return <RootLayoutNav />;
+}
+
 export default function RootLayout() {
   const [showLaunch, setShowLaunch] = useState(true);
   const [fontsLoaded, fontError] = useFonts({
@@ -81,15 +106,15 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <SportsConnectProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider>
-                <OnboardingGate>
-                  <RootLayoutNav />
-                </OnboardingGate>
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </SportsConnectProvider>
+          <AuthProvider>
+            <SportsConnectProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <KeyboardProvider>
+                  <AppContent />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </SportsConnectProvider>
+          </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

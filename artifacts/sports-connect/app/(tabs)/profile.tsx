@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
 import { SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
+import { useAuth } from "@/lib/auth";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
@@ -85,6 +86,7 @@ function Choice({ label, active, onPress }: { label: string; active: boolean; on
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { logout } = useAuth();
   const {
     playerProfile,
     clubProfile,
@@ -328,7 +330,7 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
             </View>
-            <PrimaryButton label="Sign out" icon="log-out" onPress={signOut} />
+            <PrimaryButton label="Sign out" icon="log-out" onPress={() => { logout(); signOut(); }} />
             <PrimaryButton label={mode === "edit" ? "Cancel editing" : "Edit Profile"} icon={mode === "edit" ? "x" : "edit-3"} onPress={mode === "edit" ? () => setMode("view") : openEdit} />
           </View>
         ) : null}
