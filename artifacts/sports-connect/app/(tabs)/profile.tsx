@@ -166,6 +166,7 @@ export default function ProfileScreen() {
           mapAddress: clubMapAddress,
           bio: clubBio,
         });
+        updateAccount({ bio: clubBio });
         if (isApproved) {
           resetClubApprovalAfterEdit();
           setMode("view");
@@ -214,6 +215,7 @@ export default function ProfileScreen() {
         bio: coachBio,
       });
     } else {
+      updateAccount({ bio: playerBio });
       updatePlayerProfile({
         ...playerProfile,
         name: currentAccount?.fullName ?? playerProfile.name,
@@ -464,7 +466,10 @@ export default function ProfileScreen() {
             <Field label="Club ground or street address" value={clubMapAddress} onChangeText={setClubMapAddress} placeholder="e.g. Princes Park, Carlton North VIC" />
             <Field label="Club contact email" value={currentAccount?.clubContactEmail ?? ""} onChangeText={(v) => updateAccount({ clubContactEmail: v })} keyboardType="email-address" />
             <Field label="Club contact mobile" value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
-            <Field label="Club bio" value={clubBio} onChangeText={(value) => setClubBio(value.slice(0, 250))} multiline maxLength={250} />
+            <Field label="Club bio" value={clubBio} onChangeText={(value) => {
+              const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
+              if (wordCount <= 200) setClubBio(value);
+            }} multiline />
             <Field label="Club website" value={currentAccount?.clubWebsite ?? ""} onChangeText={(v) => updateAccount({ clubWebsite: v })} />
 
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Social links (optional)</Text>
@@ -592,17 +597,17 @@ export default function ProfileScreen() {
               keyboardType="phone-pad"
             />
             <Field
-              label={isGuardian ? "Player bio" : isCoach ? "Coach bio" : "Bio"}
+              label={isGuardian ? "Player bio" : isCoach ? "Coach bio" : isClub ? "Club bio" : "Bio"}
               value={isClub ? clubBio : isCoach ? coachBio : isGuardian ? guardianBio : playerBio}
               onChangeText={(value) => {
-                const next = value.slice(0, 250);
-                if (isClub) setClubBio(next);
-                else if (isCoach) setCoachBio(next);
-                else if (isGuardian) setGuardianBio(next);
-                else setPlayerBio(next);
+                const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
+                if (wordCount > 200) return;
+                if (isClub) setClubBio(value);
+                else if (isCoach) setCoachBio(value);
+                else if (isGuardian) setGuardianBio(value);
+                else setPlayerBio(value);
               }}
               multiline
-              maxLength={250}
             />
 
             <Text style={[styles.label, { color: colors.mutedForeground }]}>

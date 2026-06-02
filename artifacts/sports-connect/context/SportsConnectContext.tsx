@@ -737,6 +737,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         location: account.location || current.location,
         mapAddress: account.clubAddress || current.mapAddress,
         imageId: account.profileImageId,
+        bio: account.bio || current.bio,
       }));
     } else {
       setActiveProfile("player");
@@ -746,6 +747,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         sports: account.sports.join(", "),
         location: account.location || current.location,
         imageId: account.profileImageId,
+        bio: account.bio || current.bio,
       }));
     }
     if (account.highlightReelUrl) {

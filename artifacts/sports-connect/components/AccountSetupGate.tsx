@@ -391,6 +391,15 @@ export function AccountSetupGate() {
                   onChangeText={(v) => update("clubContactMobile", v)}
                   keyboardType="phone-pad"
                 />
+                <Input
+                  label="Club Bio (optional, max 200 words)"
+                  value={form.bio}
+                  onChangeText={(v) => {
+                    const wordCount = v.trim().split(/\s+/).filter(Boolean).length;
+                    if (wordCount <= 200) update("bio", v);
+                  }}
+                  multiline
+                />
               </>
             ) : (
               <>
@@ -498,9 +507,13 @@ export function AccountSetupGate() {
                   keyboardType="phone-pad"
                 />
                 <Input
-                  label={role === "guardian" ? "Player Bio (optional)" : role === "coach" ? "Coach Bio (optional)" : "Bio (optional)"}
+                  label={role === "guardian" ? "Player Bio (optional, max 200 words)" : role === "coach" ? "Coach Bio (optional, max 200 words)" : "Bio (optional, max 200 words)"}
                   value={form.bio}
-                  onChangeText={(v) => update("bio", v.slice(0, 250))}
+                  onChangeText={(v) => {
+                    const wordCount = v.trim().split(/\s+/).filter(Boolean).length;
+                    if (wordCount <= 200) update("bio", v);
+                  }}
+                  multiline
                 />
 
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>
