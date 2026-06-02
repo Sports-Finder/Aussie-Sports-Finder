@@ -37,7 +37,7 @@ function useWarmUpBrowser() {
   }, []);
 }
 
-type AuthMode = "signin" | "signup";
+type AuthMode = "signin" | "signup" | "forgot" | "reset";
 
 // ---------------------------------------------------------------------------
 // OAuthButtons — isolated in its own component so that useSSO() (which
@@ -135,6 +135,9 @@ export function OnboardingGate() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [bannedEmailError, setBannedEmailError] = useState(false);
@@ -190,9 +193,39 @@ export function OnboardingGate() {
   const switchMode = (next: AuthMode) => {
     setMode(next);
     setCode("");
-    setEmail("");
+    if (next !== "forgot") setEmail("");
     setPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordMismatch(false);
     setBannedEmailError(false);
+  };
+
+  const handleForgotPassword = async () => {
+    const { error: createErr } = await signIn.create({ identifier: email });
+    if (createErr) return;
+    const { error: sendErr } = await signIn.resetPasswordEmailCode.sendCode();
+    if (sendErr) return;
+    setMode("reset");
+  };
+
+  const handleResendResetCode = async () => {
+    await signIn.resetPasswordEmailCode.sendCode();
+  };
+
+  const handleResetPassword = async () => {
+    if (newPassword !== confirmPassword) {
+      setPasswordMismatch(true);
+      return;
+    }
+    setPasswordMismatch(false);
+    const { error: verifyErr } = await signIn.resetPasswordEmailCode.verifyCode({ code });
+    if (verifyErr) return;
+    const { error: submitErr } = await signIn.resetPasswordEmailCode.submitPassword({ password: newPassword });
+    if (submitErr) return;
+    if (signIn.status === "complete") {
+      await signIn.finalize({ navigate: () => {} });
+    }
   };
 
   return (
@@ -218,13 +251,13 @@ export function OnboardingGate() {
         {/* Mode tabs */}
         <View style={[styles.tabs, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
           <Pressable
-            style={[styles.tab, mode === "signin" && { backgroundColor: colors.primary }]}
+            style={[styles.tab, (mode === "signin" || mode === "forgot" || mode === "reset") && { backgroundColor: colors.primary }]}
             onPress={() => switchMode("signin")}
           >
             <Text
               style={[
                 styles.tabText,
-                { color: mode === "signin" ? colors.primaryForeground : colors.mutedForeground },
+                { color: (mode === "signin" || mode === "forgot" || mode === "reset") ? colors.primaryForeground : colors.mutedForeground },
               ]}
             >
               Sign in
@@ -296,7 +329,121 @@ export function OnboardingGate() {
                 </Text>
               </Pressable>
 
+              <Pressable style={styles.linkBtn} onPress={() => switchMode("forgot")}>
+                <Text style={[styles.linkBtnText, { color: colors.mutedForeground }]}>
+                  Forgot password?
+                </Text>
+              </Pressable>
+
               <OAuthButtons bannedEmails={bannedEmails} colors={colors} />
+            </>
+          )}
+
+          {/* ── Forgot password ── */}
+          {mode === "forgot" && (
+            <>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Reset your password</Text>
+              <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
+                Enter your email address and we'll send you a code to reset your password.
+              </Text>
+              <Text style={[styles.label, { color: colors.foreground }]}>Email</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                value={email}
+                onChangeText={(v) => { setEmail(v); setBannedEmailError(false); }}
+                placeholder="your@email.com"
+                placeholderTextColor={colors.mutedForeground}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+              />
+              {siErrors.fields.identifier ? (
+                <Text style={styles.error}>{siErrors.fields.identifier.message}</Text>
+              ) : null}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  { backgroundColor: colors.primary },
+                  (!email || siFetching === "fetching" || pressed) && styles.btnDisabled,
+                ]}
+                onPress={handleForgotPassword}
+                disabled={!email || siFetching === "fetching"}
+              >
+                <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>
+                  Send reset code
+                </Text>
+              </Pressable>
+              <Pressable style={styles.linkBtn} onPress={() => switchMode("signin")}>
+                <Text style={[styles.linkBtnText, { color: colors.mutedForeground }]}>Back to sign in</Text>
+              </Pressable>
+            </>
+          )}
+
+          {/* ── Reset password (enter code + new password) ── */}
+          {mode === "reset" && (
+            <>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Choose a new password</Text>
+              <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
+                We sent a 6-digit code to {email}. Enter it along with your new password below.
+              </Text>
+              <Text style={[styles.label, { color: colors.foreground }]}>Reset code</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                value={code}
+                onChangeText={setCode}
+                placeholder="6-digit code"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="numeric"
+                autoComplete="one-time-code"
+              />
+              {siErrors.fields.code ? (
+                <Text style={styles.error}>{siErrors.fields.code.message}</Text>
+              ) : null}
+              <Text style={[styles.label, { color: colors.foreground }]}>New password</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                value={newPassword}
+                onChangeText={(v) => { setNewPassword(v); setPasswordMismatch(false); }}
+                placeholder="New password"
+                placeholderTextColor={colors.mutedForeground}
+                secureTextEntry
+                autoComplete="new-password"
+              />
+              {siErrors.fields.password ? (
+                <Text style={styles.error}>{siErrors.fields.password.message}</Text>
+              ) : null}
+              <Text style={[styles.label, { color: colors.foreground }]}>Confirm new password</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                value={confirmPassword}
+                onChangeText={(v) => { setConfirmPassword(v); setPasswordMismatch(false); }}
+                placeholder="Confirm new password"
+                placeholderTextColor={colors.mutedForeground}
+                secureTextEntry
+                autoComplete="new-password"
+              />
+              {passwordMismatch ? (
+                <Text style={styles.error}>Passwords do not match.</Text>
+              ) : null}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  { backgroundColor: colors.primary },
+                  (!code || !newPassword || !confirmPassword || siFetching === "fetching" || pressed) && styles.btnDisabled,
+                ]}
+                onPress={handleResetPassword}
+                disabled={!code || !newPassword || !confirmPassword || siFetching === "fetching"}
+              >
+                <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>
+                  Reset password
+                </Text>
+              </Pressable>
+              <Pressable style={styles.linkBtn} onPress={handleResendResetCode}>
+                <Text style={[styles.linkBtnText, { color: colors.primary }]}>Resend code</Text>
+              </Pressable>
+              <Pressable style={styles.linkBtn} onPress={() => switchMode("signin")}>
+                <Text style={[styles.linkBtnText, { color: colors.mutedForeground }]}>Back to sign in</Text>
+              </Pressable>
             </>
           )}
 
