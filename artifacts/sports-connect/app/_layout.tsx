@@ -21,8 +21,9 @@ import "@/lib/api-client";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AccountSetupGate } from "@/components/AccountSetupGate";
 import { OnboardingGate } from "@/components/OnboardingGate";
-import { SportsConnectProvider } from "@/context/SportsConnectContext";
+import { SportsConnectProvider, useSportsConnect } from "@/context/SportsConnectContext";
 import colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
@@ -42,12 +43,13 @@ function RootLayoutNav() {
 
 function AppContent() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { currentAccount, isHydrated } = useSportsConnect();
 
   useEffect(() => {
     setAuthTokenGetter(() => getToken());
   }, [getToken]);
 
-  if (!isLoaded) {
+  if (!isLoaded || !isHydrated) {
     return (
       <View style={[styles.loadingScreen, { backgroundColor: colors.light.pitch }]}>
         <ActivityIndicator color={colors.light.accent} size="large" />
@@ -60,6 +62,10 @@ function AppContent() {
 
   if (!isSignedIn) {
     return <OnboardingGate />;
+  }
+
+  if (!currentAccount) {
+    return <AccountSetupGate />;
   }
 
   return <RootLayoutNav />;

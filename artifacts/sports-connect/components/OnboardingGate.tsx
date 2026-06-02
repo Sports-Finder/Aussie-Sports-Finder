@@ -20,6 +20,8 @@ import { AdminPage, ModeratorPage } from "@/components/AdminDashboard";
 import { useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
+const BANNED_EMAIL_MSG = "This email address has been banned by an administrator and cannot be used with this app.";
+
 const logo = require("@/assets/images/icon.png") as number;
 
 // Required for OAuth redirect handling
@@ -47,6 +49,7 @@ export function OnboardingGate() {
     adminSignOut,
     moderatorLogin,
     moderatorSignOut,
+    bannedEmails,
   } = useSportsConnect();
 
   const { signIn, errors: siErrors, fetchStatus: siFetching } = useSignIn();
@@ -61,6 +64,7 @@ export function OnboardingGate() {
   const [code, setCode] = useState("");
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
+  const [bannedEmailError, setBannedEmailError] = useState(false);
 
   // Admin/moderator bypass — passcode-based, independent of Clerk auth
   if (isAdmin) return <AdminPage onExit={() => adminSignOut()} />;
@@ -73,6 +77,11 @@ export function OnboardingGate() {
     signUp.missingFields.length === 0;
 
   const handleSignIn = async () => {
+    const normalized = email.toLowerCase().trim();
+    if (bannedEmails.map((e) => e.toLowerCase()).includes(normalized)) {
+      setBannedEmailError(true);
+      return;
+    }
     const { error } = await signIn.password({ emailAddress: email, password });
     if (error) return;
     if (signIn.status === "complete") {
@@ -88,6 +97,11 @@ export function OnboardingGate() {
   };
 
   const handleSignUp = async () => {
+    const normalized = email.toLowerCase().trim();
+    if (bannedEmails.map((e) => e.toLowerCase()).includes(normalized)) {
+      setBannedEmailError(true);
+      return;
+    }
     const { error } = await signUp.password({ emailAddress: email, password });
     if (error) return;
     await signUp.verifications.sendEmailCode();
@@ -133,6 +147,7 @@ export function OnboardingGate() {
     setCode("");
     setEmail("");
     setPassword("");
+    setBannedEmailError(false);
   };
 
   return (
@@ -195,14 +210,16 @@ export function OnboardingGate() {
               <TextInput
                 style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => { setEmail(v); setBannedEmailError(false); }}
                 placeholder="your@email.com"
                 placeholderTextColor={colors.mutedForeground}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
               />
-              {siErrors.fields.identifier ? (
+              {bannedEmailError ? (
+                <Text style={styles.error}>{BANNED_EMAIL_MSG}</Text>
+              ) : siErrors.fields.identifier ? (
                 <Text style={styles.error}>{siErrors.fields.identifier.message}</Text>
               ) : null}
 
@@ -317,14 +334,16 @@ export function OnboardingGate() {
               <TextInput
                 style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => { setEmail(v); setBannedEmailError(false); }}
                 placeholder="your@email.com"
                 placeholderTextColor={colors.mutedForeground}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
               />
-              {suErrors.fields.emailAddress ? (
+              {bannedEmailError ? (
+                <Text style={styles.error}>{BANNED_EMAIL_MSG}</Text>
+              ) : suErrors.fields.emailAddress ? (
                 <Text style={styles.error}>{suErrors.fields.emailAddress.message}</Text>
               ) : null}
 
