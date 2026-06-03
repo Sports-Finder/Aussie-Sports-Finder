@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import * as AuthSession from "expo-auth-session";
 import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
@@ -13,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSignIn, useSignUp, useSSO } from "@clerk/expo";
 
@@ -141,6 +143,10 @@ export function OnboardingGate() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [bannedEmailError, setBannedEmailError] = useState(false);
+  const [showSignInPwd, setShowSignInPwd] = useState(false);
+  const [showSignUpPwd, setShowSignUpPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showResetConfirmPwd, setShowResetConfirmPwd] = useState(false);
 
   // Admin/moderator bypass — passcode-based, independent of Clerk auth
   if (isAdmin) return <AdminPage onExit={() => adminSignOut()} />;
@@ -229,7 +235,7 @@ export function OnboardingGate() {
   };
 
   return (
-    <View style={[styles.shell, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView behavior="padding" style={[styles.shell, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -302,15 +308,20 @@ export function OnboardingGate() {
               ) : null}
 
               <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Password"
-                placeholderTextColor={colors.mutedForeground}
-                secureTextEntry
-                autoComplete="password"
-              />
+              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
+                <TextInput
+                  style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 15, paddingHorizontal: 14, minHeight: 48 }}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Password"
+                  placeholderTextColor={colors.mutedForeground}
+                  secureTextEntry={!showSignInPwd}
+                  autoComplete="password"
+                />
+                <Pressable onPress={() => setShowSignInPwd((p) => !p)} style={{ padding: 6, marginRight: 4 }}>
+                  <Feather name={showSignInPwd ? "eye-off" : "eye"} size={20} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
               {siErrors.fields.password ? (
                 <Text style={styles.error}>{siErrors.fields.password.message}</Text>
               ) : null}
@@ -400,28 +411,38 @@ export function OnboardingGate() {
                 <Text style={styles.error}>{siErrors.fields.code.message}</Text>
               ) : null}
               <Text style={[styles.label, { color: colors.foreground }]}>New password</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
-                value={newPassword}
-                onChangeText={(v) => { setNewPassword(v); setPasswordMismatch(false); }}
-                placeholder="New password"
-                placeholderTextColor={colors.mutedForeground}
-                secureTextEntry
-                autoComplete="new-password"
-              />
+              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
+                <TextInput
+                  style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 15, paddingHorizontal: 14, minHeight: 48 }}
+                  value={newPassword}
+                  onChangeText={(v) => { setNewPassword(v); setPasswordMismatch(false); }}
+                  placeholder="New password"
+                  placeholderTextColor={colors.mutedForeground}
+                  secureTextEntry={!showNewPwd}
+                  autoComplete="new-password"
+                />
+                <Pressable onPress={() => setShowNewPwd((p) => !p)} style={{ padding: 6, marginRight: 4 }}>
+                  <Feather name={showNewPwd ? "eye-off" : "eye"} size={20} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
               {siErrors.fields.password ? (
                 <Text style={styles.error}>{siErrors.fields.password.message}</Text>
               ) : null}
               <Text style={[styles.label, { color: colors.foreground }]}>Confirm new password</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
-                value={confirmPassword}
-                onChangeText={(v) => { setConfirmPassword(v); setPasswordMismatch(false); }}
-                placeholder="Confirm new password"
-                placeholderTextColor={colors.mutedForeground}
-                secureTextEntry
-                autoComplete="new-password"
-              />
+              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
+                <TextInput
+                  style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 15, paddingHorizontal: 14, minHeight: 48 }}
+                  value={confirmPassword}
+                  onChangeText={(v) => { setConfirmPassword(v); setPasswordMismatch(false); }}
+                  placeholder="Confirm new password"
+                  placeholderTextColor={colors.mutedForeground}
+                  secureTextEntry={!showResetConfirmPwd}
+                  autoComplete="new-password"
+                />
+                <Pressable onPress={() => setShowResetConfirmPwd((p) => !p)} style={{ padding: 6, marginRight: 4 }}>
+                  <Feather name={showResetConfirmPwd ? "eye-off" : "eye"} size={20} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
               {passwordMismatch ? (
                 <Text style={styles.error}>Passwords do not match.</Text>
               ) : null}
@@ -509,15 +530,20 @@ export function OnboardingGate() {
               ) : null}
 
               <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Create a password"
-                placeholderTextColor={colors.mutedForeground}
-                secureTextEntry
-                autoComplete="new-password"
-              />
+              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
+                <TextInput
+                  style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 15, paddingHorizontal: 14, minHeight: 48 }}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Create a password"
+                  placeholderTextColor={colors.mutedForeground}
+                  secureTextEntry={!showSignUpPwd}
+                  autoComplete="new-password"
+                />
+                <Pressable onPress={() => setShowSignUpPwd((p) => !p)} style={{ padding: 6, marginRight: 4 }}>
+                  <Feather name={showSignUpPwd ? "eye-off" : "eye"} size={20} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
               {suErrors.fields.password ? (
                 <Text style={styles.error}>{suErrors.fields.password.message}</Text>
               ) : null}
@@ -594,63 +620,63 @@ export function OnboardingGate() {
             </Text>
           </Pressable>
         </View>
+      </ScrollView>
 
-        {/* Admin passcode modal */}
-        <Modal
-          transparent
-          visible={showAdminModal}
-          animationType="fade"
-          onRequestClose={() => setShowAdminModal(false)}
-        >
-          <View style={styles.modalScrim}>
-            <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.cardTitle, { color: colors.foreground }]}>Admin login</Text>
-              <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
-                Enter your admin passcode to access moderation tools.
-              </Text>
-              <TextInput
-                value={adminPasscodeInput}
-                onChangeText={setAdminPasscodeInput}
-                placeholder="Admin passcode"
-                placeholderTextColor={colors.mutedForeground}
-                secureTextEntry
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
-              />
-              <View style={styles.modalActions}>
-                <Pressable
-                  onPress={() => setShowAdminModal(false)}
-                  style={({ pressed }) => [
-                    styles.modalButton,
-                    { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 },
-                  ]}
-                >
-                  <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>
-                    Cancel
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    const adminOk = adminLogin(adminPasscodeInput);
-                    if (adminOk) { setShowAdminModal(false); return; }
-                    const modOk = moderatorLogin(adminPasscodeInput);
-                    if (modOk) { setShowAdminModal(false); return; }
-                    Alert.alert("Incorrect passcode", "The passcode you entered is incorrect. Please try again.");
-                  }}
-                  style={({ pressed }) => [
-                    styles.modalButton,
-                    { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
-                  ]}
-                >
-                  <Text style={[styles.modalButtonText, { color: colors.primaryForeground }]}>
-                    Login
-                  </Text>
-                </Pressable>
-              </View>
+      {/* Admin passcode modal */}
+      <Modal
+        transparent
+        visible={showAdminModal}
+        animationType="fade"
+        onRequestClose={() => setShowAdminModal(false)}
+      >
+        <View style={styles.modalScrim}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Admin login</Text>
+            <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
+              Enter your admin passcode to access moderation tools.
+            </Text>
+            <TextInput
+              value={adminPasscodeInput}
+              onChangeText={setAdminPasscodeInput}
+              placeholder="Admin passcode"
+              placeholderTextColor={colors.mutedForeground}
+              secureTextEntry
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+            />
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={() => setShowAdminModal(false)}
+                style={({ pressed }) => [
+                  styles.modalButton,
+                  { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 },
+                ]}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  const adminOk = adminLogin(adminPasscodeInput);
+                  if (adminOk) { setShowAdminModal(false); return; }
+                  const modOk = moderatorLogin(adminPasscodeInput);
+                  if (modOk) { setShowAdminModal(false); return; }
+                  Alert.alert("Incorrect passcode", "The passcode you entered is incorrect. Please try again.");
+                }}
+                style={({ pressed }) => [
+                  styles.modalButton,
+                  { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+                ]}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.primaryForeground }]}>
+                  Login
+                </Text>
+              </Pressable>
             </View>
           </View>
-        </Modal>
-      </ScrollView>
-    </View>
+        </View>
+      </Modal>
+    </KeyboardAvoidingView>
   );
 }
 

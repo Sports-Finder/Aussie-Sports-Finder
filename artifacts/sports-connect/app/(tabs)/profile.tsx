@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
@@ -349,7 +350,7 @@ export default function ProfileScreen() {
   const infoRows = buildInfoRows();
 
   return (
-    <View style={[styles.shell, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView behavior="padding" style={[styles.shell, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 116 }]}
         keyboardShouldPersistTaps="handled"
@@ -928,7 +929,7 @@ export default function ProfileScreen() {
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

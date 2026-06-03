@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
@@ -308,7 +309,7 @@ export function AccountSetupGate() {
   };
 
   return (
-    <View style={[styles.shell, { backgroundColor: colors.background }]}>
+    <KeyboardAvoidingView behavior="padding" style={[styles.shell, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -712,7 +713,7 @@ export function AccountSetupGate() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -789,22 +790,30 @@ function Input({
   placeholder?: string;
 }) {
   const colors = useColors();
+  const [showText, setShowText] = useState(false);
   return (
     <View style={styles.inputWrap}>
       <Text style={[styles.label, { color: colors.mutedForeground }]}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        secureTextEntry={secureTextEntry}
-        placeholderTextColor={colors.mutedForeground}
-        style={[
-          styles.input,
-          { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground },
-          multiline ? styles.multiline : undefined,
-        ]}
-      />
+      <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: secureTextEntry ? 8 : undefined }]}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          secureTextEntry={secureTextEntry ? !showText : false}
+          placeholder={placeholder}
+          placeholderTextColor={colors.mutedForeground}
+          style={[
+            { flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 15, paddingHorizontal: 14, minHeight: 48 },
+            multiline ? styles.multiline : undefined,
+          ]}
+        />
+        {secureTextEntry ? (
+          <Pressable onPress={() => setShowText((p) => !p)} style={{ padding: 6, marginRight: 4 }}>
+            <Feather name={showText ? "eye-off" : "eye"} size={20} color={colors.mutedForeground} />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }

@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
+import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 import {
   Alert,
   FlatList,
@@ -274,6 +275,31 @@ function ProfileViewModal({
                   <Text style={[profileStyles.bioText, { color: colors.foreground }]}>{account.bio}</Text>
                 </View>
               ) : null}
+
+              {/* Player / Guardian / Coach vetting fields */}
+              {!isClub && (
+                isCoach ? (
+                  <>
+                    {account.coachCurrentLevel ? (
+                      <ProfileRow
+                        icon="award"
+                        label={COACH_EXPERIENCE_LEVELS.find((l) => l.value === account.coachCurrentLevel)?.label ?? account.coachCurrentLevel}
+                        colors={colors}
+                      />
+                    ) : null}
+                    {account.coachCurrentClub ? <ProfileRow icon="shield" label={account.coachCurrentClub} colors={colors} /> : null}
+                  </>
+                ) : (
+                  <>
+                    {(account.playerPositions?.length ?? 0) > 0 ? (
+                      <ProfileRow icon="crosshair" label={account.playerPositions!.join(", ")} colors={colors} />
+                    ) : null}
+                    {account.playerCurrentLevel ? <ProfileRow icon="trending-up" label={account.playerCurrentLevel} colors={colors} /> : null}
+                    {account.playerCurrentAgeGroup ? <ProfileRow icon="users" label={account.playerCurrentAgeGroup} colors={colors} /> : null}
+                    {account.playerCurrentClub ? <ProfileRow icon="shield" label={account.playerCurrentClub} colors={colors} /> : null}
+                  </>
+                )
+              )}
 
               {isClub ? (
                 <>
