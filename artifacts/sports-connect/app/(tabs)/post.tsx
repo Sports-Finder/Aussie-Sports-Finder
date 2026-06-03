@@ -13,7 +13,8 @@ import { ApiError } from "@/utils/apiClient";
 import { detectContactInfo } from "@/utils/contactDetection";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
-type AgeGroup = { label: string; min: number; max: number };
+import { AgeGroup, AGE_GROUPS } from "@/constants/ageGroups";
+
 type TrialSlot = { date: string; timeFrom: string; timeTo: string };
 
 const COACH_ROLES = ["Head Coach", "Assistant Coach", "Trainer", "Technical Director"];
@@ -25,13 +26,6 @@ const COACH_EXPERIENCE_LEVELS = [
 ];
 const COACH_POSITION_TYPES = ["Paid Full-time", "Paid Part-time", "One off payment", "Unpaid Volunteer"];
 const FOCUS_AREAS = ["Club", "Junior Development", "Senior", "Women's Program"];
-const AGE_GROUPS: AgeGroup[] = [
-  { label: "Tiny Tots / Minis (Ages 3–6)", min: 3, max: 6 },
-  { label: "Junior (Ages 7–11)", min: 7, max: 11 },
-  { label: "Intermediate / Youth (Ages 12–15)", min: 12, max: 15 },
-  { label: "Senior Youth (Ages 16–20)", min: 16, max: 20 },
-  { label: "Senior (Ages 21+)", min: 21, max: 50 },
-];
 const TEAM_GENDERS = ["Female", "Male", "Mixed"];
 const PLAYER_GENDERS = ["Male", "Female"];
 

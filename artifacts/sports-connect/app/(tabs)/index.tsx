@@ -8,6 +8,7 @@ import { AccountRole, Advert, Conversation, useSportsConnect } from "@/context/S
 import { IconButton, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
 import { allSportsFilterName, getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
+import { getAgeBlockReason } from "@/utils/ageEligibility";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
@@ -139,6 +140,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
        (f.accountIdA === advert.ownerAccountId && f.accountIdB === currentAccount.id))
     )
   );
+  const ageBlockReason = getAgeBlockReason(currentAccount ?? null, advert);
 
   const posterLabel = isConnected
     ? advert.postedBy
@@ -398,7 +400,12 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               </View>
             ) : myRequest?.status === "connected" ? null : (
               canRequestConnection(currentAccount?.role ?? "player", advert) ? (
-                isConnecting ? (
+                ageBlockReason ? (
+                  <View style={[styles.connectedBadge, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5", borderWidth: 1 }]}>
+                    <Feather name="alert-circle" color="#DC2626" size={18} />
+                    <Text style={[styles.connectedText, { color: "#DC2626" }]}>{ageBlockReason}</Text>
+                  </View>
+                ) : isConnecting ? (
                   <View style={[styles.connectedBadge, { backgroundColor: colors.pitchSoft }]}>
                     <ActivityIndicator color={colors.primary} size="small" />
                     <Text style={[styles.connectedText, { color: colors.primary }]}>Sending connection request…</Text>

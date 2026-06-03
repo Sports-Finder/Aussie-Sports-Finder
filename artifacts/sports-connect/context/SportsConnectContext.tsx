@@ -5,6 +5,7 @@ import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
+import { getAgeBlockReason } from "../utils/ageEligibility";
 
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
 import { api, ApiError } from "@/utils/apiClient";
@@ -1364,6 +1365,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
          (f.accountIdA === advert.ownerAccountId && f.accountIdB === currentAccount.id))
       );
       if (blocked) return "";
+    }
+    const ageReason = getAgeBlockReason(currentAccount ?? null, advert);
+    if (ageReason) {
+      Alert.alert("Age not eligible", ageReason);
+      return "";
     }
     pendingConnectionIds.current.add(advert.id);
     const isClubAdvert = advert.postedByType === "club";

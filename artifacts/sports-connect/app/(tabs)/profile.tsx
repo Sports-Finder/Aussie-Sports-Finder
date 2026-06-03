@@ -14,24 +14,11 @@ import CoachAffiliatesPage from "@/components/CoachAffiliatesPage";
 import { useSubscription } from "@/lib/revenuecat";
 import { useIsPremium } from "@/hooks/useIsPremium";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
+import { parseDobAge } from "@/utils/dateUtils";
 
 type Mode = "view" | "edit";
 const genders = ["Male", "Female", "Pref Not to Say"];
 const states = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
-
-function parseDobAge(dob?: string) {
-  if (!dob) return null;
-  const parts = dob.split("-");
-  if (parts.length !== 3) return null;
-  const [day, month, year] = parts.map(Number);
-  if (!day || !month || !year) return null;
-  const birth = new Date(year, month - 1, day);
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age -= 1;
-  return age >= 0 ? age : null;
-}
 
 function formatDate(date: Date) {
   const day = `${date.getDate()}`.padStart(2, "0");
