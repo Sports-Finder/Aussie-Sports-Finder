@@ -191,8 +191,10 @@ export type Conversation = {
   requesterType?: AccountRole;
   pendingRequest?: boolean;
   advertLocation?: string;
-  advertPostedByType?: "player" | "club";
+  advertPostedByType?: "player" | "club" | "coach";
   affiliatedClubParticipants?: string[];
+  closedByName?: string;
+  hiddenForAccountIds?: string[];
 };
 
 export type Message = {
@@ -313,6 +315,7 @@ type SportsConnectState = {
   connectOnAdvert: (advert: Advert) => Promise<string>;
   acceptConnection: (conversationId: string) => void;
   denyConnection: (conversationId: string) => void;
+  closeConversation: (conversationId: string) => void;
   sendMessage: (conversationId: string, body: string) => Promise<void>;
   broadcastMessage: (advertId: string, body: string) => Promise<void>;
   markConversationRead: (conversationId: string) => void;
@@ -1380,7 +1383,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       sport: advert.sport,
       status: "pending",
       advertLocation: advert.location,
-      advertPostedByType: advert.postedByType,
+      advertPostedByType: (() => {
+        const owner = accounts.find((a) => a.id === advert.ownerAccountId);
+        return owner?.role === "club" ? "club" : owner?.role === "coach" ? "coach" : "player";
+      })(),
       hasUnread: false,
       messages: [],
       requesterLocation: currentAccount?.location,
@@ -1419,7 +1425,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       sender: "them",
       senderAccountId: conv.ownerAccountId,
       isSystem: true,
-      body: `This chat is now active to discuss "${title}" between ${conv.clubName} & ${conv.playerName}. Please do not share any sensitive information such as credit card, home address etc. All chats are closely monitored and will be closed immediately at any signs or evidence of misuse or abuse from either party.`,
+      body: `This chat is now active to discuss "${title}" between ${conv.clubName} & ${conv.requesterType === "coach" ? `${conv.playerName} (Coach)` : conv.playerName}. Please do not share any sensitive information such as credit card, home address etc. All chats are closely monitored and will be closed immediately at any signs or evidence of misuse or abuse from either party.`,
       createdAt: now(),
     };
     setConversations((current) =>
@@ -1428,6 +1434,43 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     api.updateConversation(conversationId, { status: "connected" }).catch(() => undefined);
     api.createMessage(conversationId, { sender: "them", isSystem: true, body: activeMsg.body }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  };
+
+  const closeConversation = (conversationId: string) => {
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv || !currentAccount) return;
+    const existingHidden = conv.hiddenForAccountIds ?? [];
+    if (existingHidden.includes(currentAccount.id)) return;
+    const newHidden = [...existingHidden, currentAccount.id];
+    if (conv.status !== "closed") {
+      const closerName = currentAccount.role === "club"
+        ? (currentAccount.clubName ?? "Club")
+        : currentAccount.role === "coach"
+        ? (currentAccount.fullName ?? "Coach")
+        : (currentAccount.fullName ?? currentAccount.playerName ?? "User");
+      const endMsg: Message = {
+        id: makeId(),
+        sender: "them",
+        isSystem: true,
+        body: "This Chat has Ended.",
+        createdAt: now(),
+      };
+      setConversations((current) =>
+        current.map((c) =>
+          c.id === conversationId
+            ? { ...c, status: "closed", closedByName: closerName, hiddenForAccountIds: newHidden, messages: [endMsg, ...c.messages] }
+            : c
+        )
+      );
+      api.updateConversation(conversationId, { status: "closed", closedByName: closerName, hiddenForAccountIds: newHidden }).catch(() => undefined);
+      api.createMessage(conversationId, { sender: "them", isSystem: true, body: endMsg.body }).catch(() => undefined);
+    } else {
+      setConversations((current) =>
+        current.map((c) => c.id === conversationId ? { ...c, hiddenForAccountIds: newHidden } : c)
+      );
+      api.updateConversation(conversationId, { hiddenForAccountIds: newHidden }).catch(() => undefined);
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
   const denyConnection = (conversationId: string) => {
@@ -1959,6 +2002,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     connectOnAdvert,
     acceptConnection,
     denyConnection,
+    closeConversation,
     sendMessage,
     broadcastMessage,
     markConversationRead,

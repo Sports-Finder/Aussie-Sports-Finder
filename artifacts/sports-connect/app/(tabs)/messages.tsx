@@ -53,7 +53,7 @@ function anonymousLabel(
   const isInitiator = currentAccountId === conversation.initiatorAccountId;
   const isOwner = currentAccountId === conversation.ownerAccountId;
   if (isInitiator) {
-    const ownerType = conversation.advertPostedByType === "club" ? "Club" : "Player";
+    const ownerType = conversation.advertPostedByType === "club" ? "Club" : conversation.advertPostedByType === "coach" ? "Coach" : "Player";
     return { title: `A ${ownerType} (${conversation.advertLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
   }
   if (isOwner) {
@@ -67,10 +67,11 @@ function ChatBox({ conversation, onPress, boxWidth, currentAccountId }: { conver
   const colors = useColors();
   const isPending = conversation.status === "pending";
   const isDenied = conversation.status === "denied";
-  const isUnread = !isPending && !isDenied && conversation.hasUnread;
+  const isUserClosed = conversation.status === "closed" && !!conversation.closedByName && !conversation.closedByAdmin;
+  const isUnread = !isPending && !isDenied && !isUserClosed && conversation.status !== "closed" && conversation.hasUnread;
 
-  const borderColor = isDenied ? colors.border : isPending ? "#F59E0B" : isUnread ? "#EF4444" : colors.border;
-  const bgColor = isDenied ? colors.muted : isPending ? "rgba(245,158,11,0.12)" : isUnread ? "rgba(239,68,68,0.10)" : colors.card;
+  const borderColor = isDenied || isUserClosed ? colors.border : isPending ? "#F59E0B" : isUnread ? "#EF4444" : colors.border;
+  const bgColor = isDenied || isUserClosed ? colors.muted : isPending ? "rgba(245,158,11,0.12)" : isUnread ? "rgba(239,68,68,0.10)" : colors.card;
   const badgeColor = isPending ? "#F59E0B" : isUnread ? "#EF4444" : "transparent";
 
   const lastMsg = conversation.messages[0];
@@ -88,7 +89,7 @@ function ChatBox({ conversation, onPress, boxWidth, currentAccountId }: { conver
         <View style={[styles.statusBar, { backgroundColor: badgeColor }]} />
       )}
 
-      <View style={[styles.chatBoxInner, isDenied ? { opacity: 0.55 } : null]}>
+      <View style={[styles.chatBoxInner, (isDenied || isUserClosed) ? { opacity: 0.55 } : null]}>
         {isPending ? (
           <View style={styles.pendingIconWrap}>
             <View style={[styles.pendingIcon, { backgroundColor: "#F59E0B22" }]}>
@@ -102,6 +103,15 @@ function ChatBox({ conversation, onPress, boxWidth, currentAccountId }: { conver
               <Feather name="x-circle" size={22} color={colors.mutedForeground} />
             </View>
             <Text style={[styles.chatBoxStatus, { color: colors.mutedForeground }]}>Not agreed</Text>
+          </View>
+        ) : isUserClosed ? (
+          <View style={styles.pendingIconWrap}>
+            <View style={[styles.pendingIcon, { backgroundColor: colors.secondary }]}>
+              <Feather name="minus-circle" size={22} color={colors.mutedForeground} />
+            </View>
+            <Text style={[styles.chatBoxStatus, { color: colors.mutedForeground }]} numberOfLines={1}>
+              Chat closed by {conversation.closedByName ?? "other party"}
+            </Text>
           </View>
         ) : (
           <View style={styles.avatarsRow}>
@@ -155,7 +165,7 @@ function MessageSender({ accountId, isMe }: { accountId?: string; isMe: boolean 
 export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId: string; onClose: () => void; asAdmin?: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations, sendMessage, broadcastMessage, adminSendMessage, markConversationRead, denyConnection, currentAccount, isAdmin } = useSportsConnect();
+  const { conversations, sendMessage, broadcastMessage, adminSendMessage, markConversationRead, closeConversation, currentAccount, isAdmin } = useSportsConnect();
   const conversation = conversations.find((c) => c.id === conversationId)!;
   const [draft, setDraft] = useState("");
   const [isBroadcast, setIsBroadcast] = useState(false);
@@ -166,9 +176,6 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
     (c) => c.advertId === conversation.advertId && c.status === "connected"
   );
   const isAffiliatedCoach = currentAccount?.role === "coach" && !!currentAccount?.affiliatedClubId;
-  const isOwnerOrAffiliated =
-    currentAccount?.id === conversation.ownerAccountId ||
-    (isAffiliatedCoach && conversation.affiliatedClubParticipants?.includes(currentAccount?.id));
   const canBroadcast =
     ((currentAccount?.role === "club" && currentAccount?.id === conversation.ownerAccountId) ||
      (isAffiliatedCoach && conversation.affiliatedClubParticipants?.includes(currentAccount?.id))) &&
@@ -227,14 +234,14 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
                 {roomSubtitle}
               </Text>
             </View>
-            {isOwnerOrAffiliated && conversation.status === "connected" && !adminMode ? (
+            {conversation.status === "connected" && !adminMode ? (
               <Pressable
                 onPress={() => Alert.alert(
                   "Close this chat?",
                   "This will end the conversation. The other party will see that the connection was closed.",
                   [
                     { text: "Cancel", style: "cancel" },
-                    { text: "Close Chat", style: "destructive", onPress: () => { denyConnection(conversationId); onClose(); } },
+                    { text: "Close Chat", style: "destructive", onPress: () => { closeConversation(conversationId); onClose(); } },
                   ]
                 )}
                 style={({ pressed }) => [styles.backBtn, { backgroundColor: "#FEE2E2", opacity: pressed ? 0.75 : 1 }]}
@@ -355,12 +362,32 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
               </View>
             </View>
           ) : conversation.status === "closed" ? (
-            <View style={[styles.composer, { borderTopColor: "#EF4444", paddingBottom: insets.bottom + 10, borderTopWidth: 2 }]}>
-              <View style={[styles.deniedBanner, { backgroundColor: "#FEF2F2" }]}>
-                <Feather name="shield" color="#DC2626" size={16} />
-                <Text style={[styles.deniedBannerText, { color: "#DC2626" }]}>This chat has been closed by an admin and cannot be reopened</Text>
+            conversation.closedByAdmin ? (
+              <View style={[styles.composer, { borderTopColor: "#EF4444", paddingBottom: insets.bottom + 10, borderTopWidth: 2 }]}>
+                <View style={[styles.deniedBanner, { backgroundColor: "#FEF2F2" }]}>
+                  <Feather name="shield" color="#DC2626" size={16} />
+                  <Text style={[styles.deniedBannerText, { color: "#DC2626" }]}>This chat has been closed by an admin and cannot be reopened</Text>
+                </View>
               </View>
-            </View>
+            ) : (
+              <View style={[styles.composer, { borderTopColor: colors.border, paddingBottom: insets.bottom + 10, gap: 8 }]}>
+                <View style={[styles.deniedBanner, { backgroundColor: colors.muted }]}>
+                  <Feather name="minus-circle" color={colors.mutedForeground} size={16} />
+                  <Text style={[styles.deniedBannerText, { color: colors.mutedForeground }]}>
+                    Chat was closed by {conversation.closedByName ?? "the other party"}
+                  </Text>
+                </View>
+                {!conversation.hiddenForAccountIds?.includes(currentAccount?.id ?? "") && (
+                  <Pressable
+                    onPress={() => { closeConversation(conversationId); onClose(); }}
+                    style={({ pressed }) => [styles.deniedBanner, { backgroundColor: colors.secondary, justifyContent: "center", opacity: pressed ? 0.75 : 1 }]}
+                  >
+                    <Feather name="x" color={colors.mutedForeground} size={14} />
+                    <Text style={[styles.deniedBannerText, { color: colors.mutedForeground, fontWeight: "600" }]}>Close & Remove from List</Text>
+                  </Pressable>
+                )}
+              </View>
+            )
           ) : (
             <View style={[styles.composerWrap, { borderTopColor: isBroadcast ? colors.primary : colors.border, paddingBottom: insets.bottom + 10 }]}>
               {canBroadcast && (
@@ -436,9 +463,10 @@ export default function MessagesScreen() {
     );
   }
 
+  const visibleConvs = conversations.filter((c) => !c.hiddenForAccountIds?.includes(currentAccount?.id ?? ""));
   const boxWidth = Math.max(100, (screenWidth - 40 - BOX_GAP) / 2);
-  const totalPages = Math.ceil(conversations.length / PAGE_SIZE);
-  const paged = conversations.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  const totalPages = Math.ceil(visibleConvs.length / PAGE_SIZE);
+  const paged = visibleConvs.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   const handleBoxPress = (conv: Conversation) => {
     if (conv.hasUnread && conv.status !== "pending") {
