@@ -34,7 +34,7 @@ router.post("/accounts", async (req, res) => {
     // Strip client-side id (local string id, not a DB serial) and any duplicate
     // publicId key before normalising dates — Drizzle rejects non-integer values
     // in the serial "id" column.
-    const { id: _id, publicId: _pid, ...rest } = req.body as Record<string, unknown>;
+    const { id: _id, ...rest } = req.body as Record<string, unknown>;
     const body = normalizeDates(rest, [
       "createdAt",
       "updatedAt",

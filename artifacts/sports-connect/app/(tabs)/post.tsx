@@ -511,7 +511,7 @@ export default function PostScreen() {
     }
 
     const locationLabel = suburb.trim();
-    const ending = locationLabel ? `in ${[locationLabel, state].filter(Boolean).join(" ")}` : "";
+    const ending = isCoachLooking || !locationLabel ? "" : `in ${[locationLabel, state].filter(Boolean).join(" ")}`;
     const isTechnicalDirector = isCoachWanted && coachRole === "Technical Director";
     const parts = isTechnicalDirector
       ? [genderLabel, sportLabel, focusArea, level, middleSlot, rolePhrase].filter(Boolean)
@@ -1322,7 +1322,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {!isPlayerLooking && (
+          {!isPlayerLooking && !isCoachLooking && (
             <CheckRow label="Trial required" value={trialRequired} onToggle={() => setTrialRequired(!trialRequired)} />
           )}
 
