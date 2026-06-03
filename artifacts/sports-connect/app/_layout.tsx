@@ -70,16 +70,19 @@ function SubscriptionSync() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Propagate subscription status to account store whenever RC confirms it.
+  // Propagate subscription status to account store whenever RC confirms it,
+  // or when the admin toggles promotionalPremium. Both sources drive the
+  // subscriptionStatus field so every part of the app (gold star, BUMP,
+  // repost cooldown) reflects the correct state without reading RC directly.
   useEffect(() => {
     if (!currentAccount || isLoading) return;
-    const active = customerInfo?.entitlements.active?.["premium"] !== undefined;
-    const nextStatus = active ? "active" : "inactive";
+    const rcActive = customerInfo?.entitlements.active?.["premium"] !== undefined;
+    const nextStatus = rcActive || !!currentAccount.promotionalPremium ? "active" : "inactive";
     if (currentAccount.subscriptionStatus !== nextStatus) {
       updateAccount({ subscriptionStatus: nextStatus });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerInfo, isLoading, currentAccount?.id]);
+  }, [customerInfo, isLoading, currentAccount?.id, currentAccount?.promotionalPremium]);
 
   return null;
 }

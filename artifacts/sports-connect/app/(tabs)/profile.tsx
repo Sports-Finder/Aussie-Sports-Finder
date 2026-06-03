@@ -12,6 +12,7 @@ import { openMapApp } from "@/utils/mapLinks";
 import { detectContactInfo } from "@/utils/contactDetection";
 import CoachAffiliatesPage from "@/components/CoachAffiliatesPage";
 import { useSubscription } from "@/lib/revenuecat";
+import { useIsPremium } from "@/hooks/useIsPremium";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 type Mode = "view" | "edit";
@@ -108,7 +109,8 @@ export default function ProfileScreen() {
     resetClubApprovalAfterEdit,
     respondToAffiliationRequest,
   } = useSportsConnect();
-  const { isSubscribed, restore, isRestoring, customerInfo } = useSubscription();
+  const { restore, isRestoring, customerInfo } = useSubscription();
+  const isPremium = useIsPremium();
 
   const [mode, setMode] = useState<Mode>("view");
   const [showCoachAffiliates, setShowCoachAffiliates] = useState(false);
@@ -371,7 +373,7 @@ export default function ProfileScreen() {
               <View style={styles.accountCopy}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <Text style={[styles.accountName, { color: colors.foreground }]}>{accountName}</Text>
-                  {isSubscribed ? (
+                  {isPremium ? (
                     <View style={styles.goldBadge}>
                       <Feather name="star" size={12} color="#D97706" />
                     </View>
@@ -397,31 +399,31 @@ export default function ProfileScreen() {
             style={({ pressed }) => [
               styles.card,
               {
-                backgroundColor: isSubscribed ? "#FFFBEB" : colors.card,
-                borderColor: isSubscribed ? "#FDE68A" : colors.border,
+                backgroundColor: isPremium ? "#FFFBEB" : colors.card,
+                borderColor: isPremium ? "#FDE68A" : colors.border,
                 opacity: pressed ? 0.85 : 1,
               },
             ]}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={[styles.accountIcon, { backgroundColor: isSubscribed ? "#FEF9C3" : colors.pitchSoft }]}>
-                <Feather name="star" size={20} color={isSubscribed ? "#D97706" : colors.primary} />
+              <View style={[styles.accountIcon, { backgroundColor: isPremium ? "#FEF9C3" : colors.pitchSoft }]}>
+                <Feather name="star" size={20} color={isPremium ? "#D97706" : colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.cardTitle, { color: isSubscribed ? "#92400E" : colors.foreground }]}>
-                  {isSubscribed ? "Premium Active" : "Upgrade to Premium"}
+                <Text style={[styles.cardTitle, { color: isPremium ? "#92400E" : colors.foreground }]}>
+                  {isPremium ? "Premium Active" : "Upgrade to Premium"}
                 </Text>
-                <Text style={[styles.cardText, { color: isSubscribed ? "#78350F" : colors.mutedForeground }]}>
-                  {isSubscribed
+                <Text style={[styles.cardText, { color: isPremium ? "#78350F" : colors.mutedForeground }]}>
+                  {isPremium
                     ? `Gold star badge · Unlimited adverts · All features unlocked`
                     : isClub
                     ? "Unlimited adverts, BUMP, Coach Affiliates & gold star badge"
                     : "Unlimited connections, 1 active advert & gold star badge"}
                 </Text>
               </View>
-              <Feather name="chevron-right" size={18} color={isSubscribed ? "#D97706" : colors.mutedForeground} />
+              <Feather name="chevron-right" size={18} color={isPremium ? "#D97706" : colors.mutedForeground} />
             </View>
-            {isSubscribed ? null : (
+            {isPremium ? null : (
               <View style={[styles.subPriceRow, { backgroundColor: colors.pitchSoft, borderRadius: 14, padding: 10, gap: 10 }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.cardText, { color: colors.primary, fontWeight: "700" }]}>
@@ -521,7 +523,7 @@ export default function ProfileScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>Coach Affiliates</Text>
-                {isSubscribed ? (
+                {isPremium ? (
                   <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
                     {(currentAccount?.coachAffiliates?.filter((a) => a.status === "active").length ?? 0)} active · {(currentAccount?.coachAffiliates?.filter((a) => a.status === "pending").length ?? 0)} pending
                   </Text>
@@ -531,12 +533,12 @@ export default function ProfileScreen() {
               </View>
               <Pressable
                 onPress={() => {
-                  if (!isSubscribed) { setShowPaywall(true); return; }
+                  if (!isPremium) { setShowPaywall(true); return; }
                   setShowCoachAffiliates(true);
                 }}
-                style={({ pressed }) => [styles.mapBtn, { backgroundColor: isSubscribed ? colors.primary : "#FDE68A", opacity: pressed ? 0.75 : 1, flex: 0, minWidth: 90 }]}
+                style={({ pressed }) => [styles.mapBtn, { backgroundColor: isPremium ? colors.primary : "#FDE68A", opacity: pressed ? 0.75 : 1, flex: 0, minWidth: 90 }]}
               >
-                {isSubscribed ? (
+                {isPremium ? (
                   <Text style={styles.mapBtnText}>View/Edit</Text>
                 ) : (
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>

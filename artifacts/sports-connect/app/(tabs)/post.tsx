@@ -8,7 +8,7 @@ import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/compone
 import { Advert, AccountRole, useSportsConnect } from "@/context/SportsConnectContext";
 import { getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
-import { useSubscription } from "@/lib/revenuecat";
+import { useIsPremium } from "@/hooks/useIsPremium";
 import { ApiError } from "@/utils/apiClient";
 import { detectContactInfo } from "@/utils/contactDetection";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
@@ -371,7 +371,7 @@ export default function PostScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
-  const { isSubscribed } = useSubscription();
+  const isPremium = useIsPremium();
   const accountRole = currentAccount?.role ?? activeProfile;
 
   // Live ticker so the cooldown lock re-evaluates automatically when time passes.
@@ -685,8 +685,8 @@ export default function PostScreen() {
   // Paid clubs: unlimited adverts
   // Paid players/coaches: 1 active advert
   const activeMyAdverts = myAdverts.filter((a) => a.status !== "closed");
-  const isClubFreeTrialLimited = isClub && !isSubscribed && activeMyAdverts.length >= 1 && !editingId;
-  const isPlayerFreeLimited = !isClub && !isSubscribed && !editingId;
+  const isClubFreeTrialLimited = isClub && !isPremium && activeMyAdverts.length >= 1 && !editingId;
+  const isPlayerFreeLimited = !isClub && !isPremium && !editingId;
 
   const requiresSubscription = isClubFreeTrialLimited || isPlayerFreeLimited;
 
@@ -709,7 +709,7 @@ export default function PostScreen() {
   }
 
   function isSimilarToExisting(draftTitle: string, draftDesc: string): boolean {
-    if (!isClub || !isSubscribed) return false; // Only paid clubs can have multiple adverts
+    if (!isClub || !isPremium) return false; // Only paid clubs can have multiple adverts
     return activeMyAdverts.some((a) => {
       if (a.sport !== sport || a.type !== type) return false;
       const titleScore = tokenOverlap(draftTitle, a.title);
@@ -987,7 +987,7 @@ export default function PostScreen() {
         })() : null}
 
         {/* ── Subscription status banner ── */}
-        {isSubscribed ? (
+        {isPremium ? (
           <View style={[localStyles.subBanner, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
             <Feather name="star" size={16} color="#D97706" />
             <Text style={[localStyles.subBannerText, { color: "#15803D" }]}>Premium — unlimited adverts active</Text>
