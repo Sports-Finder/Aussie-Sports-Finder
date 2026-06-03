@@ -31,7 +31,11 @@ router.get("/accounts", async (_req, res) => {
 
 router.post("/accounts", async (req, res) => {
   try {
-    const body = normalizeDates(req.body, [
+    // Strip client-side id (local string id, not a DB serial) and any duplicate
+    // publicId key before normalising dates — Drizzle rejects non-integer values
+    // in the serial "id" column.
+    const { id: _id, publicId: _pid, ...rest } = req.body as Record<string, unknown>;
+    const body = normalizeDates(rest, [
       "createdAt",
       "updatedAt",
       "statusChangedAt",
@@ -40,7 +44,7 @@ router.post("/accounts", async (req, res) => {
       "subscriptionExpiresAt",
       "lastAdvertClosedAt",
     ]);
-    const [created] = await db.insert(accountsTable).values(body).returning();
+    const [created] = await db.insert(accountsTable).values(body as never).returning();
     res.status(201).json(mapAccount(created as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to create account");
