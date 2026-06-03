@@ -17,6 +17,7 @@ import {
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
 import type { ClubApprovalStatus } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
+import { parseTrialDate } from "@/utils/dateUtils";
 
 type Section = "overview" | "adverts" | "chats" | "accounts" | "moderation" | "clubapprovals" | "sports" | "settings";
 
@@ -489,7 +490,16 @@ function AdvertsSection() {
                 {advert.trialSlots && advert.trialSlots.length > 0 ? (
                   <View style={styles.metaRow}>
                     <Feather name="calendar" size={12} color={colors.mutedForeground} />
-                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Trial slots: {advert.trialSlots.map((t) => `${t.date} ${t.timeFrom}–${t.timeTo}`).join(", ")}</Text>
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                      Trial slots:{" "}
+                      {advert.trialSlots.map((t) => {
+                        const d = parseTrialDate(t.date);
+                        const display = d
+                          ? `${d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} ${t.timeFrom}${t.timeTo ? `–${t.timeTo}` : ""}`
+                          : `${t.date} ${t.timeFrom}${t.timeTo ? `–${t.timeTo}` : ""}`;
+                        return display;
+                      }).join(", ")}
+                    </Text>
                   </View>
                 ) : null}
                 {advert.trialRequired !== undefined ? (

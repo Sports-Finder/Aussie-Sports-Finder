@@ -9,7 +9,7 @@ import { IconButton, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/co
 import { allSportsFilterName, getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
 import { getAgeBlockReason } from "@/utils/ageEligibility";
-import { parseDobAge } from "@/utils/dateUtils";
+import { parseDobAge, formatTrialDateDisplay } from "@/utils/dateUtils";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 
 const heroImage = require("@/assets/images/training-hero.png");
@@ -335,6 +335,23 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
             {/* ── Schedule note (player-looking only) ── */}
             {advert.scheduleNote ? (
               <DetailRow label="Training / game day notes" value={advert.scheduleNote} />
+            ) : null}
+
+            {/* ── Trial dates ── */}
+            {advert.trialSlots && advert.trialSlots.length > 0 ? (
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Trial dates</Text>
+                <View style={{ gap: 4 }}>
+                  {advert.trialSlots.map((t, idx) => {
+                    const display = formatTrialDateDisplay(t.date);
+                    return (
+                      <Text key={idx} style={[styles.detailCopy, { color: colors.foreground }]}>
+                        {display ? `${display}  ${t.timeFrom ? t.timeFrom : ""}${t.timeTo ? ` – ${t.timeTo}` : ""}` : `${t.date} ${t.timeFrom}${t.timeTo ? `–${t.timeTo}` : ""}`}
+                      </Text>
+                    );
+                  })}
+                </View>
+              </View>
             ) : null}
 
             {/* ── Standard fields ── */}

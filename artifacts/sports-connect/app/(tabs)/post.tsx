@@ -15,6 +15,7 @@ import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 import { AgeGroup, AGE_GROUPS } from "@/constants/ageGroups";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { formatTrialDateInput, parseTrialDate } from "@/utils/dateUtils";
 
 type TrialSlot = { date: string; timeFrom: string; timeTo: string };
 
@@ -645,7 +646,7 @@ export default function PostScreen() {
   const gameDaysOk = gameTbd || gameDays.length > 0;
   const scheduleOk = !showSchedule || (trainingDaysOk && gameDaysOk);
 
-  function parseTrialDate(s: string): string | null {
+  function parseTrialDateIso(s: string): string | null {
     const parts = s.trim().split("/");
     if (parts.length !== 3 || parts[2].length !== 4) return null;
     return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
@@ -653,8 +654,8 @@ export default function PostScreen() {
   const trialSlotOrderErrors: boolean[] = trialSlots.map((slot, i) => {
     if (i === 0) return false;
     const prev = trialSlots[i - 1];
-    const pd = parseTrialDate(prev.date);
-    const cd = parseTrialDate(slot.date);
+    const pd = parseTrialDateIso(prev.date);
+    const cd = parseTrialDateIso(slot.date);
     if (!pd || !cd) return false;
     if (cd < pd) return true;
     if (cd === pd && slot.timeFrom.trim() !== "" && prev.timeFrom.trim() !== "" && slot.timeFrom.trim() <= prev.timeFrom.trim()) return true;
@@ -1274,19 +1275,26 @@ export default function PostScreen() {
           {isClubTrials && (
             <>
               <FormLabel text="Trial date(s) (DD/MM/YYYY)" required />
-              {trialSlots.map((slot, i) => (
+              {trialSlots.map((slot, i) => {
+                const displayDate = parseTrialDate(slot.date)
+                  ? parseTrialDate(slot.date)!.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+                  : null;
+                return (
                 <View key={i} style={{ gap: 6, marginBottom: 8 }}>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <View style={{ flex: 2 }}>
                       <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>DATE</Text>
                       <TextInput
                         value={slot.date}
-                        onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, date: v } : s))}
+                        onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, date: formatTrialDateInput(v) } : s))}
                         placeholder="DD/MM/YYYY"
                         placeholderTextColor={colors.mutedForeground}
                         keyboardType="number-pad"
                         style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: trialSlotOrderErrors[i] || trialSlotDuplicates[i] ? "#D9534F" : colors.border, color: colors.foreground }]}
                       />
+                      {displayDate ? (
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>{displayDate}</Text>
+                      ) : null}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>FROM</Text>
@@ -1317,7 +1325,8 @@ export default function PostScreen() {
                   {trialSlotOrderErrors[i] && <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 12 }}>Trial dates must be in chronological order</Text>}
                   {trialSlotDuplicates[i] && <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 12 }}>Duplicate trial date/time</Text>}
                 </View>
-              ))}
+                );
+              })}
               <Pressable onPress={() => setTrialSlots((prev) => [...prev, { date: "", timeFrom: "", timeTo: "" }])} style={({ pressed }) => [localStyles.addSlotButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
                 <Feather name="plus" size={16} color={colors.primary} />
                 <Text style={[localStyles.addSlotText, { color: colors.primary }]}>Add another trial date</Text>
