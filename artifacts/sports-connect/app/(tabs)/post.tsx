@@ -1175,7 +1175,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {!isCoachWanted && (
+          {!isCoachWanted && !isCoachLooking && (
             <>
               <FormLabel text="Position(s)" />
               <View style={localStyles.pillRow}>
