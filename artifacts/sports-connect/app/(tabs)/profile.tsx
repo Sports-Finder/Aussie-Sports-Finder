@@ -7,6 +7,7 @@ import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/
 import { SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { useAuth } from "@clerk/expo";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
+import { defaultSportThemes, getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
 import { detectContactInfo } from "@/utils/contactDetection";
@@ -324,7 +325,7 @@ export default function ProfileScreen() {
         { label: "Coaching level", value: COACH_EXPERIENCE_LEVELS.find((l) => l.value === currentAccount.coachCurrentLevel)?.label ?? currentAccount.coachCurrentLevel ?? "" },
         { label: "Current or previous club", value: currentAccount.coachCurrentClub ?? "" },
       ] : [
-        { label: "Positions played", value: currentAccount.playerPositions ?? "" },
+        { label: "Positions played", value: (currentAccount.playerPositions ?? []).join(", ") },
         { label: "Current playing level", value: currentAccount.playerCurrentLevel ?? "" },
         { label: "Current playing age group", value: currentAccount.playerCurrentAgeGroup ?? "" },
         { label: "Current or previous club", value: currentAccount.playerCurrentClub ?? "" },
@@ -838,7 +839,32 @@ export default function ProfileScreen() {
 
             {!isCoach && !isClub && (
               <>
-                <Field label="Positions played" value={currentAccount?.playerPositions ?? ""} onChangeText={(v) => updateAccount({ playerPositions: v })} placeholder="e.g. Midfielder, Striker" />
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                  Positions played
+                  {currentAccount?.defaultSport ? ` for ${currentAccount.defaultSport}` : ""}
+                </Text>
+                <View style={styles.wrapRow}>
+                  {(() => {
+                    const sportTheme = getSportTheme(currentAccount?.defaultSport ?? "", defaultSportThemes);
+                    if (sportTheme.positions.length === 0) {
+                      return <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>No preset positions for this sport — add your own below.</Text>;
+                    }
+                    return sportTheme.positions.map((pos) => (
+                      <Choice
+                        key={pos}
+                        label={pos}
+                        active={(currentAccount?.playerPositions ?? []).includes(pos)}
+                        onPress={() => {
+                          const current = currentAccount?.playerPositions ?? [];
+                          const next = current.includes(pos)
+                            ? current.filter((p) => p !== pos)
+                            : [...current, pos];
+                          updateAccount({ playerPositions: next });
+                        }}
+                      />
+                    ));
+                  })()}
+                </View>
                 <Field label="Current playing level" value={currentAccount?.playerCurrentLevel ?? ""} onChangeText={(v) => updateAccount({ playerCurrentLevel: v })} placeholder="e.g. Competitive, Social" />
                 <Field label="Current playing age group" value={currentAccount?.playerCurrentAgeGroup ?? ""} onChangeText={(v) => updateAccount({ playerCurrentAgeGroup: v })} placeholder="e.g. Under 14s, Open Age" />
                 <Field label="Current or previous club" value={currentAccount?.playerCurrentClub ?? ""} onChangeText={(v) => updateAccount({ playerCurrentClub: v })} placeholder="e.g. Northside FC" />

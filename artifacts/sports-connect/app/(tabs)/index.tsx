@@ -380,7 +380,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                             req.gender ? { label: "Gender", value: req.gender } : null,
                             req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` } : null,
                             req.location ? { label: "Location", value: req.location } : null,
-                            req.playerPositions ? { label: "Position/s", value: req.playerPositions } : null,
+                            (req.playerPositions ?? []).length > 0 ? { label: "Position/s", value: (req.playerPositions ?? []).join(", ") } : null,
                             req.playerCurrentLevel ? { label: "Playing level", value: req.playerCurrentLevel } : null,
                             req.playerCurrentAgeGroup ? { label: "Age group", value: req.playerCurrentAgeGroup } : null,
                             req.playerCurrentClub ? { label: "Current / prev club", value: req.playerCurrentClub } : null,

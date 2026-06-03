@@ -116,7 +116,7 @@ export type UserAccount = {
   subscriptionExpiresAt?: string;
   lastAdvertClosedAt?: string;
   promotionalPremium?: boolean;
-  playerPositions?: string;
+  playerPositions?: string[];
   playerCurrentLevel?: string;
   playerCurrentAgeGroup?: string;
   playerCurrentClub?: string;
