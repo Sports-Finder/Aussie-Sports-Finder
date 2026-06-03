@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, Alert } from "react-native";
 import { FlatList, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -146,14 +146,37 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
 
   const [isConnecting, setIsConnecting] = useState(false);
 
-  const connect = async () => {
-    if (isConnecting || myRequest) return;
+  const doConnect = async () => {
     setIsConnecting(true);
     try {
       await connectOnAdvert(advert);
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  const connect = () => {
+    if (isConnecting || myRequest) return;
+    const AU_STATE_LIST = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
+    const extractState = (loc: string) => {
+      const last = loc.trim().split(" ").pop()?.toUpperCase() ?? "";
+      return AU_STATE_LIST.includes(last) ? last : "";
+    };
+    const viewerState = extractState(currentAccount?.location ?? "");
+    const advertState = extractState(advert.location);
+    if (viewerState && advertState && viewerState !== advertState) {
+      const posterLabel = advert.postedByType === "club" ? "Club" : advert.postedByType === "player" ? "Player" : "Coach";
+      Alert.alert(
+        "Different State",
+        `You are requesting to connect privately with a ${posterLabel} from a different State (${advertState}). Are you sure?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Connect", onPress: doConnect },
+        ]
+      );
+      return;
+    }
+    doConnect();
   };
 
   const trainingSchedule = (() => {
@@ -225,6 +248,11 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               {advert.preferredAge ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>Age {advert.preferredAge}</Text></View> : null}
               {advert.trialRequired ? <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}><Text style={[styles.detailChipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
               {feesLabel ? <View style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}><Text style={[styles.detailChipText, { color: colors.primary }]}>{feesLabel}</Text></View> : null}
+              {advert.opportunityStates && advert.opportunityStates.length > 0 ? (
+                advert.opportunityStates.length === 8
+                  ? <View style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}><Text style={[styles.detailChipText, { color: colors.primary }]}>Open to: Australia</Text></View>
+                  : advert.opportunityStates.map((s) => <View key={s} style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}><Text style={[styles.detailChipText, { color: colors.primary }]}>{s}</Text></View>)
+              ) : null}
             </View>
 
             {/* ── Connection notification ── */}

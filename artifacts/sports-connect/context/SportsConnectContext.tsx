@@ -165,6 +165,7 @@ export type Advert = {
   ownerSubscriptionStatus?: string;
   bumpedAt?: string;
   possibleDuplicate?: boolean;
+  opportunityStates?: string[];
 };
 
 export type ForbiddenConnection = {

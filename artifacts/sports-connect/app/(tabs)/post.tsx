@@ -272,6 +272,11 @@ function MyAdvertDetail({
               {advert.preferredAge ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>Age {advert.preferredAge}</Text></View> : null}
               {advert.trialRequired ? <View style={[localStyles.chip, { backgroundColor: colors.amberSoft }]}><Text style={[localStyles.chipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
               {feesLabel ? <View style={[localStyles.chip, { backgroundColor: colors.pitchSoft }]}><Text style={[localStyles.chipText, { color: colors.primary }]}>{feesLabel}</Text></View> : null}
+              {advert.opportunityStates && advert.opportunityStates.length > 0 ? (
+                advert.opportunityStates.length === AU_STATES.length
+                  ? <View style={[localStyles.chip, { backgroundColor: colors.pitchSoft }]}><Text style={[localStyles.chipText, { color: colors.primary }]}>Open to: Australia</Text></View>
+                  : advert.opportunityStates.map((s) => <View key={s} style={[localStyles.chip, { backgroundColor: colors.pitchSoft }]}><Text style={[localStyles.chipText, { color: colors.primary }]}>{s}</Text></View>)
+              ) : null}
             </View>
 
             {advert.positions && advert.positions.length > 0 ? (
@@ -427,6 +432,10 @@ export default function PostScreen() {
   const [ageGroup, setAgeGroup] = useState<AgeGroup | null>(null);
   const [preferredAge, setPreferredAge] = useState<number | null>(null);
   const [positions, setPositions] = useState<string[]>([]);
+  const [opportunityStates, setOpportunityStates] = useState<string[]>(() => {
+    const s = stateFromLocation(currentAccount?.location ?? playerProfile.location);
+    return s ? [s] : [];
+  });
   const [coachTitle, setCoachTitle] = useState("");
   const [playerDescription, setPlayerDescription] = useState("");
   const [trainingDays, setTrainingDays] = useState<string[]>([]);
@@ -464,7 +473,9 @@ export default function PostScreen() {
   useEffect(() => {
     const loc = currentAccount?.location ?? "";
     setSuburb(stripStateFromLocation(loc));
-    setState(stateFromLocation(loc));
+    const profileState = stateFromLocation(loc);
+    setState(profileState);
+    setOpportunityStates(profileState ? [profileState] : []);
   }, [currentAccount?.id]);
 
   useEffect(() => {
@@ -488,6 +499,7 @@ export default function PostScreen() {
     const sportLabel = sport.includes(" (") ? sport.split(" (")[0] : sport;
     const ageLabel = ageGroup ? ageGroup.label.replace(/\(.*\)/, "").trim() : "";
     const isClubSide = type === "players-wanted" || type === "club-trials" || type === "coach-wanted";
+    const isLookingType = type === "player-looking" || type === "coach-looking";
     const genderLabel = isClubSide ? teamGender.trim() : playerGender.trim();
     const positionLabel = positions.length === 1 ? positions[0] : "";
 
@@ -510,15 +522,28 @@ export default function PostScreen() {
       rolePhrase = "Coach Looking for Club";
     }
 
-    const locationLabel = suburb.trim();
-    const ending = isCoachLooking || !locationLabel ? "" : `in ${[locationLabel, state].filter(Boolean).join(" ")}`;
-    const isTechnicalDirector = isCoachWanted && coachRole === "Technical Director";
-    const parts = isTechnicalDirector
+    let ending = "";
+    if (isLookingType) {
+      if (opportunityStates.length === AU_STATES.length) {
+        ending = "in Australia";
+      } else if (opportunityStates.length > 0) {
+        ending = opportunityStates.length === 1
+          ? `in ${opportunityStates[0]}`
+          : `in ${opportunityStates.slice(0, -1).join(", ")} & ${opportunityStates[opportunityStates.length - 1]}`;
+      }
+    } else {
+      const locationLabel = suburb.trim();
+      ending = locationLabel ? `in ${[locationLabel, state].filter(Boolean).join(" ")}` : "";
+    }
+
+    const isTD = type === "coach-wanted" && coachRole === "Technical Director";
+    const profileStateLabel = isLookingType ? state.trim() : "";
+    const parts = isTD
       ? [genderLabel, sportLabel, focusArea, level, middleSlot, rolePhrase].filter(Boolean)
-      : [genderLabel, ageLabel, level, middleSlot, sportLabel, rolePhrase].filter(Boolean);
+      : [genderLabel, ageLabel, level, middleSlot, sportLabel, profileStateLabel, rolePhrase].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim();
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, focusArea, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender, level]);
+  }, [sport, type, ageGroup, focusArea, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender, level, opportunityStates]);
 
   const loadAdvertForEdit = (advert: Advert) => {
     setEditingId(advert.id);
@@ -531,6 +556,7 @@ export default function PostScreen() {
     setAgeGroup(foundGroup);
     setPreferredAge(advert.preferredAge ?? null);
     setPositions(advert.positions ?? []);
+    setOpportunityStates(advert.opportunityStates ?? (stateFromLocation(advert.location) ? [stateFromLocation(advert.location)] : []));
     setCoachTitle("");
     setTrainingDays(advert.trainingDays ?? []);
     setTrainingFrom(advert.trainingTimeFrom ?? "");
@@ -566,6 +592,8 @@ export default function PostScreen() {
     setAgeGroup(null);
     setPreferredAge(null);
     setPositions([]);
+    const cancelProfileState = stateFromLocation(currentAccount?.location ?? "");
+    setOpportunityStates(cancelProfileState ? [cancelProfileState] : []);
     setCoachTitle("");
     setTrainingDays([]);
     setTrainingFrom("");
@@ -724,6 +752,8 @@ export default function PostScreen() {
     setAgeGroup(null);
     setPreferredAge(null);
     setPositions([]);
+    const resetProfileState = stateFromLocation(currentAccount?.location ?? "");
+    setOpportunityStates(resetProfileState ? [resetProfileState] : []);
     setTrainingDays([]);
     setTrainingFrom("");
     setTrainingTo("");
@@ -823,6 +853,7 @@ export default function PostScreen() {
       trialRequired,
       teamGender: (isPlayersWanted || isClubTrials || (isCoachWanted && !isTechnicalDirector)) ? teamGender.trim() || undefined : undefined,
       playerGender: (isPlayerLooking || isCoachLooking) ? playerGender.trim() || undefined : undefined,
+      opportunityStates: (isPlayerLooking || isCoachLooking) ? opportunityStates : undefined,
     };
     if (editingId) {
       updateAdvert(editingId, draft);
@@ -1172,6 +1203,29 @@ export default function PostScreen() {
                   </Pressable>
                 ))}
               </ScrollView>
+            </>
+          )}
+
+          {(isPlayerLooking || isCoachLooking) && (
+            <>
+              <FormLabel text="States you're open to" />
+              <View style={localStyles.pillRow}>
+                {AU_STATES.map((s) => (
+                  <Pill
+                    key={s}
+                    label={s}
+                    active={opportunityStates.includes(s)}
+                    onPress={() => {
+                      setOpportunityStates((prev) => {
+                        if (prev.includes(s)) {
+                          return prev.length > 1 ? prev.filter((x) => x !== s) : prev;
+                        }
+                        return [...prev, s];
+                      });
+                    }}
+                  />
+                ))}
+              </View>
             </>
           )}
 
