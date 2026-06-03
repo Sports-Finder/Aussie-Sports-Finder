@@ -12,6 +12,6 @@ import { useSubscription } from "@/lib/revenuecat";
  */
 export function useIsPremium(): boolean {
   const { isSubscribed } = useSubscription();
-  const { currentAccount } = useSportsConnect();
-  return isSubscribed || !!currentAccount?.promotionalPremium;
+  const { currentAccount, devBypassSubscription } = useSportsConnect();
+  return devBypassSubscription || isSubscribed || !!currentAccount?.promotionalPremium;
 }

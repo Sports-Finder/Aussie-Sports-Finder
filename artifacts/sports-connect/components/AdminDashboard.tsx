@@ -1646,7 +1646,7 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
 function SettingsSection({ onClose }: { onClose?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { changeAdminPasscode, adminSignOut, bannedEmails, adminUnbanEmail, clearAllData, moderators, addModerator, deleteModerator, showMemberStats, toggleShowMemberStats, showSportRequestField, toggleShowSportRequestField } = useSportsConnect();
+  const { changeAdminPasscode, adminSignOut, bannedEmails, adminUnbanEmail, clearAllData, moderators, addModerator, deleteModerator, showMemberStats, toggleShowMemberStats, showSportRequestField, toggleShowSportRequestField, devBypassSubscription, toggleDevBypassSubscription } = useSportsConnect();
   const [showPass, setShowPass] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -1693,6 +1693,11 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
       <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <PermToggle label="Show member stats on Discover" value={showMemberStats} onToggle={toggleShowMemberStats} />
         <PermToggle label="Allow sport request field" value={showSportRequestField} onToggle={toggleShowSportRequestField} />
+      </View>
+
+      <SectionTitle title="Developer" />
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <PermToggle label="Bypass subscription checks (dev only — remove before launch)" value={devBypassSubscription} onToggle={toggleDevBypassSubscription} />
       </View>
 
       <SectionTitle title="Moderators" action={`${moderators.length}`} />

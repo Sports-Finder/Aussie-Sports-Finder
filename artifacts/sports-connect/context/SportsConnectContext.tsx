@@ -269,6 +269,8 @@ type SportsConnectState = {
   isHydrated: boolean;
   showMemberStats: boolean;
   toggleShowMemberStats: () => void;
+  devBypassSubscription: boolean;
+  toggleDevBypassSubscription: () => void;
   showSportRequestField: boolean;
   toggleShowSportRequestField: () => void;
   setSelectedSport: (sport: string) => void;
@@ -567,6 +569,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [bannedEmails, setBannedEmails] = useState<string[]>([]);
   const [forbiddenConnections, setForbiddenConnections] = useState<ForbiddenConnection[]>([]);
   const [showMemberStats, setShowMemberStats] = useState(false);
+  const [devBypassSubscription, setDevBypassSubscription] = useState(false);
   const [showSportRequestField, setShowSportRequestField] = useState(true);
   const [signOutResetToken, setSignOutResetToken] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -596,19 +599,20 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     AsyncStorage.getItem(adminStorageKey).then((stored) => {
       if (!stored) return;
-      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[]; moderators?: ModeratorAccount[]; showMemberStats?: boolean; showSportRequestField?: boolean; forbiddenConnections?: ForbiddenConnection[] };
+      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[]; moderators?: ModeratorAccount[]; showMemberStats?: boolean; showSportRequestField?: boolean; forbiddenConnections?: ForbiddenConnection[]; devBypassSubscription?: boolean };
       if (parsed.adminPasscode) setAdminPasscode(parsed.adminPasscode);
       if (Array.isArray(parsed.bannedEmails)) setBannedEmails(parsed.bannedEmails);
       if (Array.isArray(parsed.moderators)) setModerators(parsed.moderators);
       if (typeof parsed.showMemberStats === "boolean") setShowMemberStats(parsed.showMemberStats);
       if (typeof parsed.showSportRequestField === "boolean") setShowSportRequestField(parsed.showSportRequestField);
       if (Array.isArray(parsed.forbiddenConnections)) setForbiddenConnections(parsed.forbiddenConnections);
+      if (typeof parsed.devBypassSubscription === "boolean") setDevBypassSubscription(parsed.devBypassSubscription);
     }).catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections })).catch(() => undefined);
-  }, [adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections]);
+    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription })).catch(() => undefined);
+  }, [adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription]);
 
   useEffect(() => {
     let cancelled = false;
@@ -841,6 +845,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
 
   const toggleShowSportRequestField = () => {
     setShowSportRequestField((current) => !current);
+  };
+
+  const toggleDevBypassSubscription = () => {
+    setDevBypassSubscription((current) => !current);
   };
 
   const loginWithEmail = (emailInput: string, passwordInput: string): boolean => {
@@ -1901,6 +1909,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     isHydrated,
     showMemberStats,
     toggleShowMemberStats,
+    devBypassSubscription,
+    toggleDevBypassSubscription,
     showSportRequestField,
     toggleShowSportRequestField,
     setSelectedSport,
@@ -1969,7 +1979,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     updateCoachAffiliateDetails,
     unblockCoachAffiliate,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription, toggleDevBypassSubscription]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

@@ -116,10 +116,15 @@ function AppContent() {
   getTokenRef.current = getToken;
 
   useEffect(() => {
-    // Register once on mount; always calls the freshest getToken via ref.
-    setAuthTokenGetter(() => getTokenRef.current());
-    // No cleanup: leave the getter active so it remains valid even when
-    // TabLayout layers its own getter on top (both point to the singleton).
+    // Register once on mount. Always calls the freshest getToken via ref.
+    // If the first attempt returns null (Clerk JWT not yet established or
+    // mid-refresh), wait 500 ms then force a cache-busting refresh.
+    setAuthTokenGetter(async () => {
+      const token = await getTokenRef.current();
+      if (token) return token;
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+      return getTokenRef.current({ skipCache: true });
+    });
   }, []);
 
   // Identify the RevenueCat user with the stable Clerk user ID so entitlements
