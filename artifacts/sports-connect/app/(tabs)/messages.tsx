@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState, ScreenShell } from "@/components/SportsUI";
 import { Conversation, UserAccount, useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
+import { openMapApp } from "@/utils/mapLinks";
 
 const PAGE_SIZE = 6;
 const BOX_GAP = 12;
@@ -174,7 +175,17 @@ function ProfileRow({ icon, label, tappable, colors }: { icon: keyof typeof Feat
   );
 }
 
-function ProfileViewModal({ account, onClose }: { account: UserAccount | null; onClose: () => void }) {
+function ProfileViewModal({
+  account,
+  onClose,
+  enlargedImage,
+  onSetEnlargedImage,
+}: {
+  account: UserAccount | null;
+  onClose: () => void;
+  enlargedImage: string | null;
+  onSetEnlargedImage: (uri: string | null) => void;
+}) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { getImageUri } = useSportsConnect();
@@ -199,90 +210,126 @@ function ProfileViewModal({ account, onClose }: { account: UserAccount | null; o
     try { await Linking.openURL(url); } catch { /* ignore */ }
   };
 
+  const address = isClub ? account.clubAddress : account.location;
+  const addressQuery = address ? `${displayName} ${address}`.trim() : address;
+
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <View style={profileStyles.overlay}>
-        <Pressable style={profileStyles.overlayBg} onPress={onClose} />
-        <View style={[profileStyles.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 16 }]}>
-          <Pressable onPress={onClose} style={[profileStyles.closeBtn, { backgroundColor: colors.secondary }]}>
-            <Feather name="x" size={18} color={colors.foreground} />
-          </Pressable>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={profileStyles.sheetContent}>
-            <View style={profileStyles.profileHead}>
-              <View style={[profileStyles.avatarCircle, { backgroundColor: avatarColor + "22" }]}>
-                {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={profileStyles.avatarImg} contentFit="cover" />
-                ) : (
-                  <Text style={[profileStyles.avatarInitials, { color: avatarColor }]}>{initials}</Text>
-                )}
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={[profileStyles.displayName, { color: colors.foreground }]} numberOfLines={2}>{displayName}</Text>
-                {account.verifiedBadge ? <Feather name="check-circle" size={16} color="#16A34A" /> : null}
-              </View>
-              <View style={[profileStyles.rolePill, { backgroundColor: colors.secondary }]}>
-                <Text style={[profileStyles.roleText, { color: colors.mutedForeground }]}>{roleLabel}</Text>
-              </View>
-            </View>
-
-            {account.location ? <ProfileRow icon="map-pin" label={account.location} colors={colors} /> : null}
-            {(account.sports?.length ?? 0) > 0 ? <ProfileRow icon="activity" label={account.sports.join(", ")} colors={colors} /> : null}
-            {account.bio ? (
-              <View style={[profileStyles.bioBox, { backgroundColor: colors.muted }]}>
-                <Text style={[profileStyles.bioText, { color: colors.foreground }]}>{account.bio}</Text>
-              </View>
+    <>
+      {/* Enlarged image viewer */}
+      <Modal visible={!!enlargedImage} animationType="fade" transparent onRequestClose={() => onSetEnlargedImage(null)}>
+        <View style={profileStyles.overlay}>
+          <Pressable style={profileStyles.overlayBg} onPress={() => onSetEnlargedImage(null)} />
+          <View style={profileStyles.enlargedWrap}>
+            <Pressable onPress={() => onSetEnlargedImage(null)} style={profileStyles.enlargedClose}>
+              <Feather name="x" size={24} color="#FFFFFF" />
+            </Pressable>
+            {enlargedImage ? (
+              <Image source={{ uri: enlargedImage }} style={profileStyles.enlargedImg} contentFit="contain" />
             ) : null}
-
-            {isClub ? (
-              <>
-                {account.clubAddress ? <ProfileRow icon="home" label={account.clubAddress} colors={colors} /> : null}
-                {account.clubContactEmail ? (
-                  <Pressable onPress={() => void handleLink(`mailto:${account.clubContactEmail!}`)}>
-                    <ProfileRow icon="mail" label={account.clubContactEmail!} tappable colors={colors} />
-                  </Pressable>
-                ) : null}
-                {account.clubContactMobile ? <ProfileRow icon="phone" label={account.clubContactMobile} colors={colors} /> : null}
-                {account.clubWebsite ? (
-                  <Pressable onPress={() => void handleLink(account.clubWebsite!)}>
-                    <ProfileRow icon="globe" label={account.clubWebsite!} tappable colors={colors} />
-                  </Pressable>
-                ) : null}
-              </>
-            ) : null}
-
-            {!isClub && isPremium ? (
-              <>
-                {socialLinks.instagram ? (
-                  <Pressable onPress={() => void handleLink(socialLinks.instagram ?? "")}>
-                    <ProfileRow icon="instagram" label={socialLinks.instagram} tappable colors={colors} />
-                  </Pressable>
-                ) : null}
-                {socialLinks.facebook ? (
-                  <Pressable onPress={() => void handleLink(socialLinks.facebook ?? "")}>
-                    <ProfileRow icon="facebook" label={socialLinks.facebook} tappable colors={colors} />
-                  </Pressable>
-                ) : null}
-                {socialLinks.x ? (
-                  <Pressable onPress={() => void handleLink(socialLinks.x ?? "")}>
-                    <ProfileRow icon="twitter" label={socialLinks.x} tappable colors={colors} />
-                  </Pressable>
-                ) : null}
-                {socialLinks.tiktok ? (
-                  <Pressable onPress={() => void handleLink(socialLinks.tiktok ?? "")}>
-                    <ProfileRow icon="music" label={socialLinks.tiktok} tappable colors={colors} />
-                  </Pressable>
-                ) : null}
-                {account.highlightReelUrl && account.highlightReelStatus === "approved" ? (
-                  <Pressable onPress={() => void handleLink(account.highlightReelUrl!)}>
-                    <ProfileRow icon="play-circle" label={account.highlightReelUrl!} tappable colors={colors} />
-                  </Pressable>
-                ) : null}
-              </>
-            ) : null}
-          </ScrollView>
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      {/* Profile sheet */}
+      <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+        <View style={profileStyles.overlay}>
+          <Pressable style={profileStyles.overlayBg} onPress={onClose} />
+          <View style={[profileStyles.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 16 }]}>
+            <Pressable onPress={onClose} style={[profileStyles.closeBtn, { backgroundColor: colors.secondary }]}>
+              <Feather name="x" size={18} color={colors.foreground} />
+            </Pressable>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={profileStyles.sheetContent}>
+              <View style={profileStyles.profileHead}>
+                <Pressable onPress={() => imageUri ? onSetEnlargedImage(imageUri) : undefined}>
+                  <View style={[profileStyles.avatarCircle, { backgroundColor: avatarColor + "22" }]}>
+                    {imageUri ? (
+                      <Image source={{ uri: imageUri }} style={profileStyles.avatarImg} contentFit="cover" />
+                    ) : (
+                      <Text style={[profileStyles.avatarInitials, { color: avatarColor }]}>{initials}</Text>
+                    )}
+                    {isPremium ? (
+                      <View style={profileStyles.premiumBadge}>
+                        <Feather name="star" size={12} color="#D97706" />
+                      </View>
+                    ) : null}
+                  </View>
+                </Pressable>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={[profileStyles.displayName, { color: colors.foreground }]} numberOfLines={2}>{displayName}</Text>
+                  {account.verifiedBadge ? <Feather name="check-circle" size={16} color="#16A34A" /> : null}
+                </View>
+                <View style={[profileStyles.rolePill, { backgroundColor: colors.secondary }]}>
+                  <Text style={[profileStyles.roleText, { color: colors.mutedForeground }]}>{roleLabel}</Text>
+                </View>
+              </View>
+
+              {account.location ? (
+                <Pressable onPress={() => void openMapApp("apple", addressQuery ?? account.location ?? "")}>
+                  <ProfileRow icon="map-pin" label={account.location} tappable colors={colors} />
+                </Pressable>
+              ) : null}
+              {(account.sports?.length ?? 0) > 0 ? <ProfileRow icon="activity" label={account.sports.join(", ")} colors={colors} /> : null}
+              {account.bio ? (
+                <View style={[profileStyles.bioBox, { backgroundColor: colors.muted }]}>
+                  <Text style={[profileStyles.bioText, { color: colors.foreground }]}>{account.bio}</Text>
+                </View>
+              ) : null}
+
+              {isClub ? (
+                <>
+                  {account.clubAddress ? (
+                    <Pressable onPress={() => void openMapApp("apple", addressQuery ?? account.clubAddress ?? "")}>
+                      <ProfileRow icon="home" label={account.clubAddress} tappable colors={colors} />
+                    </Pressable>
+                  ) : null}
+                  {account.clubContactEmail ? (
+                    <Pressable onPress={() => void handleLink(`mailto:${account.clubContactEmail!}`)}>
+                      <ProfileRow icon="mail" label={account.clubContactEmail!} tappable colors={colors} />
+                    </Pressable>
+                  ) : null}
+                  {account.clubContactMobile ? <ProfileRow icon="phone" label={account.clubContactMobile} colors={colors} /> : null}
+                  {account.clubWebsite ? (
+                    <Pressable onPress={() => void handleLink(account.clubWebsite!)}>
+                      <ProfileRow icon="globe" label={account.clubWebsite!} tappable colors={colors} />
+                    </Pressable>
+                  ) : null}
+                </>
+              ) : null}
+
+              {!isClub && isPremium ? (
+                <>
+                  {socialLinks.instagram ? (
+                    <Pressable onPress={() => void handleLink(socialLinks.instagram ?? "")}>
+                      <ProfileRow icon="instagram" label={socialLinks.instagram} tappable colors={colors} />
+                    </Pressable>
+                  ) : null}
+                  {socialLinks.facebook ? (
+                    <Pressable onPress={() => void handleLink(socialLinks.facebook ?? "")}>
+                      <ProfileRow icon="facebook" label={socialLinks.facebook} tappable colors={colors} />
+                    </Pressable>
+                  ) : null}
+                  {socialLinks.x ? (
+                    <Pressable onPress={() => void handleLink(socialLinks.x ?? "")}>
+                      <ProfileRow icon="twitter" label={socialLinks.x} tappable colors={colors} />
+                    </Pressable>
+                  ) : null}
+                  {socialLinks.tiktok ? (
+                    <Pressable onPress={() => void handleLink(socialLinks.tiktok ?? "")}>
+                      <ProfileRow icon="music" label={socialLinks.tiktok} tappable colors={colors} />
+                    </Pressable>
+                  ) : null}
+                  {account.highlightReelUrl && account.highlightReelStatus === "approved" ? (
+                    <Pressable onPress={() => void handleLink(account.highlightReelUrl!)}>
+                      <ProfileRow icon="play-circle" label={account.highlightReelUrl!} tappable colors={colors} />
+                    </Pressable>
+                  ) : null}
+                </>
+              ) : null}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -320,10 +367,13 @@ function ConnectedParticipantStrip({
         const isClub = account.role === "club";
         const isCoach = account.role === "coach";
         const name = isClub ? (account.clubName ?? "Club") : (account.fullName ?? account.playerName ?? "User");
-        const avatarColor = isClub ? "#16A34A" : isCoach ? "#7C3AED" : "#2563EB";
+        const icon = isClub ? "shield" : isCoach ? "award" : "user";
+        const iconColor = isClub ? "#16A34A" : isCoach ? "#7C3AED" : "#2563EB";
         return (
           <View key={account.id} style={[participantStyles.tile, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <AvatarCircle label={name} color={avatarColor} size={34} />
+            <View style={[participantStyles.iconCircle, { backgroundColor: iconColor + "22" }]}>
+              <Feather name={icon as any} size={16} color={iconColor} />
+            </View>
             <View style={participantStyles.tileText}>
               <Text style={[participantStyles.name, { color: colors.foreground }]} numberOfLines={1}>{name}</Text>
               <Pressable onPress={() => onViewProfile(account)}>
@@ -345,6 +395,7 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
   const [draft, setDraft] = useState("");
   const [isBroadcast, setIsBroadcast] = useState(false);
   const [viewingProfile, setViewingProfile] = useState<UserAccount | null>(null);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const adminMode = !!asAdmin && isAdmin;
   const { title: roomTitle, subtitle: roomSubtitle } = anonymousLabel(conversation, currentAccount?.id);
 
@@ -396,7 +447,7 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
 
   return (
     <Modal visible animationType="slide" onRequestClose={onClose}>
-      <ProfileViewModal account={viewingProfile} onClose={() => setViewingProfile(null)} />
+      <ProfileViewModal account={viewingProfile} onClose={() => setViewingProfile(null)} enlargedImage={enlargedImage} onSetEnlargedImage={setEnlargedImage} />
       <View style={[styles.chatRoomWrap, { backgroundColor: colors.background }]}>
         <KeyboardAvoidingView behavior="padding" style={styles.flex} keyboardVerticalOffset={0}>
           <View style={[styles.chatRoomHeader, { paddingTop: insets.top + 10, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
@@ -877,6 +928,7 @@ const participantStyles = StyleSheet.create({
   stripContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 10, alignItems: "center" },
   tile: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
   tileText: { gap: 2, maxWidth: 120 },
+  iconCircle: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   name: { fontWeight: "600", fontSize: 12 },
   viewLink: { fontWeight: "700", fontSize: 11, textDecorationLine: "underline" },
 });
@@ -898,4 +950,8 @@ const profileStyles = StyleSheet.create({
   rowText: { fontWeight: "500", fontSize: 14, flex: 1 },
   bioBox: { padding: 14, borderRadius: 14 },
   bioText: { fontWeight: "400", fontSize: 14, lineHeight: 21, fontStyle: "italic" },
+  premiumBadge: { position: "absolute", bottom: -2, right: -4, backgroundColor: "#FFF", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#E5E7EB" },
+  enlargedWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  enlargedClose: { position: "absolute", top: 24, right: 24, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
+  enlargedImg: { width: "100%", height: "80%" as any },
 });
