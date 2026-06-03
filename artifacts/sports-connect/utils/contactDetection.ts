@@ -17,7 +17,9 @@ function normalizeObfuscated(text: string): string {
     .replace(/\s*\[at\]\s*|\s*\(at\)\s*/gi, "@")
     .replace(/\s+at\s+/gi, "@")
     .replace(/\s*\[dot\]\s*|\s*\(dot\)\s*/gi, ".")
-    .replace(/\s+dot\s+/gi, ".");
+    .replace(/\s+dot\s+/gi, ".")
+    .replace(/\s+@\s+/g, "@")
+    .replace(/\s+\.\s+/g, ".");
 }
 
 export function detectContactInfo(text: string): string | null {
