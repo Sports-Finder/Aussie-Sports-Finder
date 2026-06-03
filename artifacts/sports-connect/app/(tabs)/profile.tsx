@@ -104,7 +104,6 @@ export default function ProfileScreen() {
     approvedSports,
     accounts,
     currentAccount,
-    signOut,
     updateAccount,
     resetClubApprovalAfterEdit,
     respondToAffiliationRequest,
@@ -387,7 +386,7 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
             </View>
-            <PrimaryButton label="Sign out" icon="log-out" onPress={() => { clerkSignOut(); signOut(); }} />
+            <PrimaryButton label="Sign out" icon="log-out" onPress={() => { void clerkSignOut(); }} />
             <PrimaryButton label={mode === "edit" ? "Cancel editing" : "Edit Profile"} icon={mode === "edit" ? "x" : "edit-3"} onPress={mode === "edit" ? () => setMode("view") : openEdit} />
           </View>
         ) : null}

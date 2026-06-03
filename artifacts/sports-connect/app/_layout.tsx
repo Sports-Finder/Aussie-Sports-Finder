@@ -107,7 +107,7 @@ const BANNED_EMAIL_MSG = "Your account has been banned by an administrator and a
 function AppContent() {
   const { isSignedIn, isLoaded, getToken, signOut } = useAuth();
   const { user } = useUser();
-  const { currentAccount, isHydrated, bannedEmails, autoRestoreSession } = useSportsConnect();
+  const { currentAccount, isHydrated, bannedEmails, autoRestoreSession, signOut: localSignOut } = useSportsConnect();
 
   // Keep a ref to the latest getToken to avoid stale closures across renders,
   // hot-reloads, and sign-in state transitions. Updating a ref during render
@@ -134,6 +134,19 @@ function AppContent() {
       identifyRevenueCatUser(user.id);
     }
   }, [user?.id]);
+
+  // When Clerk finishes signing out, clear the local account so stale data
+  // doesn't linger. This is the authoritative place to call localSignOut —
+  // calling it in the UI simultaneously with clerkSignOut() causes a race
+  // where autoRestoreSession fires while isSignedIn is still true and
+  // re-populates currentAccount with the old user before Clerk is done.
+  useEffect(() => {
+    if (isHydrated && !isSignedIn) {
+      localSignOut();
+    }
+  // localSignOut is stable (referentially stable from useSportsConnect).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, isHydrated]);
 
   // Returning user: Clerk is authenticated but currentAccount was cleared by signOut.
   // Search the accounts list by email and restore the session without showing setup form.
