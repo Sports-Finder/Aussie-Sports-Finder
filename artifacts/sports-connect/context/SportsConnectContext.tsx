@@ -8,7 +8,7 @@ import { Alert, Platform } from "react-native";
 import { getAgeBlockReason } from "../utils/ageEligibility";
 
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
-import { api, ApiError } from "@/utils/apiClient";
+import { api, ApiError, setModeratorToken } from "@/utils/apiClient";
 
 type AdvertType = "player-looking" | "coach-looking" | "players-wanted" | "club-trials" | "coach-wanted";
 type ProfileType = "player" | "club";
@@ -68,6 +68,13 @@ export type ModeratorAccount = {
   name: string;
   passcode: string;
   permissions: ModeratorPermissions;
+  /**
+   * Server-issued session token for flagged-queue access.
+   * Minted by the admin at moderator-creation time via POST /moderator-sessions.
+   * Stored alongside moderator data in AsyncStorage and sent as
+   * X-Moderator-Token on calls to protected endpoints.
+   */
+  sessionToken?: string;
 };
 
 export type UserAccount = {
@@ -202,6 +209,12 @@ export type Conversation = {
   affiliatedClubParticipants?: string[];
   closedByName?: string;
   hiddenForAccountIds?: string[];
+  flagged?: boolean;
+  flagSeverity?: "high" | "medium";
+  flagCategory?: string;
+  flagTriggerMessage?: string;
+  flaggedAt?: string;
+  flagReviewedAt?: string;
 };
 
 export type Message = {
@@ -308,8 +321,10 @@ type SportsConnectState = {
   adminUnbanEmail: (email: string) => Promise<void>;
   adminSetAdvertStatus: (advertId: string, status: "active" | "closed", reason?: string, deleteChats?: boolean) => Promise<void>;
   adminSendMessage: (conversationId: string, body: string) => Promise<void>;
+  flaggedConversations: Conversation[];
   adminDeleteConversation: (conversationId: string) => Promise<void>;
   adminCloseConversation: (conversationId: string) => Promise<void>;
+  adminMarkFlagReviewed: (conversationId: string) => Promise<void>;
   forbiddenConnections: ForbiddenConnection[];
   adminApproveClub: (accountId: string) => Promise<void>;
   adminRejectClub: (accountId: string) => Promise<void>;
@@ -575,6 +590,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [isAdmin, setIsAdmin] = useState(false);
   const [isModerator, setIsModerator] = useState(false);
   const [currentModerator, setCurrentModerator] = useState<ModeratorAccount | null>(null);
+  const [flaggedConversations, setFlaggedConversations] = useState<Conversation[]>([]);
   const [moderators, setModerators] = useState<ModeratorAccount[]>([]);
   const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
   const [bannedEmails, setBannedEmails] = useState<string[]>([]);
@@ -697,6 +713,29 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     const snapshot = { selectedSport, activeProfile, pendingHighlightLinks, notificationSettings };
     AsyncStorage.setItem(storageKey, JSON.stringify(snapshot)).catch(() => undefined);
   }, [selectedSport, activeProfile, pendingHighlightLinks, notificationSettings]);
+
+  // Load flagged conversations for admins and moderators with closeChats.
+  // Admins are server-verified via Clerk userId (ADMIN_USER_IDS).
+  // Moderators must have a server-issued session token (DB-backed, checked
+  // server-side on each request) — set both on login AND on app-start restore
+  // from AsyncStorage, so the token is always in sync with the active user.
+  useEffect(() => {
+    const canSeeFlagged = isAdmin || (isModerator && currentModerator?.permissions?.closeChats);
+    if (!canSeeFlagged) {
+      setFlaggedConversations([]);
+      setModeratorToken(null);
+      return;
+    }
+    // Set the active moderator token (null for admins — they use Clerk auth).
+    setModeratorToken(
+      isModerator && currentModerator?.sessionToken ? currentModerator.sessionToken : null
+    );
+    let cancelled = false;
+    api.getFlaggedConversations().then((data) => {
+      if (!cancelled) setFlaggedConversations(data);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [isAdmin, isModerator, currentModerator]);
 
   const requestSport = (name: string) => {
     const trimmed = name.trim();
@@ -1018,6 +1057,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     if (!mod) return false;
     setIsModerator(true);
     setCurrentModerator(mod);
+    // Activate the stored session token so subsequent flagged-queue calls
+    // include it as X-Moderator-Token (verified server-side against the DB).
+    if (mod.permissions.closeChats && mod.sessionToken) {
+      setModeratorToken(mod.sessionToken);
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return true;
   };
@@ -1025,6 +1069,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const moderatorSignOut = () => {
     setIsModerator(false);
     setCurrentModerator(null);
+    setModeratorToken(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 
@@ -1034,11 +1079,26 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     if (moderators.some((m) => m.passcode === mod.passcode.trim())) return false;
     const newMod: ModeratorAccount = { ...mod, passcode: mod.passcode.trim(), name: mod.name.trim(), id: makeId() };
     setModerators((current) => [...current, newMod]);
+    // If closeChats is enabled, asynchronously mint a server-side session token.
+    // The token is stored with the moderator so they can access the flagged queue.
+    // Uses the admin's Clerk session (addModerator is only callable from admin dashboard).
+    if (mod.permissions.closeChats) {
+      api.createModeratorSession({ closeChats: true })
+        .then(({ token }) => {
+          setModerators((current) => current.map((m) => m.id === newMod.id ? { ...m, sessionToken: token } : m));
+        })
+        .catch(() => undefined);
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     return true;
   };
 
   const deleteModerator = (modId: string) => {
+    const mod = moderators.find((m) => m.id === modId);
+    // Revoke the server session so the token is immediately rejected server-side.
+    if (mod?.sessionToken) {
+      api.revokeModeratorSession(mod.sessionToken).catch(() => undefined);
+    }
     setModerators((current) => current.filter((m) => m.id !== modId));
     if (currentModerator?.id === modId) {
       setIsModerator(false);
@@ -1169,6 +1229,20 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setConversations((current) => current.filter((c) => c.id !== conversationId));
     try { await api.deleteConversation(conversationId); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
+  };
+
+  const adminMarkFlagReviewed = async (conversationId: string) => {
+    try {
+      await api.markFlagReviewed(conversationId);
+      const reviewedAt = new Date().toISOString();
+      setFlaggedConversations((current) =>
+        current.map((c) =>
+          c.id === conversationId
+            ? { ...c, flagReviewedAt: reviewedAt }
+            : c
+        )
+      );
+    } catch (_) { /* silent */ }
   };
 
   const adminCloseConversation = async (conversationId: string) => {
@@ -1994,8 +2068,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     adminUnbanEmail,
     adminSetAdvertStatus,
     adminSendMessage,
+    flaggedConversations,
     adminDeleteConversation,
     adminCloseConversation,
+    adminMarkFlagReviewed,
     forbiddenConnections,
     adminApproveClub,
     adminRejectClub,

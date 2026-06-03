@@ -1,23 +1,45 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, conversationsTable, messagesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapConversation, mapMessage } from "../lib/mapDbToApi";
 import { normalizeDates } from "../lib/normalizeDates";
+import { scanMessage } from "../lib/contentSafety";
+import { getAuth } from "@clerk/express";
 
 const router: IRouter = Router();
 
-router.get("/conversations", async (_req, res) => {
+/** Returns true when the caller's Clerk userId is in ADMIN_USER_IDS. */
+function isAdminCaller(req: Parameters<typeof getAuth>[0]): boolean {
+  const auth = getAuth(req);
+  const allowlist = (process.env.ADMIN_USER_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  return !!auth.userId && allowlist.includes(auth.userId);
+}
+
+/**
+ * Strip sensitive flag fields from a mapped conversation for non-privileged callers.
+ * Flag metadata is internal moderation evidence and should not be served to users.
+ */
+function stripFlagFields(conv: ReturnType<typeof mapConversation>) {
+  const { flagged: _, flagSeverity: _s, flagCategory: _c, flagTriggerMessage: _t, flaggedAt: _fa, flagReviewedAt: _ra, ...rest } = conv;
+  return rest;
+}
+
+router.get("/conversations", async (req, res) => {
   try {
+    const privileged = isAdminCaller(req);
     const convs = await db.select().from(conversationsTable);
     const msgs = await db.select().from(messagesTable);
-    const result = convs.map((c) => ({
-      ...mapConversation(c),
-      messages: msgs
-        .filter((m) => m.conversationId === c.publicId)
-        .map(mapMessage)
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-    }));
+    const result = convs.map((c) => {
+      const mapped = {
+        ...mapConversation(c),
+        messages: msgs
+          .filter((m) => m.conversationId === c.publicId)
+          .map(mapMessage)
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+      };
+      return privileged ? mapped : { ...stripFlagFields(mapped), messages: mapped.messages };
+    });
     res.json(result);
   } catch (err) {
     logger.error({ err }, "Failed to fetch conversations");
@@ -74,15 +96,67 @@ router.delete("/conversations/:publicId", async (req, res) => {
 router.post("/conversations/:publicId/messages", async (req, res) => {
   try {
     const { publicId } = req.params;
-    const conv = await db.select().from(conversationsTable).where(eq(conversationsTable.publicId, publicId));
-    if (conv.length === 0) {
+    const [conv] = await db.select().from(conversationsTable).where(eq(conversationsTable.publicId, publicId));
+    if (!conv) {
       res.status(404).json({ error: "Conversation not found" });
       return;
     }
+
+    const body: string = req.body?.body ?? "";
+
+    // Scan the message body for predatory/grooming patterns.
+    // The scan is only skipped for trusted server-generated messages: the
+    // caller must be a server-verified admin (Clerk) AND the message must
+    // declare itself as system or admin. Client-supplied bypass flags are
+    // NOT trusted on their own — a malicious user could set them to evade scanning.
+    const callerIsAdmin = isAdminCaller(req);
+    const isTrustedSystemMsg = callerIsAdmin && (req.body?.isSystem || req.body?.isAdmin);
+    const flagMatch = body && !isTrustedSystemMsg ? scanMessage(body) : null;
+
     const [msg] = await db
       .insert(messagesTable)
       .values({ ...req.body, conversationId: publicId })
       .returning();
+
+    // When a pattern matches, upsert the conversation's flag fields.
+    // Severity only escalates (high stays high). Category, trigger message and
+    // flaggedAt are only overwritten when the new match is at least as severe
+    // as the existing record, so a later low-severity match never replaces
+    // high-severity evidence.
+    if (flagMatch) {
+      const currentSeverity = conv.flagSeverity as "high" | "medium" | null;
+      const severityOrder: Record<string, number> = { high: 2, medium: 1 };
+      const incomingRank = severityOrder[flagMatch.severity] ?? 0;
+      const currentRank = currentSeverity ? (severityOrder[currentSeverity] ?? 0) : 0;
+      const escalates = incomingRank >= currentRank;
+
+      await db
+        .update(conversationsTable)
+        .set({
+          flagged: true,
+          // Only escalate severity; never downgrade.
+          flagSeverity: escalates ? flagMatch.severity : currentSeverity,
+          // Only replace category and trigger evidence when the new match is
+          // at least as severe, preserving the strongest evidence.
+          ...(escalates
+            ? {
+                flagCategory: flagMatch.category,
+                flagTriggerMessage: body,
+                flaggedAt: new Date(),
+              }
+            : {}),
+          // Clear reviewed status whenever a new match is found so admins
+          // see the conversation again, regardless of match severity.
+          flagReviewedAt: null,
+        })
+        .where(eq(conversationsTable.publicId, publicId));
+
+      req.log.warn(
+        { conversationId: publicId, category: flagMatch.category, severity: flagMatch.severity },
+        "Conversation flagged for predatory content"
+      );
+    }
+
     res.status(201).json(mapMessage(msg));
   } catch (err) {
     logger.error({ err }, "Failed to create message");

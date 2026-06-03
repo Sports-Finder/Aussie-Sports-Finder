@@ -10,8 +10,30 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Active moderator session token for the flagged conversations endpoints.
+ * Set by the context when a moderator with a valid server session is active,
+ * cleared when they sign out. The token is verified server-side against the
+ * moderator_sessions table (DB-backed, permission-checked, revocable).
+ */
+let _moderatorToken: string | null = null;
+
+export function setModeratorToken(token: string | null): void {
+  _moderatorToken = token;
+}
+
 async function apiFetch(path: string, options?: RequestInit): Promise<any> {
   return customFetch<any>(`/api${path}`, options);
+}
+
+/** Like apiFetch but includes the moderator session token when available. */
+async function apiFetchWithModToken(path: string, options?: RequestInit): Promise<any> {
+  const extraHeaders: Record<string, string> = {};
+  if (_moderatorToken) extraHeaders["X-Moderator-Token"] = _moderatorToken;
+  return customFetch<any>(`/api${path}`, {
+    ...options,
+    headers: { ...extraHeaders, ...((options?.headers as Record<string, string>) ?? {}) },
+  });
 }
 
 export const api = {
@@ -38,6 +60,12 @@ export const api = {
   createMessage: (convPublicId: string, body: any) =>
     apiFetch(`/conversations/${convPublicId}/messages`, { method: "POST", body: JSON.stringify(body) }),
 
+  /** Flagged queue — sends X-Moderator-Token so moderator sessions are verified server-side. */
+  getFlaggedConversations: () => apiFetchWithModToken("/conversations/flagged") as Promise<any[]>,
+  /** Mark reviewed — sends X-Moderator-Token for the same server-side session verification. */
+  markFlagReviewed: (convPublicId: string) =>
+    apiFetchWithModToken(`/conversations/${convPublicId}/flag-reviewed`, { method: "POST" }),
+
   createProfileImage: (body: any) => apiFetch("/profile-images", { method: "POST", body: JSON.stringify(body) }),
   updateProfileImage: (publicId: string, body: any) => apiFetch(`/profile-images/${publicId}`, { method: "PUT", body: JSON.stringify(body) }),
   deleteProfileImage: (publicId: string) => apiFetch(`/profile-images/${publicId}`, { method: "DELETE" }),
@@ -55,4 +83,11 @@ export const api = {
     apiFetch("/admin/entitlements", { method: "POST", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
   revokeEntitlement: (accountPublicId: string, entitlementIdentifier: string) =>
     apiFetch("/admin/entitlements", { method: "DELETE", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
+
+  /** Admin-only: create a server-side session granting moderator permissions. */
+  createModeratorSession: (permissions: { closeChats: boolean }) =>
+    apiFetch("/moderator-sessions", { method: "POST", body: JSON.stringify(permissions) }) as Promise<{ token: string }>,
+  /** Admin-only: revoke a previously issued moderator session token. */
+  revokeModeratorSession: (token: string) =>
+    apiFetch(`/moderator-sessions/${token}`, { method: "DELETE" }),
 };

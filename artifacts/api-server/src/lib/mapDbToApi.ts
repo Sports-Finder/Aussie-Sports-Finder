@@ -144,6 +144,12 @@ export function mapConversation(row: Record<string, unknown>) {
     sport: row.sport as string | undefined,
     requesterLocation: row.requesterLocation as string | undefined,
     requesterType: row.requesterType as string | undefined,
+    flagged: (row.flagged as boolean) ?? false,
+    flagSeverity: row.flagSeverity as "high" | "medium" | undefined,
+    flagCategory: row.flagCategory as string | undefined,
+    flagTriggerMessage: row.flagTriggerMessage as string | undefined,
+    flaggedAt: row.flaggedAt ? new Date(row.flaggedAt as string).toISOString() : undefined,
+    flagReviewedAt: row.flagReviewedAt ? new Date(row.flagReviewedAt as string).toISOString() : undefined,
     createdAt: new Date(row.createdAt as string).toISOString(),
     messages: [] as unknown[],
   };

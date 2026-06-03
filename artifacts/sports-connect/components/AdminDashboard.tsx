@@ -74,6 +74,12 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
   const insets = useSafeAreaInsets();
   const [section, setSection] = useState<Section>("overview");
   const [sportsPrefillName, setSportsPrefillName] = useState<string | undefined>();
+  const { flaggedConversations } = useSportsConnect();
+
+  const unreviewedFlagCount = useMemo(
+    () => flaggedConversations.filter((c) => !c.flagReviewedAt).length,
+    [flaggedConversations]
+  );
 
   const handleApproveSportRequest = (sportName: string) => {
     setSportsPrefillName(sportName);
@@ -107,6 +113,7 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
       >
         {sections.map((s) => {
           const active = section === s.key;
+          const showBadge = s.key === "chats" && unreviewedFlagCount > 0;
           return (
             <Pressable
               key={s.key}
@@ -120,7 +127,14 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
                 },
               ]}
             >
-              <Feather name={s.icon} size={15} color={active ? colors.primaryForeground : colors.foreground} />
+              <View style={{ position: "relative" }}>
+                <Feather name={s.icon} size={15} color={active ? colors.primaryForeground : colors.foreground} />
+                {showBadge ? (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>{unreviewedFlagCount > 9 ? "9+" : unreviewedFlagCount}</Text>
+                  </View>
+                ) : null}
+              </View>
               <Text style={[styles.tabLabel, { color: active ? colors.primaryForeground : colors.foreground }]}>{s.label}</Text>
             </Pressable>
           );
@@ -160,10 +174,20 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
 }
 
 export function ModeratorPage({ onExit }: { onExit: () => void }) {
-  const { currentModerator } = useSportsConnect();
+  const { currentModerator, flaggedConversations } = useSportsConnect();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [section, setSection] = useState<Section>("overview");
+
+  // useMemo must be called unconditionally (before any early return) to satisfy
+  // the Rules of Hooks. Safely accesses currentModerator via optional chaining.
+  const unreviewedFlagCount = useMemo(
+    () =>
+      currentModerator?.permissions?.closeChats
+        ? flaggedConversations.filter((c) => !c.flagReviewedAt).length
+        : 0,
+    [flaggedConversations, currentModerator]
+  );
 
   if (!currentModerator) return null;
   const perms = currentModerator.permissions;
@@ -206,6 +230,7 @@ export function ModeratorPage({ onExit }: { onExit: () => void }) {
         >
           {visibleSections.map((s) => {
             const active = activeSection === s.key;
+            const showBadge = s.key === "chats" && unreviewedFlagCount > 0;
             return (
               <Pressable
                 key={s.key}
@@ -219,7 +244,14 @@ export function ModeratorPage({ onExit }: { onExit: () => void }) {
                   },
                 ]}
               >
-                <Feather name={s.icon} size={15} color={active ? "#FFF" : colors.foreground} />
+                <View style={{ position: "relative" }}>
+                  <Feather name={s.icon} size={15} color={active ? "#FFF" : colors.foreground} />
+                  {showBadge ? (
+                    <View style={styles.tabBadge}>
+                      <Text style={styles.tabBadgeText}>{unreviewedFlagCount > 9 ? "9+" : unreviewedFlagCount}</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={[styles.tabLabel, { color: active ? "#FFF" : colors.foreground }]}>{s.label}</Text>
               </Pressable>
             );
@@ -702,16 +734,145 @@ function AdvertEditModal({ advert, onClose, onSave }: { advert: Advert; onClose:
   );
 }
 
+function FlaggedChatCard({ conv, onOpenChat, onMarkReviewed, onCloseChat }: {
+  conv: ReturnType<typeof useSportsConnect>["conversations"][number];
+  onOpenChat: () => void;
+  onMarkReviewed: () => void;
+  onCloseChat: () => void;
+}) {
+  const colors = useColors();
+  const isHigh = conv.flagSeverity === "high";
+  const isReviewed = !!conv.flagReviewedAt;
+  const timeAgo = (iso?: string) => {
+    if (!iso) return "—";
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  return (
+    <View style={[styles.itemCard, {
+      backgroundColor: colors.card,
+      borderColor: isReviewed ? colors.border : isHigh ? "#FCA5A5" : "#FDE68A",
+    }]}>
+      {isReviewed ? null : (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+          <Feather name="alert-triangle" size={13} color={isHigh ? "#DC2626" : "#D97706"} />
+          <View style={[styles.badge, { backgroundColor: isHigh ? "#FEE2E2" : "#FEF3C7" }]}>
+            <Text style={[styles.badgeText, { color: isHigh ? "#991B1B" : "#92400E" }]}>
+              {isHigh ? "HIGH" : "MEDIUM"} — {conv.flagCategory ?? "Suspicious content"}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 11, color: colors.mutedForeground, marginLeft: 4 }}>{timeAgo(conv.flaggedAt)}</Text>
+        </View>
+      )}
+      {isReviewed ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+          <Feather name="check-circle" size={13} color="#10B981" />
+          <Text style={{ fontSize: 12, color: "#065F46", fontWeight: "700" }}>Reviewed — no action</Text>
+          <Text style={{ fontSize: 11, color: colors.mutedForeground, marginLeft: 4 }}>{timeAgo(conv.flaggedAt)}</Text>
+        </View>
+      ) : null}
+
+      <View style={styles.itemHeader}>
+        <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
+          {conv.clubName} <Text style={{ color: colors.mutedForeground }}>↔</Text> {conv.playerName}
+        </Text>
+      </View>
+      <View style={styles.metaRow}>
+        <Feather name="tag" size={12} color={colors.mutedForeground} />
+        <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{conv.sport ?? "—"} · "{conv.advertTitle ?? "—"}"</Text>
+      </View>
+
+      {conv.flagTriggerMessage ? (
+        <View style={{ backgroundColor: "#FEFCE8", borderRadius: 10, padding: 10, borderLeftWidth: 3, borderLeftColor: isHigh ? "#EF4444" : "#F59E0B" }}>
+          <Text style={{ fontSize: 11, fontWeight: "700", color: isHigh ? "#991B1B" : "#92400E", marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.4 }}>
+            Flagged message · {conv.flagCategory ?? "Suspicious"}
+          </Text>
+          <Text style={{ fontSize: 13, color: "#1C1917", lineHeight: 18 }}>{conv.flagTriggerMessage}</Text>
+        </View>
+      ) : null}
+
+      <View style={styles.actionRow}>
+        <ActionButton icon="message-circle" label="Open Chat" color={colors.primary} onPress={onOpenChat} />
+        {!isReviewed && (
+          <ActionButton icon="check" label="Mark Reviewed" color="#10B981" onPress={onMarkReviewed} />
+        )}
+        {conv.status !== "closed" && (
+          <ActionButton icon="slash" label="Close Chat" color="#DC2626" onPress={onCloseChat} />
+        )}
+      </View>
+    </View>
+  );
+}
+
 function ChatsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations, adminDeleteConversation, adminCloseConversation } = useSportsConnect();
+  const { conversations, flaggedConversations, adminDeleteConversation, adminCloseConversation, adminMarkFlagReviewed } = useSportsConnect();
+  const { closeChats, isFullAdmin } = useDashboardPermissions();
   const [openedId, setOpenedId] = useState<string | null>(null);
-  const opened = openedId ? conversations.find((c) => c.id === openedId) ?? null : null;
+
+  const flaggedConvs = useMemo(
+    () => [...flaggedConversations].sort((a, b) => {
+      // Unreviewed first, then high severity, then most recent
+      if (!a.flagReviewedAt && b.flagReviewedAt) return -1;
+      if (a.flagReviewedAt && !b.flagReviewedAt) return 1;
+      if (a.flagSeverity === "high" && b.flagSeverity !== "high") return -1;
+      if (a.flagSeverity !== "high" && b.flagSeverity === "high") return 1;
+      return new Date(b.flaggedAt ?? 0).getTime() - new Date(a.flaggedAt ?? 0).getTime();
+    }),
+    [flaggedConversations]
+  );
+
+  const unreviewedCount = useMemo(
+    () => flaggedConvs.filter((c) => !c.flagReviewedAt).length,
+    [flaggedConvs]
+  );
 
   return (
     <>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+        {flaggedConvs.length > 0 && (
+          <>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Feather name="alert-triangle" size={16} color="#DC2626" />
+              <Text style={[styles.sectionHeader, { color: "#DC2626", marginTop: 0, marginBottom: 0 }]}>
+                Flagged Chats
+              </Text>
+              {unreviewedCount > 0 && (
+                <View style={{ backgroundColor: "#EF4444", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 11 }}>{unreviewedCount} unreviewed</Text>
+                </View>
+              )}
+            </View>
+            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2, marginBottom: 4, lineHeight: 17 }}>
+              These conversations matched predatory language patterns and require review.
+            </Text>
+            {flaggedConvs.map((conv) => (
+              <FlaggedChatCard
+                key={`flagged-${conv.id}`}
+                conv={conv}
+                onOpenChat={() => setOpenedId(conv.id)}
+                onMarkReviewed={() => adminMarkFlagReviewed(conv.id)}
+                onCloseChat={() => {
+                  Alert.alert(
+                    "Close chat permanently?",
+                    "This will close the conversation and permanently block both parties from reconnecting on this advert. This cannot be undone.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Close & Block", style: "destructive", onPress: () => adminCloseConversation(conv.id) },
+                    ]
+                  );
+                }}
+              />
+            ))}
+          </>
+        )}
+
         <SectionTitle title="All conversations" action={`${conversations.length} total`} />
         {conversations.length === 0 ? (
           <EmptyState icon="message-circle" title="No conversations" text="No chats have started yet." />
@@ -725,19 +886,26 @@ function ChatsSection() {
               : status === "closed"
               ? { bg: "#FEE2E2", fg: "#991B1B", label: "Closed by Admin" }
               : { bg: "#E5E7EB", fg: "#4B5563", label: "Denied" };
-            const last = conv.messages[0];
+            const last = conv.messages[conv.messages.length - 1];
             return (
               <Pressable
                 key={conv.id}
                 onPress={() => setOpenedId(conv.id)}
-                style={({ pressed }) => [styles.itemCard, { backgroundColor: colors.card, borderColor: conv.closedByAdmin ? "#FCA5A5" : colors.border, opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [styles.itemCard, { backgroundColor: colors.card, borderColor: conv.closedByAdmin ? "#FCA5A5" : conv.flagged && !conv.flagReviewedAt ? "#FDE68A" : colors.border, opacity: pressed ? 0.85 : 1 }]}
               >
                 <View style={styles.itemHeader}>
                   <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
                     {conv.clubName} <Text style={{ color: colors.mutedForeground }}>↔</Text> {conv.playerName}
                   </Text>
-                  <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                    <Text style={[styles.badgeText, { color: badge.fg }]}>{badge.label}</Text>
+                  <View style={{ flexDirection: "row", gap: 4, alignItems: "center" }}>
+                    {conv.flagged && !conv.flagReviewedAt ? (
+                      <View style={[styles.badge, { backgroundColor: "#FEE2E2" }]}>
+                        <Text style={[styles.badgeText, { color: "#991B1B" }]}>⚑ Flagged</Text>
+                      </View>
+                    ) : null}
+                    <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+                      <Text style={[styles.badgeText, { color: badge.fg }]}>{badge.label}</Text>
+                    </View>
                   </View>
                 </View>
                 <View style={styles.metaRow}>
@@ -1930,4 +2098,6 @@ const styles = StyleSheet.create({
   permRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   permLabel: { fontSize: 14, fontWeight: "500", flex: 1 },
   permToggle: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  tabBadge: { position: "absolute", top: -5, right: -7, backgroundColor: "#EF4444", borderRadius: 999, minWidth: 14, height: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 2 },
+  tabBadgeText: { color: "#FFF", fontSize: 8, fontWeight: "800" },
 });

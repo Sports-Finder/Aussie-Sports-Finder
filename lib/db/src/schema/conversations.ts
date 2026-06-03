@@ -1,4 +1,5 @@
-import { pgTable, text, serial, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -16,8 +17,19 @@ export const conversationsTable = pgTable("conversations", {
   sport: text("sport"),
   requesterLocation: text("requester_location"),
   requesterType: text("requester_type"),
+  flagged: boolean("flagged").default(false),
+  flagSeverity: text("flag_severity"),
+  flagCategory: text("flag_category"),
+  flagTriggerMessage: text("flag_trigger_message"),
+  flaggedAt: timestamp("flagged_at", { withTimezone: true }),
+  flagReviewedAt: timestamp("flag_reviewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  check(
+    "flag_severity_check",
+    sql`${table.flagSeverity} IS NULL OR ${table.flagSeverity} IN ('high', 'medium')`
+  ),
+]);
 
 export const insertConversationSchema = createInsertSchema(conversationsTable).omit({
   id: true,
