@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -17,7 +18,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState, ScreenShell } from "@/components/SportsUI";
-import { Conversation, useSportsConnect } from "@/context/SportsConnectContext";
+import { Conversation, UserAccount, useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
 const PAGE_SIZE = 6;
@@ -162,6 +163,180 @@ function MessageSender({ accountId, isMe }: { accountId?: string; isMe: boolean 
   );
 }
 
+type ProfileRowColors = { muted: string; border: string; foreground: string; primary: string; mutedForeground: string };
+
+function ProfileRow({ icon, label, tappable, colors }: { icon: keyof typeof Feather.glyphMap; label: string; tappable?: boolean; colors: ProfileRowColors }) {
+  return (
+    <View style={[profileStyles.row, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+      <Feather name={icon} size={14} color={tappable ? colors.primary : colors.mutedForeground} />
+      <Text style={[profileStyles.rowText, { color: tappable ? colors.primary : colors.foreground }]} numberOfLines={2}>{label}</Text>
+    </View>
+  );
+}
+
+function ProfileViewModal({ account, onClose }: { account: UserAccount | null; onClose: () => void }) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { getImageUri } = useSportsConnect();
+
+  if (!account) return null;
+
+  const isClub = account.role === "club";
+  const isCoach = account.role === "coach";
+  const isGuardian = account.role === "guardian";
+  const isPremium = account.subscriptionStatus === "active";
+  const socialLinks = account.socialLinks ?? { instagram: "", facebook: "", x: "", tiktok: "" };
+
+  const displayName = isClub ? (account.clubName ?? "Club") : isGuardian ? (account.parentGuardianName ?? "Guardian") : (account.fullName ?? "User");
+  const roleLabel = isClub ? "Club" : isCoach ? "Coach" : isGuardian ? "Parent/Guardian" : "Player";
+  const avatarColor = isClub ? "#16A34A" : isCoach ? "#7C3AED" : "#2563EB";
+  const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+  const imageUri = getImageUri(account.profileImageId);
+
+  const handleLink = async (raw: string) => {
+    if (!raw) return;
+    const url = raw.startsWith("http") || raw.startsWith("mailto:") ? raw : `https://${raw}`;
+    try { await Linking.openURL(url); } catch { /* ignore */ }
+  };
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <View style={profileStyles.overlay}>
+        <Pressable style={profileStyles.overlayBg} onPress={onClose} />
+        <View style={[profileStyles.sheet, { backgroundColor: colors.background, paddingBottom: insets.bottom + 16 }]}>
+          <Pressable onPress={onClose} style={[profileStyles.closeBtn, { backgroundColor: colors.secondary }]}>
+            <Feather name="x" size={18} color={colors.foreground} />
+          </Pressable>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={profileStyles.sheetContent}>
+            <View style={profileStyles.profileHead}>
+              <View style={[profileStyles.avatarCircle, { backgroundColor: avatarColor + "22" }]}>
+                {imageUri ? (
+                  <Image source={{ uri: imageUri }} style={profileStyles.avatarImg} contentFit="cover" />
+                ) : (
+                  <Text style={[profileStyles.avatarInitials, { color: avatarColor }]}>{initials}</Text>
+                )}
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={[profileStyles.displayName, { color: colors.foreground }]} numberOfLines={2}>{displayName}</Text>
+                {account.verifiedBadge ? <Feather name="check-circle" size={16} color="#16A34A" /> : null}
+              </View>
+              <View style={[profileStyles.rolePill, { backgroundColor: colors.secondary }]}>
+                <Text style={[profileStyles.roleText, { color: colors.mutedForeground }]}>{roleLabel}</Text>
+              </View>
+            </View>
+
+            {account.location ? <ProfileRow icon="map-pin" label={account.location} colors={colors} /> : null}
+            {(account.sports?.length ?? 0) > 0 ? <ProfileRow icon="activity" label={account.sports.join(", ")} colors={colors} /> : null}
+            {account.bio ? (
+              <View style={[profileStyles.bioBox, { backgroundColor: colors.muted }]}>
+                <Text style={[profileStyles.bioText, { color: colors.foreground }]}>{account.bio}</Text>
+              </View>
+            ) : null}
+
+            {isClub ? (
+              <>
+                {account.clubAddress ? <ProfileRow icon="home" label={account.clubAddress} colors={colors} /> : null}
+                {account.clubContactEmail ? (
+                  <Pressable onPress={() => void handleLink(`mailto:${account.clubContactEmail!}`)}>
+                    <ProfileRow icon="mail" label={account.clubContactEmail!} tappable colors={colors} />
+                  </Pressable>
+                ) : null}
+                {account.clubContactMobile ? <ProfileRow icon="phone" label={account.clubContactMobile} colors={colors} /> : null}
+                {account.clubWebsite ? (
+                  <Pressable onPress={() => void handleLink(account.clubWebsite!)}>
+                    <ProfileRow icon="globe" label={account.clubWebsite!} tappable colors={colors} />
+                  </Pressable>
+                ) : null}
+              </>
+            ) : null}
+
+            {!isClub && isPremium ? (
+              <>
+                {socialLinks.instagram ? (
+                  <Pressable onPress={() => void handleLink(socialLinks.instagram ?? "")}>
+                    <ProfileRow icon="instagram" label={socialLinks.instagram} tappable colors={colors} />
+                  </Pressable>
+                ) : null}
+                {socialLinks.facebook ? (
+                  <Pressable onPress={() => void handleLink(socialLinks.facebook ?? "")}>
+                    <ProfileRow icon="facebook" label={socialLinks.facebook} tappable colors={colors} />
+                  </Pressable>
+                ) : null}
+                {socialLinks.x ? (
+                  <Pressable onPress={() => void handleLink(socialLinks.x ?? "")}>
+                    <ProfileRow icon="twitter" label={socialLinks.x} tappable colors={colors} />
+                  </Pressable>
+                ) : null}
+                {socialLinks.tiktok ? (
+                  <Pressable onPress={() => void handleLink(socialLinks.tiktok ?? "")}>
+                    <ProfileRow icon="music" label={socialLinks.tiktok} tappable colors={colors} />
+                  </Pressable>
+                ) : null}
+                {account.highlightReelUrl && account.highlightReelStatus === "approved" ? (
+                  <Pressable onPress={() => void handleLink(account.highlightReelUrl!)}>
+                    <ProfileRow icon="play-circle" label={account.highlightReelUrl!} tappable colors={colors} />
+                  </Pressable>
+                ) : null}
+              </>
+            ) : null}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function ConnectedParticipantStrip({
+  conversation,
+  onViewProfile,
+}: {
+  conversation: Conversation;
+  onViewProfile: (account: UserAccount) => void;
+}) {
+  const colors = useColors();
+  const { accounts, moderators } = useSportsConnect();
+
+  const moderatorIds = new Set(moderators.map((m) => m.id));
+  const rawIds = [
+    conversation.ownerAccountId,
+    conversation.initiatorAccountId,
+    ...(conversation.affiliatedClubParticipants ?? []),
+  ].filter((id): id is string => !!id && !moderatorIds.has(id));
+  const uniqueIds = [...new Set(rawIds)];
+  const participants = uniqueIds
+    .map((id) => accounts.find((a) => a.id === id))
+    .filter((a): a is UserAccount => !!a);
+
+  if (participants.length === 0) return null;
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={[participantStyles.strip, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
+      contentContainerStyle={participantStyles.stripContent}
+    >
+      {participants.map((account) => {
+        const isClub = account.role === "club";
+        const isCoach = account.role === "coach";
+        const name = isClub ? (account.clubName ?? "Club") : (account.fullName ?? account.playerName ?? "User");
+        const avatarColor = isClub ? "#16A34A" : isCoach ? "#7C3AED" : "#2563EB";
+        return (
+          <View key={account.id} style={[participantStyles.tile, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <AvatarCircle label={name} color={avatarColor} size={34} />
+            <View style={participantStyles.tileText}>
+              <Text style={[participantStyles.name, { color: colors.foreground }]} numberOfLines={1}>{name}</Text>
+              <Pressable onPress={() => onViewProfile(account)}>
+                <Text style={[participantStyles.viewLink, { color: colors.primary }]}>View Profile</Text>
+              </Pressable>
+            </View>
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId: string; onClose: () => void; asAdmin?: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -169,6 +344,7 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
   const conversation = conversations.find((c) => c.id === conversationId)!;
   const [draft, setDraft] = useState("");
   const [isBroadcast, setIsBroadcast] = useState(false);
+  const [viewingProfile, setViewingProfile] = useState<UserAccount | null>(null);
   const adminMode = !!asAdmin && isAdmin;
   const { title: roomTitle, subtitle: roomSubtitle } = anonymousLabel(conversation, currentAccount?.id);
 
@@ -220,6 +396,7 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
 
   return (
     <Modal visible animationType="slide" onRequestClose={onClose}>
+      <ProfileViewModal account={viewingProfile} onClose={() => setViewingProfile(null)} />
       <View style={[styles.chatRoomWrap, { backgroundColor: colors.background }]}>
         <KeyboardAvoidingView behavior="padding" style={styles.flex} keyboardVerticalOffset={0}>
           <View style={[styles.chatRoomHeader, { paddingTop: insets.top + 10, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
@@ -257,6 +434,10 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
               }]} />
             )}
           </View>
+
+          {conversation.status === "connected" && !adminMode && (
+            <ConnectedParticipantStrip conversation={conversation} onViewProfile={setViewingProfile} />
+          )}
 
           <FlatList
             data={conversation.messages}
@@ -689,4 +870,32 @@ const styles = StyleSheet.create({
   adminBubble: { borderWidth: 1, gap: 6 },
   adminTagRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   adminTag: { color: "#FCD34D", fontWeight: "800", fontSize: 11, letterSpacing: 0.8 },
+});
+
+const participantStyles = StyleSheet.create({
+  strip: { borderBottomWidth: 1, flexGrow: 0 },
+  stripContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 10, alignItems: "center" },
+  tile: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
+  tileText: { gap: 2, maxWidth: 120 },
+  name: { fontWeight: "600", fontSize: 12 },
+  viewLink: { fontWeight: "700", fontSize: 11, textDecorationLine: "underline" },
+});
+
+const profileStyles = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: "flex-end" },
+  overlayBg: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
+  sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "88%", overflow: "hidden" },
+  closeBtn: { position: "absolute", top: 14, right: 14, zIndex: 10, width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  sheetContent: { paddingTop: 28, paddingHorizontal: 20, paddingBottom: 20, gap: 10 },
+  profileHead: { alignItems: "center", gap: 8, marginBottom: 4 },
+  avatarCircle: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  avatarImg: { width: "100%" as const, height: "100%" as const },
+  avatarInitials: { fontWeight: "800", fontSize: 28 },
+  displayName: { fontWeight: "700", fontSize: 20, textAlign: "center", letterSpacing: -0.3 },
+  rolePill: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+  roleText: { fontWeight: "600", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 14, borderWidth: 1 },
+  rowText: { fontWeight: "500", fontSize: 14, flex: 1 },
+  bioBox: { padding: 14, borderRadius: 14 },
+  bioText: { fontWeight: "400", fontSize: 14, lineHeight: 21, fontStyle: "italic" },
 });
