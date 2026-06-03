@@ -1102,10 +1102,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const adminGrantPremium = async (accountId: string, grant: boolean) => {
-    if (grant) {
-      await api.grantEntitlement(accountId, "premium");
-    } else {
-      await api.revokeEntitlement(accountId, "premium");
+    const doCall = () => grant
+      ? api.grantEntitlement(accountId, "premium")
+      : api.revokeEntitlement(accountId, "premium");
+    try {
+      await doCall();
+    } catch (err: unknown) {
+      // 401 means the Clerk JWT was mid-refresh — wait 700ms and retry once
+      if ((err as { status?: number } | null)?.status === 401) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 700));
+        await doCall();
+      } else {
+        throw err;
+      }
     }
     setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, promotionalPremium: grant } : acc));
     Haptics.notificationAsync(grant ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => undefined);

@@ -31,7 +31,15 @@ router.get("/accounts", async (_req, res) => {
 
 router.post("/accounts", async (req, res) => {
   try {
-    const body = req.body;
+    const body = normalizeDates(req.body, [
+      "createdAt",
+      "updatedAt",
+      "statusChangedAt",
+      "trialStartedAt",
+      "trialExpiresAt",
+      "subscriptionExpiresAt",
+      "lastAdvertClosedAt",
+    ]);
     const [created] = await db.insert(accountsTable).values(body).returning();
     res.status(201).json(mapAccount(created as unknown as Record<string, unknown>));
   } catch (err) {

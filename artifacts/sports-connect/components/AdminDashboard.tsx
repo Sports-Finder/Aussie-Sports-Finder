@@ -805,8 +805,16 @@ function AccountsSection() {
     setToastError(null);
     try {
       await adminGrantPremium(acc.id, !acc.promotionalPremium);
-    } catch {
-      setToastError(`Failed to ${acc.promotionalPremium ? "revoke" : "grant"} Free Premium for ${displayName(acc)}. RevenueCat may be unavailable.`);
+    } catch (err: unknown) {
+      const status = (err as { status?: number } | null)?.status;
+      const action = acc.promotionalPremium ? "revoke" : "grant";
+      const msg =
+        status === 401
+          ? `Auth error — please restart the app and try again (Clerk token expired).`
+          : status === 403
+          ? `Admin not configured — make sure ADMIN_USER_IDS is set in server secrets.`
+          : `Failed to ${action} Free Premium for ${displayName(acc)}. RevenueCat may be unavailable.`;
+      setToastError(msg);
     } finally {
       setPendingPremium(null);
     }
