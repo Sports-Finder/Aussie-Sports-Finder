@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
+import { defaultSportThemes, getSportTheme } from "@/constants/sports";
+import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 import { useColors } from "@/hooks/useColors";
 import { detectContactInfo } from "@/utils/contactDetection";
 
@@ -146,6 +148,12 @@ export function AccountSetupGate() {
     x: "",
     tiktok: "",
     highlightReelUrl: "",
+    playerPositions: [] as string[],
+    playerCurrentLevel: "",
+    playerCurrentAgeGroup: "",
+    playerCurrentClub: "",
+    coachCurrentLevel: "",
+    coachCurrentClub: "",
     agreed: false,
   });
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
@@ -186,7 +194,7 @@ export function AccountSetupGate() {
     );
   }, [age, defaultSport, form, isClub, role, selectedSports.length]);
 
-  const update = (key: keyof typeof form, value: string | boolean) =>
+  const update = (key: keyof typeof form, value: string | boolean | string[]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
   const selectRole = (selected: AccountRole) => {
@@ -262,6 +270,12 @@ export function AccountSetupGate() {
         x: form.x,
         tiktok: form.tiktok,
       },
+      playerPositions: form.playerPositions,
+      playerCurrentLevel: form.playerCurrentLevel || undefined,
+      playerCurrentAgeGroup: form.playerCurrentAgeGroup || undefined,
+      playerCurrentClub: form.playerCurrentClub || undefined,
+      coachCurrentLevel: form.coachCurrentLevel || undefined,
+      coachCurrentClub: form.coachCurrentClub || undefined,
       highlightReelUrl: form.highlightReelUrl,
       highlightReelStatus: form.highlightReelUrl ? "pending" : undefined,
       clubWebsite: form.clubWebsite,
@@ -566,6 +580,52 @@ export function AccountSetupGate() {
                   single
                   approvedSports={approvedSports.map((s) => s.name)}
                 />
+
+                {role === "coach" && (
+                  <>
+                    <Text style={[styles.label, { color: colors.mutedForeground }]}>Current coaching level (optional)</Text>
+                    <View style={styles.wrapRow}>
+                      {COACH_EXPERIENCE_LEVELS.map((level) => (
+                        <Choice key={level.value} label={level.label} active={form.coachCurrentLevel === level.value} onPress={() => update("coachCurrentLevel", level.value)} colors={colors} />
+                      ))}
+                    </View>
+                    <Input label="Current or previous club (optional)" value={form.coachCurrentClub} onChangeText={(v) => update("coachCurrentClub", v)} placeholder="e.g. Northside FC" />
+                  </>
+                )}
+                {role !== "coach" && (
+                  <>
+                    <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                      Positions played
+                      {defaultSport ? ` for ${defaultSport}` : ""}
+                    </Text>
+                    <View style={styles.wrapRow}>
+                      {(() => {
+                        const sportTheme = getSportTheme(defaultSport, defaultSportThemes);
+                        if (sportTheme.positions.length === 0) {
+                          return <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>No preset positions for this sport.</Text>;
+                        }
+                        return sportTheme.positions.map((pos) => (
+                          <Choice
+                            key={pos}
+                            label={pos}
+                            active={form.playerPositions.includes(pos)}
+                            onPress={() => {
+                              const current = form.playerPositions;
+                              const next = current.includes(pos)
+                                ? current.filter((p) => p !== pos)
+                                : [...current, pos];
+                              update("playerPositions", next);
+                            }}
+                            colors={colors}
+                          />
+                        ));
+                      })()}
+                    </View>
+                    <Input label="Current playing level (optional)" value={form.playerCurrentLevel} onChangeText={(v) => update("playerCurrentLevel", v)} placeholder="e.g. Competitive, Social" />
+                    <Input label="Current playing age group (optional)" value={form.playerCurrentAgeGroup} onChangeText={(v) => update("playerCurrentAgeGroup", v)} placeholder="e.g. Under 14s, Open Age" />
+                    <Input label="Current or previous club (optional)" value={form.playerCurrentClub} onChangeText={(v) => update("playerCurrentClub", v)} placeholder="e.g. Northside FC" />
+                  </>
+                )}
               </>
             )}
 
@@ -718,6 +778,7 @@ function Input({
   keyboardType,
   multiline,
   secureTextEntry,
+  placeholder,
 }: {
   label: string;
   value: string;
@@ -725,6 +786,7 @@ function Input({
   keyboardType?: "default" | "email-address" | "number-pad" | "phone-pad";
   multiline?: boolean;
   secureTextEntry?: boolean;
+  placeholder?: string;
 }) {
   const colors = useColors();
   return (
