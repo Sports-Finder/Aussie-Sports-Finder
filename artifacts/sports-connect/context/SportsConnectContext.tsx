@@ -116,6 +116,12 @@ export type UserAccount = {
   subscriptionExpiresAt?: string;
   lastAdvertClosedAt?: string;
   promotionalPremium?: boolean;
+  playerPositions?: string;
+  playerCurrentLevel?: string;
+  playerCurrentAgeGroup?: string;
+  playerCurrentClub?: string;
+  coachCurrentLevel?: string;
+  coachCurrentClub?: string;
 };
 
 export type Advert = {

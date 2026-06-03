@@ -15,6 +15,7 @@ import { useSubscription } from "@/lib/revenuecat";
 import { useIsPremium } from "@/hooks/useIsPremium";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 import { parseDobAge } from "@/utils/dateUtils";
+import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 
 type Mode = "view" | "edit";
 const genders = ["Male", "Female", "Pref Not to Say"];
@@ -319,6 +320,15 @@ export default function ProfileScreen() {
       { label: "Mobile", value: currentAccount.mobile ?? "" },
       { label: "Bio", value: isGuardian ? guardianBio : playerBio },
       { label: "Sports", value: (currentAccount.sports ?? []).join(", ") },
+      ...(isCoach ? [
+        { label: "Coaching level", value: COACH_EXPERIENCE_LEVELS.find((l) => l.value === currentAccount.coachCurrentLevel)?.label ?? currentAccount.coachCurrentLevel ?? "" },
+        { label: "Current or previous club", value: currentAccount.coachCurrentClub ?? "" },
+      ] : [
+        { label: "Positions played", value: currentAccount.playerPositions ?? "" },
+        { label: "Current playing level", value: currentAccount.playerCurrentLevel ?? "" },
+        { label: "Current playing age group", value: currentAccount.playerCurrentAgeGroup ?? "" },
+        { label: "Current or previous club", value: currentAccount.playerCurrentClub ?? "" },
+      ]),
       { label: "Instagram", value: socialLinks.instagram ?? "", url: link(socialLinks.instagram ?? "") },
       { label: "Facebook", value: socialLinks.facebook ?? "", url: link(socialLinks.facebook ?? "") },
       { label: "X / Twitter", value: socialLinks.x ?? "", url: link(socialLinks.x ?? "") },
@@ -825,6 +835,26 @@ export default function ProfileScreen() {
                 : <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Select at least one sport above first.</Text>
               }
             </View>
+
+            {!isCoach && !isClub && (
+              <>
+                <Field label="Positions played" value={currentAccount?.playerPositions ?? ""} onChangeText={(v) => updateAccount({ playerPositions: v })} placeholder="e.g. Midfielder, Striker" />
+                <Field label="Current playing level" value={currentAccount?.playerCurrentLevel ?? ""} onChangeText={(v) => updateAccount({ playerCurrentLevel: v })} placeholder="e.g. Competitive, Social" />
+                <Field label="Current playing age group" value={currentAccount?.playerCurrentAgeGroup ?? ""} onChangeText={(v) => updateAccount({ playerCurrentAgeGroup: v })} placeholder="e.g. Under 14s, Open Age" />
+                <Field label="Current or previous club" value={currentAccount?.playerCurrentClub ?? ""} onChangeText={(v) => updateAccount({ playerCurrentClub: v })} placeholder="e.g. Northside FC" />
+              </>
+            )}
+            {isCoach && (
+              <>
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>Current coaching level</Text>
+                <View style={styles.wrapRow}>
+                  {COACH_EXPERIENCE_LEVELS.map((level) => (
+                    <Choice key={level.value} label={level.label} active={currentAccount?.coachCurrentLevel === level.value} onPress={() => updateAccount({ coachCurrentLevel: level.value })} />
+                  ))}
+                </View>
+                <Field label="Current or previous club" value={currentAccount?.coachCurrentClub ?? ""} onChangeText={(v) => updateAccount({ coachCurrentClub: v })} placeholder="e.g. Northside FC" />
+              </>
+            )}
 
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Social links (optional)</Text>
             <Field label="Instagram link" value={socialLinks.instagram ?? ""} onChangeText={(v) => updateSocial("instagram", v)} />

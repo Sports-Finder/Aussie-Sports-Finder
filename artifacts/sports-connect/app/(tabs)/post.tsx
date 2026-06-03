@@ -14,16 +14,11 @@ import { detectContactInfo } from "@/utils/contactDetection";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 import { AgeGroup, AGE_GROUPS } from "@/constants/ageGroups";
+import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 
 type TrialSlot = { date: string; timeFrom: string; timeTo: string };
 
 const COACH_ROLES = ["Head Coach", "Assistant Coach", "Trainer", "Technical Director"];
-const COACH_EXPERIENCE_LEVELS = [
-  { value: "Level 1", label: "Beginner / Trainee / Community / Non-Competitive (Level 1)" },
-  { value: "Level 2", label: "Development Focused (Level 2)" },
-  { value: "Level 3", label: "Performance / Club Pro / Competitive (Level 3)" },
-  { value: "Level 4", label: "High Performance / Senior (Level 4)" },
-];
 const COACH_POSITION_TYPES = ["Paid Full-time", "Paid Part-time", "One off payment", "Unpaid Volunteer"];
 const FOCUS_AREAS = ["Club", "Junior Development", "Senior", "Women's Program"];
 const TEAM_GENDERS = ["Female", "Male", "Mixed"];

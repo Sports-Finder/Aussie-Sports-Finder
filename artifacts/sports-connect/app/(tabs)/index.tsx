@@ -9,6 +9,8 @@ import { IconButton, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/co
 import { allSportsFilterName, getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
 import { getAgeBlockReason } from "@/utils/ageEligibility";
+import { parseDobAge } from "@/utils/dateUtils";
+import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
@@ -359,6 +361,45 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                     <Text style={[styles.pendingRequestText, { color: colors.foreground }]}>
                       {`A ${requesterTypeLabel(firstPending.requesterType)} from ${firstPending.requesterLocation ?? "an unknown location"} wants to connect privately. Agree to connect?`}
                     </Text>
+                    {(() => {
+                      const req = accounts.find((a) => a.id === firstPending.initiatorAccountId);
+                      if (!req) return null;
+                      const isCoachReq = req.role === "coach";
+                      const age = parseDobAge(req.dateOfBirth);
+                      const coachLevelLabel = COACH_EXPERIENCE_LEVELS.find((l) => l.value === req.coachCurrentLevel)?.label;
+                      const facts: { label: string; value: string }[] = isCoachReq
+                        ? [
+                            req.gender ? { label: "Gender", value: req.gender } : null,
+                            req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` } : null,
+                            req.location ? { label: "Location", value: req.location } : null,
+                            (req.sports ?? []).length > 0 ? { label: "Sports coached", value: req.sports.join(", ") } : null,
+                            coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
+                            req.coachCurrentClub ? { label: "Current / prev club", value: req.coachCurrentClub } : null,
+                          ].filter(Boolean) as { label: string; value: string }[]
+                        : [
+                            req.gender ? { label: "Gender", value: req.gender } : null,
+                            req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` } : null,
+                            req.location ? { label: "Location", value: req.location } : null,
+                            req.playerPositions ? { label: "Position/s", value: req.playerPositions } : null,
+                            req.playerCurrentLevel ? { label: "Playing level", value: req.playerCurrentLevel } : null,
+                            req.playerCurrentAgeGroup ? { label: "Age group", value: req.playerCurrentAgeGroup } : null,
+                            req.playerCurrentClub ? { label: "Current / prev club", value: req.playerCurrentClub } : null,
+                          ].filter(Boolean) as { label: string; value: string }[];
+                      if (facts.length === 0) return null;
+                      return (
+                        <View style={{ borderTopWidth: 1, borderTopColor: "#F59E0B44", paddingTop: 10, gap: 6 }}>
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: colors.mutedForeground, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 }}>
+                            About this {isCoachReq ? "coach" : "player"}
+                          </Text>
+                          {facts.map((f) => (
+                            <View key={f.label} style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                              <Text style={{ fontSize: 12, fontWeight: "600", color: colors.mutedForeground, minWidth: 100 }}>{f.label}:</Text>
+                              <Text style={{ fontSize: 12, color: colors.foreground, flex: 1, flexShrink: 1 }}>{f.value}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      );
+                    })()}
                     <View style={styles.acceptDenyRow}>
                       <Pressable
                         onPress={() => acceptConnection(firstPending.id)}
