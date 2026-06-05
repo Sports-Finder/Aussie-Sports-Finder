@@ -700,12 +700,25 @@ export default function PostScreen() {
   // Free clubs: max 1 active advert
   // Free players/coaches: NO adverts allowed (only 3 outgoing connections)
   // Paid clubs: unlimited adverts
-  // Paid players/coaches: 1 active advert
+  // Paid players/coaches: max 1 active advert (hard limit, not lifted by subscription or dev bypass)
+  // Affiliated coaches: unlimited players-wanted / club-trials; max 1 coach-looking
   const activeMyAdverts = myAdverts.filter((a) => a.status !== "closed");
   const isClubFreeTrialLimited = isClub && !isPremium && activeMyAdverts.length >= 1 && !editingId;
   const isPlayerFreeLimited = !isClub && !isPremium && !editingId;
 
   const requiresSubscription = isClubFreeTrialLimited || isPlayerFreeLimited;
+
+  // Hard 1-advert cap for Player / Parent-Guardian / Coach accounts.
+  // Not overridden by subscription status or dev bypass.
+  // Exception: affiliated coaches can post unlimited players-wanted and club-trials
+  // (acting on behalf of their club), but are still capped at 1 coach-looking advert.
+  const isOverPersonalAdvertLimit = !isClub && !editingId && (() => {
+    if (isAffiliatedCoach && (isPlayersWanted || isClubTrials)) return false;
+    const countable = isAffiliatedCoach
+      ? activeMyAdverts.filter((a) => a.type === "coach-looking")
+      : activeMyAdverts;
+    return countable.length >= 1;
+  })();
 
   const openPaywallForFeature = (hint: string) => {
     setPaywallHint(hint);
@@ -799,6 +812,17 @@ export default function PostScreen() {
         isClub
           ? "Free clubs are limited to 1 active advert. Upgrade for unlimited."
           : "Free accounts cannot post adverts. Upgrade to post adverts and get unlimited connections."
+      );
+      return;
+    }
+
+    // Gate: hard 1-advert cap (not bypassed by subscription or dev bypass)
+    if (isOverPersonalAdvertLimit) {
+      Alert.alert(
+        "Active advert already exists",
+        isAffiliatedCoach
+          ? "You already have an active Coach Looking advert. Close it before posting another."
+          : "You already have an active advert. Close it before posting a new one."
       );
       return;
     }
@@ -1010,7 +1034,9 @@ export default function PostScreen() {
         {isPremium ? (
           <View style={[localStyles.subBanner, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
             <Feather name="star" size={16} color="#D97706" />
-            <Text style={[localStyles.subBannerText, { color: "#15803D" }]}>Premium — unlimited adverts active</Text>
+            <Text style={[localStyles.subBannerText, { color: "#15803D" }]}>
+              {isClub ? "Premium — unlimited adverts active" : "Premium — 1 active advert allowed"}
+            </Text>
           </View>
         ) : (
           <Pressable
@@ -1029,6 +1055,18 @@ export default function PostScreen() {
           </Pressable>
         )}
 
+        {/* ── Hard advert limit banner (shown to premium non-club accounts already at their cap) ── */}
+        {isOverPersonalAdvertLimit ? (
+          <View style={[localStyles.subBanner, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
+            <Feather name="alert-circle" size={15} color="#DC2626" />
+            <Text style={[localStyles.subBannerText, { color: "#991B1B" }]}>
+              {isAffiliatedCoach
+                ? "You already have an active Coach Looking advert. Close it before posting another."
+                : "You already have an active advert. Close it before posting a new one."}
+            </Text>
+          </View>
+        ) : null}
+
         {isCoach && !isAffiliatedCoach && (
           <View style={[localStyles.coachTip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
             <Feather name="info" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
@@ -1038,7 +1076,7 @@ export default function PostScreen() {
           </View>
         )}
 
-        <View style={isPlayerFreeLimited ? { opacity: 0.4, pointerEvents: "none" } : undefined}>
+        <View style={(isPlayerFreeLimited || isOverPersonalAdvertLimit) ? { opacity: 0.4, pointerEvents: "none" } : undefined}>
         <View style={[localStyles.sportHeader, { backgroundColor: activeTheme.background, borderColor: activeTheme.soft }]}> 
           <Text style={[localStyles.sportHeaderKicker, { color: activeTheme.primary }]}>Posting under</Text>
           <Text style={[localStyles.sportHeaderTitle, { color: activeTheme.text }]}>{sport}</Text>
