@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -950,9 +950,14 @@ export default function PostScreen() {
             <Text style={[localStyles.kicker, { color: colors.primary }]}>Post advert</Text>
             <Text style={[localStyles.title, { color: colors.foreground }]}>Post Your Advertisement</Text>
           </View>
-          <View style={[localStyles.roleBadge, { backgroundColor: colors.pitchSoft, flexShrink: 0 }]}> 
-            <Feather name={activeProfile === "club" ? "shield" : "user"} color={colors.primary} size={16} />
-            <Text style={[localStyles.roleBadgeText, { color: colors.primary }]}>{activeProfile}</Text>
+          <View style={[localStyles.roleBadge, { backgroundColor: colors.pitchSoft, flexShrink: 0 }]}>
+            {(() => {
+              const iconProps = { color: colors.primary, size: 16 };
+              if (accountRole === "club") return <Feather name="shield" {...iconProps} />;
+              if (accountRole === "coach") return <MaterialCommunityIcons name="whistle" {...iconProps} />;
+              return <Feather name="user" {...iconProps} />;
+            })()}
+            <Text style={[localStyles.roleBadgeText, { color: colors.primary }]}>{accountRole}</Text>
           </View>
         </View>
 
