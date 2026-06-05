@@ -31,10 +31,10 @@ router.get("/accounts", async (_req, res) => {
 
 router.post("/accounts", async (req, res) => {
   try {
-    // Strip client-side id (local string id, not a DB serial) and any duplicate
-    // publicId key before normalising dates — Drizzle rejects non-integer values
-    // in the serial "id" column.
-    const { id: _id, ...rest } = req.body as Record<string, unknown>;
+    // Strip client-side id (local string id, not a DB serial) and passwordHash
+    // (the client sends plain `password`; we store it directly in the `password`
+    // column — passwordHash is reserved for future bcrypt migration).
+    const { id: _id, passwordHash: _ph, ...rest } = req.body as Record<string, unknown>;
     const body = normalizeDates(rest, [
       "createdAt",
       "updatedAt",
@@ -55,7 +55,11 @@ router.post("/accounts", async (req, res) => {
 router.put("/accounts/:publicId", async (req, res) => {
   try {
     const publicId = req.params.publicId;
-    const body = normalizeDates(req.body, [
+    // Strip read-only / registration-only fields that must never be overwritten
+    // via a profile update — id, password (set once at registration), coachAffiliates
+    // (managed by its own endpoints).
+    const { id: _id, password: _pw, coachAffiliates: _ca, ...rawBody } = req.body as Record<string, unknown>;
+    const body = normalizeDates(rawBody, [
       "statusChangedAt",
       "trialStartedAt",
       "trialExpiresAt",

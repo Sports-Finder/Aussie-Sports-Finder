@@ -47,6 +47,13 @@ export const accountsTable = pgTable("accounts", {
   verifiedBadge: boolean("verified_badge").notNull().default(false),
   lastAdvertClosedAt: timestamp("last_advert_closed_at", { withTimezone: true }),
   promotionalPremium: boolean("promotional_premium").notNull().default(false),
+  playerPositions: jsonb("player_positions").$type<string[]>(),
+  playerCurrentLevel: text("player_current_level"),
+  playerCurrentAgeGroup: text("player_current_age_group"),
+  playerCurrentClub: text("player_current_club"),
+  coachCurrentLevel: text("coach_current_level"),
+  coachCurrentClub: text("coach_current_club"),
+  password: text("password"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

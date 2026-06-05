@@ -68,6 +68,13 @@ export function mapAccount(
       ? new Date(row.lastAdvertClosedAt as string).toISOString()
       : undefined,
     promotionalPremium: (row.promotionalPremium as boolean) ?? false,
+    playerPositions: (row.playerPositions as string[] | undefined) ?? undefined,
+    playerCurrentLevel: row.playerCurrentLevel as string | undefined,
+    playerCurrentAgeGroup: row.playerCurrentAgeGroup as string | undefined,
+    playerCurrentClub: row.playerCurrentClub as string | undefined,
+    coachCurrentLevel: row.coachCurrentLevel as string | undefined,
+    coachCurrentClub: row.coachCurrentClub as string | undefined,
+    password: row.password as string | undefined,
     coachAffiliates: affiliates,
     createdAt: new Date(row.createdAt as string).toISOString(),
     updatedAt: new Date(row.updatedAt as string).toISOString(),

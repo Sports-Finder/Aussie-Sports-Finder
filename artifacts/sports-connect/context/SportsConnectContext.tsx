@@ -1025,7 +1025,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       return next;
     });
     if (currentAccount?.id) {
-      api.updateAccount(currentAccount.id, profile).catch(() => undefined);
+      const { password: _pw, coachAffiliates: _ca, ...safeProfile } = profile as Record<string, unknown>;
+      api.updateAccount(currentAccount.id, safeProfile).catch((err: unknown) => {
+        console.warn("[updateAccount] API sync failed:", err);
+      });
     }
   };
 
