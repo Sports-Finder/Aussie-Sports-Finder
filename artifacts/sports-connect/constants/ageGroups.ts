@@ -6,4 +6,5 @@ export const AGE_GROUPS: AgeGroup[] = [
   { label: "Intermediate / Youth (Ages 12–15)", min: 12, max: 15 },
   { label: "Senior Youth (Ages 16–20)", min: 16, max: 20 },
   { label: "Senior (Ages 21+)", min: 21, max: 50 },
+  { label: "Masters (Ages 35+)", min: 35, max: 100 },
 ];
