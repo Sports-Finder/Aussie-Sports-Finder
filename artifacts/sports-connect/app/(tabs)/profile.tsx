@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -517,7 +517,7 @@ export default function ProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={[styles.accountIcon, { backgroundColor: colors.pitchSoft }]}>
-                <Feather name="award" size={20} color={colors.primary} />
+                <MaterialCommunityIcons name="whistle" size={20} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>Coach Affiliates</Text>
