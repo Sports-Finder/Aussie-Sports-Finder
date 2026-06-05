@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert } from "react-native";
 import { FlatList, ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -44,7 +45,14 @@ function typeLabel(type: Advert["type"]) {
     : "";
 }
 
-function canRequestConnection(viewerRole: AccountRole, advert: Advert, affiliatedClubId?: string): boolean {
+function sportMatchesProfile(advertSport: string, viewerSports?: string[]): boolean {
+  if (!viewerSports || viewerSports.length === 0) return true;
+  return viewerSports.includes(advertSport);
+}
+
+function canRequestConnection(viewerRole: AccountRole, advert: Advert, affiliatedClubId?: string, viewerSports?: string[]): boolean {
+  if (!sportMatchesProfile(advert.sport, viewerSports)) return false;
+
   const viewerIsPlayerOrParent = viewerRole === "player" || viewerRole === "guardian";
   const viewerIsCoach = viewerRole === "coach";
   const viewerIsClub = viewerRole === "club";
@@ -124,6 +132,7 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
 
 function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void }) {
   const colors = useColors();
+  const router = useRouter();
   const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount, accounts, forbiddenConnections } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert);
@@ -170,8 +179,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
     }
   };
 
-  const connect = () => {
-    if (isConnecting || myRequest) return;
+  const proceedAfterSportCheck = () => {
     const AU_STATE_LIST = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
     const extractState = (loc: string) => {
       const last = loc.trim().split(" ").pop()?.toUpperCase() ?? "";
@@ -192,6 +200,26 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
       return;
     }
     doConnect();
+  };
+
+  const connect = () => {
+    if (isConnecting || myRequest) return;
+    const viewerSports = currentAccount?.sports ?? [];
+    const advertSport = advert.sport;
+    const sportInProfile = viewerSports.includes(advertSport);
+    const isDefaultSport = currentAccount?.defaultSport === advertSport;
+    if (sportInProfile && !isDefaultSport) {
+      Alert.alert(
+        "Sport Mismatch",
+        "Did you want to change your default sport before making this request? Your default sport doesn't match the sport of this advertisement and it's likely the Club will decline you.",
+        [
+          { text: "Yes, update my profile", onPress: () => { onClose(); router.navigate("/(tabs)/profile"); } },
+          { text: "No, send request anyway", onPress: proceedAfterSportCheck },
+        ]
+      );
+      return;
+    }
+    proceedAfterSportCheck();
   };
 
   const trainingSchedule = (() => {
@@ -495,7 +523,12 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                 <Text style={[styles.connectedText, { color: "#D9534F" }]}>Your connection request was not accepted</Text>
               </View>
             ) : myRequest?.status === "connected" ? null : (
-              canRequestConnection(currentAccount?.role ?? "player", advert, currentAccount?.affiliatedClubId) ? (
+              !sportMatchesProfile(advert.sport, currentAccount?.sports) ? (
+                <View style={[styles.connectedBadge, { backgroundColor: colors.secondary }]}>
+                  <Feather name="lock" color={colors.mutedForeground} size={18} />
+                  <Text style={[styles.connectedText, { color: colors.mutedForeground }]}>This advert is for {advert.sport} — add it to your profile to connect</Text>
+                </View>
+              ) : canRequestConnection(currentAccount?.role ?? "player", advert, currentAccount?.affiliatedClubId, currentAccount?.sports) ? (
                 ageBlockReason ? (
                   <View style={[styles.connectedBadge, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5", borderWidth: 1 }]}>
                     <Feather name="alert-circle" color="#DC2626" size={18} />
@@ -533,6 +566,21 @@ export default function DiscoverScreen() {
   const [selected, setSelected] = useState<Advert | null>(null);
   const [sportRequest, setSportRequest] = useState("");
   const activeTheme = selectedSport === allSportsFilterName ? null : getSportTheme(selectedSport, approvedSports);
+
+  const profileSports = currentAccount?.sports ?? [];
+  const visibleSportChips = approvedSports.filter(
+    (s) => profileSports.length === 0 || profileSports.includes(s.name)
+  );
+
+  useEffect(() => {
+    if (
+      selectedSport !== allSportsFilterName &&
+      profileSports.length > 0 &&
+      !profileSports.includes(selectedSport)
+    ) {
+      setSelectedSport(allSportsFilterName);
+    }
+  }, [profileSports, selectedSport]);
 
   const filtered = useMemo(() => {
     const base = adverts.filter((advert) => {
@@ -611,7 +659,7 @@ export default function DiscoverScreen() {
             <Pressable onPress={() => setSelectedSport(allSportsFilterName)} style={({ pressed }) => [styles.sportChip, { backgroundColor: selectedSport === allSportsFilterName ? colors.primary : colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
               <Text style={[styles.sportChipText, { color: selectedSport === allSportsFilterName ? colors.primaryForeground : colors.secondaryForeground }]}>All Sports</Text>
             </Pressable>
-            {approvedSports.map((sport) => (
+            {visibleSportChips.map((sport) => (
               <Pressable key={sport.name} onPress={() => setSelectedSport(sport.name)} style={({ pressed }) => [styles.sportChip, { backgroundColor: selectedSport === sport.name ? sport.button : sport.soft, opacity: pressed ? 0.75 : 1 }]}>
                 <Text style={[styles.sportChipText, { color: selectedSport === sport.name ? "#FFFFFF" : sport.text }]}>{sport.name}</Text>
               </Pressable>
