@@ -46,7 +46,7 @@ function typeLabel(type: Advert["type"]) {
 }
 
 function sportMatchesProfile(advertSport: string, viewerSports?: string[]): boolean {
-  if (!viewerSports || viewerSports.length === 0) return true;
+  if (!viewerSports || viewerSports.length === 0) return false;
   return viewerSports.includes(advertSport);
 }
 
@@ -575,17 +575,18 @@ export default function DiscoverScreen() {
   useEffect(() => {
     if (
       selectedSport !== allSportsFilterName &&
-      profileSports.length > 0 &&
       !profileSports.includes(selectedSport)
     ) {
       setSelectedSport(allSportsFilterName);
     }
-  }, [profileSports, selectedSport]);
+  }, [profileSports, selectedSport, setSelectedSport]);
 
   const filtered = useMemo(() => {
     const base = adverts.filter((advert) => {
       if (!isAdmin && advert.status === "closed") return false;
-      const matchesSport = selectedSport === allSportsFilterName || advert.sport === selectedSport;
+      const matchesSport = selectedSport === allSportsFilterName
+        ? (profileSports.length === 0 || profileSports.includes(advert.sport))
+        : advert.sport === selectedSport;
       if (!matchesSport) return false;
       const matchesState = stateFilter === "All" || advert.location.includes(stateFilter);
       if (!matchesState) return false;
@@ -602,7 +603,7 @@ export default function DiscoverScreen() {
       const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       return sortOrder === "newest" ? diff : -diff;
     });
-  }, [adverts, filter, sortOrder, notificationSettings.radiusKm, selectedSport, stateFilter, isAdmin]);
+  }, [adverts, filter, sortOrder, notificationSettings.radiusKm, selectedSport, stateFilter, isAdmin, profileSports]);
 
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
 
