@@ -386,38 +386,65 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                 ) : null}
                 {firstPending ? (
                   <View style={[styles.pendingRequestCard, { backgroundColor: colors.amberSoft, borderColor: "#F59E0B" }]}>
-                    <Text style={[styles.pendingRequestText, { color: colors.foreground }]}>
-                      {`A ${requesterTypeLabel(firstPending.requesterType)} from ${firstPending.requesterLocation ?? "an unknown location"} wants to connect privately. Agree to connect?`}
-                    </Text>
+                    {(() => {
+                      const req = accounts.find((a) => a.id === firstPending.initiatorAccountId);
+                      const isCoachReq = req?.role === "coach";
+                      const isAffiliatedCoachReq = isCoachReq && !!req?.affiliatedClubId;
+                      const location = firstPending.requesterLocation ?? "an unknown location";
+                      const headerText = isAffiliatedCoachReq
+                        ? `A Coach from a Club in ${location} wants to connect privately. Agree to connect?`
+                        : `A ${requesterTypeLabel(firstPending.requesterType)} from ${location} wants to connect privately. Agree to connect?`;
+                      return (
+                        <Text style={[styles.pendingRequestText, { color: colors.foreground }]}>{headerText}</Text>
+                      );
+                    })()}
                     {(() => {
                       const req = accounts.find((a) => a.id === firstPending.initiatorAccountId);
                       if (!req) return null;
                       const isCoachReq = req.role === "coach";
+                      const isAffiliatedCoachReq = isCoachReq && !!req.affiliatedClubId;
                       const age = parseDobAge(req.dateOfBirth);
                       const coachLevelLabel = COACH_EXPERIENCE_LEVELS.find((l) => l.value === req.coachCurrentLevel)?.label;
-                      const facts: { label: string; value: string }[] = isCoachReq
-                        ? [
-                            req.gender ? { label: "Gender", value: req.gender } : null,
-                            req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` } : null,
-                            req.location ? { label: "Location", value: req.location } : null,
-                            (req.sports ?? []).length > 0 ? { label: "Sports coached", value: req.sports.join(", ") } : null,
-                            coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
-                            req.coachCurrentClub ? { label: "Current / prev club", value: req.coachCurrentClub } : null,
-                          ].filter(Boolean) as { label: string; value: string }[]
-                        : [
-                            req.gender ? { label: "Gender", value: req.gender } : null,
-                            req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` } : null,
-                            req.location ? { label: "Location", value: req.location } : null,
-                            (req.playerPositions ?? []).length > 0 ? { label: "Position/s", value: (req.playerPositions ?? []).join(", ") } : null,
-                            req.playerCurrentLevel ? { label: "Playing level", value: req.playerCurrentLevel } : null,
-                            req.playerCurrentAgeGroup ? { label: "Age group", value: req.playerCurrentAgeGroup } : null,
-                            req.playerCurrentClub ? { label: "Current / prev club", value: req.playerCurrentClub } : null,
-                          ].filter(Boolean) as { label: string; value: string }[];
+
+                      let facts: { label: string; value: string }[] = [];
+                      let sectionLabel = "About this coach";
+
+                      if (isAffiliatedCoachReq) {
+                        // Look up the age group the club assigned to this coach's affiliation
+                        const clubAccount = accounts.find((a) => a.id === req.affiliatedClubId);
+                        const affiliation = clubAccount?.coachAffiliates?.find((a) => a.coachAccountId === req.id);
+                        const teamAgeGroup = affiliation?.ageGroup;
+                        facts = [
+                          req.gender ? { label: "Gender", value: req.gender } : null,
+                          age !== null ? { label: "Age", value: String(age) } : null,
+                          coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
+                          teamAgeGroup ? { label: "Club team age group", value: teamAgeGroup } : null,
+                        ].filter(Boolean) as { label: string; value: string }[];
+                      } else if (isCoachReq) {
+                        facts = [
+                          req.gender ? { label: "Gender", value: req.gender } : null,
+                          age !== null ? { label: "Age", value: String(age) } : null,
+                          coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
+                        ].filter(Boolean) as { label: string; value: string }[];
+                      } else {
+                        // Club or player request
+                        sectionLabel = req.role === "club" ? "About this club" : "About this player";
+                        facts = [
+                          req.gender ? { label: "Gender", value: req.gender } : null,
+                          req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` } : null,
+                          req.location ? { label: "Location", value: req.location } : null,
+                          (req.playerPositions ?? []).length > 0 ? { label: "Position/s", value: (req.playerPositions ?? []).join(", ") } : null,
+                          req.playerCurrentLevel ? { label: "Playing level", value: req.playerCurrentLevel } : null,
+                          req.playerCurrentAgeGroup ? { label: "Age group", value: req.playerCurrentAgeGroup } : null,
+                          req.playerCurrentClub ? { label: "Current / prev club", value: req.playerCurrentClub } : null,
+                        ].filter(Boolean) as { label: string; value: string }[];
+                      }
+
                       if (facts.length === 0) return null;
                       return (
                         <View style={{ borderTopWidth: 1, borderTopColor: "#F59E0B44", paddingTop: 10, gap: 6 }}>
                           <Text style={{ fontSize: 11, fontWeight: "700", color: colors.mutedForeground, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 }}>
-                            About this {isCoachReq ? "coach" : "player"}
+                            {sectionLabel}
                           </Text>
                           {facts.map((f) => (
                             <View key={f.label} style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
