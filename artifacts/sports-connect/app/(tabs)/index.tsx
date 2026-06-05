@@ -44,10 +44,11 @@ function typeLabel(type: Advert["type"]) {
     : "";
 }
 
-function canRequestConnection(viewerRole: AccountRole, advert: Advert): boolean {
+function canRequestConnection(viewerRole: AccountRole, advert: Advert, affiliatedClubId?: string): boolean {
   const viewerIsPlayerOrParent = viewerRole === "player" || viewerRole === "guardian";
   const viewerIsCoach = viewerRole === "coach";
   const viewerIsClub = viewerRole === "club";
+  const viewerIsAffiliatedCoach = viewerIsCoach && !!affiliatedClubId;
 
   switch (advert.type) {
     case "players-wanted":
@@ -57,7 +58,7 @@ function canRequestConnection(viewerRole: AccountRole, advert: Advert): boolean 
     case "coach-wanted":
       return viewerIsCoach;
     case "player-looking":
-      return viewerIsClub;
+      return viewerIsClub || viewerIsAffiliatedCoach;
     case "coach-looking":
       return viewerIsClub;
     default:
@@ -128,12 +129,22 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
   const expiry = getExpiryInfo(advert);
   const isOwnAdvert = !!(currentAccount?.id && advert.ownerAccountId && advert.ownerAccountId === currentAccount.id);
   const isAffiliatedClubParticipant = !isOwnAdvert && !!(currentAccount?.id && advert.affiliatedClubId && advert.affiliatedClubId === currentAccount.id);
-  const isOwnOrAffiliated = isOwnAdvert || isAffiliatedClubParticipant;
+  const isAffiliatedCoachOfOwner = !isOwnAdvert && !isAffiliatedClubParticipant && !!(
+    currentAccount?.role === "coach" &&
+    currentAccount?.affiliatedClubId &&
+    advert.ownerAccountId === currentAccount.affiliatedClubId
+  );
+  const isOwnOrAffiliated = isOwnAdvert || isAffiliatedClubParticipant || isAffiliatedCoachOfOwner;
   const advertConvs = conversations.filter((c) => c.advertId === advert.id);
   const connectedConvs = isOwnOrAffiliated ? advertConvs.filter((c) => c.status === "connected") : [];
   const pendingConvs = isOwnOrAffiliated ? advertConvs.filter((c) => c.status === "pending") : [];
   const firstPending = pendingConvs[0] ?? null;
-  const myRequest = !isOwnOrAffiliated ? advertConvs.find((c) => c.initiatorAccountId === currentAccount?.id) : undefined;
+  const myRequest = !isOwnOrAffiliated
+    ? advertConvs.find((c) =>
+        c.initiatorAccountId === currentAccount?.id ||
+        (currentAccount?.id && c.affiliatedClubParticipants?.includes(currentAccount.id) && c.initiatorAccountId !== currentAccount.id)
+      )
+    : undefined;
   const isConnected = !isOwnAdvert && myRequest?.status === "connected";
   const isForbiddenPair = !isOwnAdvert && !!(currentAccount?.id && advert.ownerAccountId &&
     forbiddenConnections.some((f) =>
@@ -457,7 +468,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                 <Text style={[styles.connectedText, { color: "#D9534F" }]}>Your connection request was not accepted</Text>
               </View>
             ) : myRequest?.status === "connected" ? null : (
-              canRequestConnection(currentAccount?.role ?? "player", advert) ? (
+              canRequestConnection(currentAccount?.role ?? "player", advert, currentAccount?.affiliatedClubId) ? (
                 ageBlockReason ? (
                   <View style={[styles.connectedBadge, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5", borderWidth: 1 }]}>
                     <Feather name="alert-circle" color="#DC2626" size={18} />

@@ -1455,9 +1455,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     const isClubAdvert = advert.postedByType === "club";
     const hasAffiliatedClub = !!advert.affiliatedClubId;
     const convId = makeId();
-    const participants = hasAffiliatedClub && advert.ownerAccountId && advert.affiliatedClubId
-      ? [advert.ownerAccountId, advert.affiliatedClubId]
-      : undefined;
+    const requesterIsAffiliatedCoach =
+      currentAccount?.role === "coach" &&
+      !!currentAccount?.affiliatedClubId &&
+      advert.type === "player-looking";
+    const participants: string[] | undefined = (() => {
+      if (hasAffiliatedClub && advert.ownerAccountId && advert.affiliatedClubId) {
+        return [advert.ownerAccountId, advert.affiliatedClubId];
+      }
+      if (requesterIsAffiliatedCoach && currentAccount?.id && currentAccount?.affiliatedClubId) {
+        return [currentAccount.id, currentAccount.affiliatedClubId];
+      }
+      return undefined;
+    })();
     const conversation: Conversation = {
       id: convId,
       advertId: advert.id,
