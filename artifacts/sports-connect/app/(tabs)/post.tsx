@@ -672,13 +672,12 @@ export default function PostScreen() {
 
   const descContactWarning = detectContactInfo(description);
   const playerDescContactWarning = detectContactInfo(playerDescription);
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && description.trim().length > 10 && (isTechnicalDirector ? focusArea.trim().length > 0 : ageGroup !== null) && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning;
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && (isTechnicalDirector ? focusArea.trim().length > 0 : ageGroup !== null) && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning;
 
   const validationErrors: string[] = [];
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
   if (state.trim().length <= 1) validationErrors.push("State is missing — add it to your profile");
   if (!isTechnicalDirector && ageGroup === null) validationErrors.push("Age Group must be selected");
-  if (description.trim().length <= 10) validationErrors.push("Additional Details must be at least 10 characters");
   if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick TBD)");
   if (showSchedule && !gameDaysOk) validationErrors.push("Game days must be selected (or tick TBD)");
   if (isClubTrials && trialSlots[0].date.trim().length === 0) validationErrors.push("At least one trial date is required");
@@ -1378,7 +1377,7 @@ export default function PostScreen() {
             <CheckRow label="Trial required" value={trialRequired} onToggle={() => setTrialRequired(!trialRequired)} />
           )}
 
-          <FormLabel text="Additional details" required />
+          <FormLabel text="Additional details (optional)" />
           <Field value={description} onChangeText={(text) => {
             const words = text.trim().split(/\s+/).filter(Boolean);
             if (words.length <= 150) setDescription(text);
@@ -1417,6 +1416,7 @@ export default function PostScreen() {
             submit();
           }}
         />
+        <View style={{ height: 220 }} />
         </View>
 
         {myAdverts.length > 0 ? (
