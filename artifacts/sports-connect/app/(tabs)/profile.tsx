@@ -366,7 +366,7 @@ export default function ProfileScreen() {
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.accountTop}>
               <View style={[styles.accountIcon, { backgroundColor: colors.pitchSoft }]}>
-                <Feather name={isClub ? "shield" : isCoach ? "award" : "user"} size={22} color={colors.primary} />
+                <Feather name={isClub ? "shield" : "user"} size={22} color={colors.primary} />
               </View>
               <View style={styles.accountCopy}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
