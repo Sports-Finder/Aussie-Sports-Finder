@@ -17,8 +17,8 @@ import { useSubscription } from "@/lib/revenuecat";
 import { useIsPremium } from "@/hooks/useIsPremium";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 import { parseDobAge } from "@/utils/dateUtils";
-import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
-import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
+import { COACH_EXPERIENCE_LEVELS, TD_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { COACH_SUB_ROLES, coachSubRoleLabel, coachSubRoleIcon } from "@/constants/coachSubRoles";
 
 type Mode = "view" | "edit";
 const genders = ["Male", "Female", "Pref Not to Say"];
@@ -98,6 +98,10 @@ export default function ProfileScreen() {
     updateAccount,
     resetClubApprovalAfterEdit,
     respondToAffiliationRequest,
+    adverts,
+    conversations,
+    deleteAdvert,
+    closeConversation,
   } = useSportsConnect();
   const { restore, isRestoring, customerInfo } = useSubscription();
   const isPremium = useIsPremium();
@@ -107,6 +111,7 @@ export default function ProfileScreen() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [draftDob, setDraftDob] = useState("");
+  const [pendingSubRole, setPendingSubRole] = useState<string | null>(null);
 
   const [playerBio, setPlayerBio] = useState(playerProfile.bio ?? "");
   const [guardianBio, setGuardianBio] = useState(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
@@ -160,12 +165,13 @@ export default function ProfileScreen() {
     : isGuardian
     ? currentAccount?.parentGuardianName
     : currentAccount?.fullName;
+  const subRoleLabel = coachSubRoleLabel(currentAccount?.coachSubRole);
   const roleLabel = isClub
     ? "Club account"
     : isGuardian
     ? `Parent/Guardian · Managing ${currentAccount?.playerName ?? "player"}`
     : isCoach
-    ? "Coach account"
+    ? `${subRoleLabel} account`
     : "Player account";
 
   const socialLinks = currentAccount?.socialLinks ?? { instagram: "", facebook: "", x: "", tiktok: "" };
@@ -359,9 +365,7 @@ export default function ProfileScreen() {
       >
         <View>
           <Text style={[styles.kicker, { color: colors.primary }]}>My profile</Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            {isClub ? "Club profile" : isGuardian ? "Player profile" : isCoach ? "Coach profile" : "Player profile"}
-          </Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Your Profile</Text>
         </View>
 
         {currentAccount ? (
@@ -371,7 +375,7 @@ export default function ProfileScreen() {
                 {isClub ? (
                   <Feather name="shield" size={22} color={colors.primary} />
                 ) : isCoach ? (
-                  <MaterialCommunityIcons name="whistle" size={22} color={colors.primary} />
+                  <MaterialCommunityIcons name={coachSubRoleIcon(currentAccount?.coachSubRole) as any} size={22} color={colors.primary} />
                 ) : (
                   <Feather name="user" size={22} color={colors.primary} />
                 )}
@@ -449,7 +453,7 @@ export default function ProfileScreen() {
           </Pressable>
         ) : null}
 
-        {isCoach && (() => {
+        {isCoach && (!currentAccount?.coachSubRole || currentAccount?.coachSubRole === "coach") && (() => {
           const pending = accounts
             .filter((a) => a.role === "club" && a.clubApprovalStatus === "approved")
             .flatMap((club) => (club.coachAffiliates ?? [])
@@ -529,6 +533,7 @@ export default function ProfileScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>Coach Affiliates</Text>
+                <Text style={[styles.cardText, { color: colors.mutedForeground, fontSize: 12 }]}>For Coach sub-role only</Text>
                 {isPremium ? (
                   <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
                     {(currentAccount?.coachAffiliates?.filter((a) => a.status === "active").length ?? 0)} active · {(currentAccount?.coachAffiliates?.filter((a) => a.status === "pending").length ?? 0)} pending
@@ -568,7 +573,7 @@ export default function ProfileScreen() {
               />
               <View style={styles.profileCopy}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-                  {isClub ? "Club profile" : isCoach ? "Coach profile" : "Player profile"}
+                  {isClub ? "Club profile" : isCoach ? `${subRoleLabel} profile` : "Player profile"}
                 </Text>
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
                   {isClub ? "Club details shown below." : isGuardian ? `${currentAccount?.parentGuardianName ?? "Parent/Guardian"} (Parent/Guardian) is managing this Player.` : "Profile details shown below."}
@@ -884,12 +889,37 @@ export default function ProfileScreen() {
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>Coaching role type</Text>
                 <View style={styles.wrapRow}>
                   {COACH_SUB_ROLES.map((sr) => (
-                    <Choice key={sr.value} label={sr.label} active={currentAccount?.coachSubRole === sr.value} onPress={() => updateAccount({ coachSubRole: sr.value })} />
+                    <Choice key={sr.value} label={sr.label} active={currentAccount?.coachSubRole === sr.value} onPress={() => {
+                      if (sr.value === currentAccount?.coachSubRole) return;
+                      const myAdverts = adverts.filter((a) => a.ownerAccountId === currentAccount?.id && a.status === "active");
+                      const myConvs = conversations.filter((c) => (c.initiatorAccountId === currentAccount?.id || c.ownerAccountId === currentAccount?.id) && (c.status === "pending" || c.status === "connected"));
+                      const hasActiveData = myAdverts.length > 0 || myConvs.length > 0;
+                      if (hasActiveData) {
+                        setPendingSubRole(sr.value);
+                        Alert.alert(
+                          "Changing your role will cancel all your active adverts, connection requests, and chats. This cannot be undone. Do you want to continue?",
+                          "",
+                          [
+                            { text: "Cancel", style: "cancel", onPress: () => setPendingSubRole(null) },
+                            { text: "Continue", style: "destructive", onPress: () => {
+                              myAdverts.forEach((a) => deleteAdvert(a.id));
+                              myConvs.forEach((c) => closeConversation(c.id));
+                              updateAccount({ coachSubRole: sr.value });
+                              setPendingSubRole(null);
+                            }},
+                          ]
+                        );
+                      } else {
+                        updateAccount({ coachSubRole: sr.value });
+                      }
+                    }} />
                   ))}
                 </View>
-                <Text style={[styles.label, { color: colors.mutedForeground }]}>Current coaching level</Text>
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                  {currentAccount?.coachSubRole === "td" ? "TD expertise level" : "Current coaching level"}
+                </Text>
                 <View style={styles.wrapRow}>
-                  {COACH_EXPERIENCE_LEVELS.map((level) => (
+                  {(currentAccount?.coachSubRole === "td" ? TD_EXPERIENCE_LEVELS : COACH_EXPERIENCE_LEVELS).map((level) => (
                     <Choice key={level.value} label={level.label} active={currentAccount?.coachCurrentLevel === level.value} onPress={() => updateAccount({ coachCurrentLevel: level.value })} />
                   ))}
                 </View>

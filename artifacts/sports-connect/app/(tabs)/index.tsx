@@ -12,7 +12,7 @@ import { useColors } from "@/hooks/useColors";
 import { getAgeBlockReason } from "@/utils/ageEligibility";
 import { parseDobAge, formatTrialDateDisplay } from "@/utils/dateUtils";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
-import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
+import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
@@ -75,15 +75,16 @@ function canRequestConnection(viewerRole: AccountRole, advert: Advert, affiliate
   }
 }
 
-function requesterTypeLabel(type?: AccountRole, count = 1): string {
-  const base = type === "club" ? "Club" : type === "coach" ? "Coach" : "Player";
+function requesterTypeLabel(type?: AccountRole, coachSubRole?: string | null, count = 1): string {
+  const base = type === "club" ? "Club" : type === "coach" ? coachSubRoleLabel(coachSubRole) : "Player";
   return count === 1 ? base : `${base}s`;
 }
 
-function convGroupLabel(convs: Pick<Conversation, "requesterType">[], singular = "Person", plural = "People"): string {
+function convGroupLabel(convs: Pick<Conversation, "requesterType" | "requesterCoachSubRole">[], singular = "Person", plural = "People"): string {
   if (convs.length === 0) return plural;
   const types = [...new Set(convs.map((c) => c.requesterType))];
-  return types.length === 1 ? requesterTypeLabel(types[0], convs.length) : convs.length === 1 ? singular : plural;
+  const first = convs[0];
+  return types.length === 1 ? requesterTypeLabel(types[0], first?.requesterCoachSubRole, convs.length) : convs.length === 1 ? singular : plural;
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
@@ -420,9 +421,10 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                       const isCoachReq = req?.role === "coach";
                       const isAffiliatedCoachReq = isCoachReq && !!req?.affiliatedClubId;
                       const location = firstPending.requesterLocation ?? "an unknown location";
+                      const coachLabel = req?.coachSubRole ? coachSubRoleLabel(req.coachSubRole) : "Coach";
                       const headerText = isAffiliatedCoachReq
-                        ? `A Coach from a Club in ${location} wants to connect privately. Agree to connect?`
-                        : `A ${requesterTypeLabel(firstPending.requesterType)} from ${location} wants to connect privately. Agree to connect?`;
+                        ? `A ${coachLabel} from a Club in ${location} wants to connect privately. Agree to connect?`
+                        : `A ${requesterTypeLabel(firstPending.requesterType, req?.coachSubRole)} from ${location} wants to connect privately. Agree to connect?`;
                       return (
                         <Text style={[styles.pendingRequestText, { color: colors.foreground }]}>{headerText}</Text>
                       );

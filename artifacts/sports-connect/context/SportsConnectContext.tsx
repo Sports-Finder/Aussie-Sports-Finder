@@ -181,6 +181,7 @@ export type Advert = {
   bumpedAt?: string;
   possibleDuplicate?: boolean;
   opportunityStates?: string[];
+  ownerCoachSubRole?: string | null;
 };
 
 export type ForbiddenConnection = {
@@ -216,6 +217,8 @@ export type Conversation = {
   flagTriggerMessage?: string;
   flaggedAt?: string;
   flagReviewedAt?: string;
+  advertOwnerCoachSubRole?: string | null;
+  requesterCoachSubRole?: string | null;
 };
 
 export type Message = {
@@ -1302,6 +1305,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       ownerSubscriptionStatus: isPaidPoster ? "active" : undefined,
       postedBy: owner,
       postedByType: activeProfile,
+      ownerCoachSubRole: currentAccount?.coachSubRole,
       distanceKm: Math.max(1, Math.floor(Math.random() * 32)),
       createdAt: createdAtStr,
       expiresAt: expiresAtStr,
@@ -1491,6 +1495,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       messages: [],
       requesterLocation: currentAccount?.location,
       requesterType: currentAccount?.role,
+      requesterCoachSubRole: currentAccount?.coachSubRole,
+      advertOwnerCoachSubRole: advert.ownerCoachSubRole,
       affiliatedClubParticipants: participants,
     };
     try {

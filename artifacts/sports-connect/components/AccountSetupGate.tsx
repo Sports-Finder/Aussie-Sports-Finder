@@ -19,8 +19,8 @@ import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { defaultSportThemes, getSportTheme } from "@/constants/sports";
-import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
-import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
+import { COACH_EXPERIENCE_LEVELS, TD_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
 import { useColors } from "@/hooks/useColors";
 import { detectContactInfo } from "@/utils/contactDetection";
 
@@ -190,10 +190,12 @@ export function AccountSetupGate() {
       : Boolean(form.fullName.trim());
     const guardianAgeValid = role === "guardian" ? Boolean(age && Number(age) <= 17) : true;
     const playerAgeValid = role === "player" ? Boolean(age && Number(age) >= 18) : true;
+    const coachSubRoleValid = role === "coach" ? Boolean(form.coachSubRole) : true;
     return Boolean(
       nameValid && form.gender && form.dateOfBirth &&
       guardianAgeValid && playerAgeValid &&
-      form.mobile.trim() && selectedSports.length && defaultSport && form.agreed
+      form.mobile.trim() && selectedSports.length && defaultSport && form.agreed &&
+      coachSubRoleValid
     );
   }, [age, defaultSport, form, isClub, role, selectedSports.length]);
 
@@ -593,9 +595,11 @@ export function AccountSetupGate() {
                         <Choice key={sr.value} label={sr.label} active={form.coachSubRole === sr.value} onPress={() => update("coachSubRole", sr.value)} colors={colors} />
                       ))}
                     </View>
-                    <Text style={[styles.label, { color: colors.mutedForeground }]}>Current coaching level (optional)</Text>
+                    <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                      {form.coachSubRole === "td" ? "TD expertise level (optional)" : "Current coaching level (optional)"}
+                    </Text>
                     <View style={styles.wrapRow}>
-                      {COACH_EXPERIENCE_LEVELS.map((level) => (
+                      {(form.coachSubRole === "td" ? TD_EXPERIENCE_LEVELS : COACH_EXPERIENCE_LEVELS).map((level) => (
                         <Choice key={level.value} label={level.label} active={form.coachCurrentLevel === level.value} onPress={() => update("coachCurrentLevel", level.value)} colors={colors} />
                       ))}
                     </View>

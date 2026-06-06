@@ -15,8 +15,8 @@ import {
   useSportsConnect,
 } from "@/context/SportsConnectContext";
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
-import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
-import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
+import { COACH_EXPERIENCE_LEVELS, TD_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 import type { ClubApprovalStatus } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 import { parseTrialDate } from "@/utils/dateUtils";
@@ -34,12 +34,12 @@ const sections: { key: Section; label: string; icon: keyof typeof Feather.glyphM
   { key: "settings", label: "Settings", icon: "settings" },
 ];
 
-const roleLabels: Record<AccountRole, string> = {
-  player: "Player (18+)",
-  guardian: "Parent / Guardian",
-  coach: "Coach",
-  club: "Club",
-};
+function getRoleLabel(role: AccountRole, coachSubRole?: string | null): string {
+  if (role === "player") return "Player (18+)";
+  if (role === "guardian") return "Parent / Guardian";
+  if (role === "coach") return coachSubRoleLabel(coachSubRole);
+  return "Club";
+}
 
 const roleIcons: Record<AccountRole, keyof typeof Feather.glyphMap> = {
   player: "user",
@@ -325,8 +325,8 @@ function OverviewSection({ setSection }: { setSection: (s: Section) => void }) {
 
       <SectionTitle title="Accounts by role" />
       <View style={styles.statsGrid}>
-        {(Object.keys(roleLabels) as AccountRole[]).map((role) => (
-          <StatCard key={role} label={roleLabels[role]} value={countsByRole(role)} icon={roleIcons[role]} color={colors.primary} onPress={() => setSection("accounts")} />
+        {(["player", "guardian", "coach", "club"] as AccountRole[]).map((role) => (
+          <StatCard key={role} label={getRoleLabel(role, undefined)} value={countsByRole(role)} icon={roleIcons[role]} color={colors.primary} onPress={() => setSection("accounts")} />
         ))}
       </View>
 
@@ -1020,15 +1020,15 @@ function AccountsSection() {
           </View>
         ) : null}
 
-        <SectionTitle title="Accounts" action={`${list.length} ${roleLabels[role]}`} />
+        <SectionTitle title="Accounts" action={`${list.length} ${getRoleLabel(role, undefined)}`} />
         <View style={styles.pillRow}>
-          {(Object.keys(roleLabels) as AccountRole[]).map((r) => (
-            <Pill key={r} label={roleLabels[r]} active={role === r} onPress={() => setRole(r)} />
+          {(["player", "guardian", "coach", "club"] as AccountRole[]).map((r) => (
+            <Pill key={r} label={getRoleLabel(r, undefined)} active={role === r} onPress={() => setRole(r)} />
           ))}
         </View>
 
         {list.length === 0 ? (
-          <EmptyState icon="users" title={`No ${roleLabels[role].toLowerCase()} accounts`} text="No accounts in this category yet." />
+          <EmptyState icon="users" title={`No ${getRoleLabel(role, undefined).toLowerCase()} accounts`} text="No accounts in this category yet." />
         ) : (
           list.map((acc) => {
             const status = acc.status ?? "active";
@@ -1073,7 +1073,7 @@ function AccountsSection() {
                   <View style={styles.metaRow}>
                     <Feather name="briefcase" size={12} color={colors.mutedForeground} />
                     <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                      {acc.coachSubRole ? COACH_SUB_ROLES.find((r) => r.value === acc.coachSubRole)?.label ?? acc.coachSubRole : ""}
+                      {acc.coachSubRole ? coachSubRoleLabel(acc.coachSubRole) : ""}
                       {acc.coachSubRole && acc.coachCurrentLevel ? " · " : ""}
                       {acc.coachCurrentLevel ? COACH_EXPERIENCE_LEVELS.find((l) => l.value === acc.coachCurrentLevel)?.label ?? acc.coachCurrentLevel : ""}
                     </Text>
@@ -1280,7 +1280,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
             <Feather name={roleIcons[account.role]} size={14} color={colors.primaryForeground} />
           </View>
           <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: colors.foreground }]}>{roleLabels[account.role]} account</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>{getRoleLabel(account.role, account.coachSubRole)} account</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>Status: {status}{clubApproval ? ` · ${clubApproval === "approved" ? "Approved" : clubApproval === "rejected" ? "Rejected" : "Waiting Approval"}` : ""}</Text>
           </View>
           <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.secondary }]}>

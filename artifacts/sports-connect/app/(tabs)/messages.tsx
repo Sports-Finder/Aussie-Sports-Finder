@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
-import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
+import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
 import {
   Alert,
   FlatList,
@@ -57,11 +57,11 @@ function anonymousLabel(
   const isInitiator = currentAccountId === conversation.initiatorAccountId;
   const isOwner = currentAccountId === conversation.ownerAccountId;
   if (isInitiator) {
-    const ownerType = conversation.advertPostedByType === "club" ? "Club" : conversation.advertPostedByType === "coach" ? "Coach" : "Player";
+    const ownerType = conversation.advertPostedByType === "club" ? "Club" : conversation.advertPostedByType === "coach" ? coachSubRoleLabel(conversation.advertOwnerCoachSubRole) : "Player";
     return { title: `A ${ownerType} (${conversation.advertLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
   }
   if (isOwner) {
-    const requesterType = conversation.requesterType === "club" ? "Club" : conversation.requesterType === "coach" ? "Coach" : "Player";
+    const requesterType = conversation.requesterType === "club" ? "Club" : conversation.requesterType === "coach" ? coachSubRoleLabel(conversation.requesterCoachSubRole) : "Player";
     return { title: `A ${requesterType} (${conversation.requesterLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
   }
   return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${conversation.playerName}` };
@@ -201,7 +201,7 @@ function ProfileViewModal({
   const socialLinks = account.socialLinks ?? { instagram: "", facebook: "", x: "", tiktok: "" };
 
   const displayName = isClub ? (account.clubName ?? "Club") : isGuardian ? (account.parentGuardianName ?? "Guardian") : (account.fullName ?? "User");
-  const roleLabel = isClub ? "Club" : isCoach ? "Coach" : isGuardian ? "Parent/Guardian" : "Player";
+  const roleLabel = isClub ? "Club" : isCoach ? coachSubRoleLabel(account.coachSubRole) : isGuardian ? "Parent/Guardian" : "Player";
   const avatarColor = isClub ? "#16A34A" : isCoach ? "#7C3AED" : "#2563EB";
   const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
   const imageUri = getImageUri(account.profileImageId);

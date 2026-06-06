@@ -15,6 +15,7 @@ import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 import { AgeGroup, AGE_GROUPS } from "@/constants/ageGroups";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { coachSubRoleLabel } from "@/constants/coachSubRoles";
 import { formatTrialDateInput, parseTrialDate } from "@/utils/dateUtils";
 
 type TrialSlot = { date: string; timeFrom: string; timeTo: string };
@@ -30,22 +31,26 @@ function agesInGroup(group: AgeGroup) {
 }
 
 
-const advertTypesByRole: Record<AccountRole, { value: Advert["type"]; label: string; requiresAffiliation?: boolean }[]> = {
-  player: [{ value: "player-looking", label: "Player looking for Club" }],
-  guardian: [{ value: "player-looking", label: "Parent/Guardian's Player Looking for a Club" }],
-  coach: [
-    { value: "coach-looking", label: "Coach looking for Team or Club" },
-    { value: "players-wanted", label: "Players Wanted for Team", requiresAffiliation: true },
-    { value: "club-trials", label: "Club Trials Info", requiresAffiliation: true },
-  ],
-  club: [
-    { value: "players-wanted", label: "Players Wanted for Team" },
-    { value: "club-trials", label: "Club Trials Info" },
-    { value: "coach-wanted", label: "Staff (Coach/TD) Wanted for Club" },
-  ],
-};
+function getAdvertTypesByRole(role: AccountRole, subRole?: string | null): { value: Advert["type"]; label: string; requiresAffiliation?: boolean }[] {
+  const coachLabel = coachSubRoleLabel(subRole);
+  const base: Record<AccountRole, { value: Advert["type"]; label: string; requiresAffiliation?: boolean }[]> = {
+    player: [{ value: "player-looking", label: "Player looking for Club" }],
+    guardian: [{ value: "player-looking", label: "Parent/Guardian's Player Looking for a Club" }],
+    coach: [
+      { value: "coach-looking", label: `${coachLabel} looking for Team or Club` },
+      { value: "players-wanted", label: "Players Wanted for Team", requiresAffiliation: true },
+      { value: "club-trials", label: "Club Trials Info", requiresAffiliation: true },
+    ],
+    club: [
+      { value: "players-wanted", label: "Players Wanted for Team" },
+      { value: "club-trials", label: "Club Trials Info" },
+      { value: "coach-wanted", label: "Staff (Coach/TD) Wanted for Club" },
+    ],
+  };
+  return base[role];
+}
 
-const coachTitles = ["Senior", "Assistant", "Amateur", "Experienced", "Inexperienced", "Intermediate", "Professional"];
+const coachTitles = ["Entry-Level", "Mid-Level", "Senior", "Assistant", "Amateur", "Experienced", "Inexperienced", "Intermediate", "Professional"];
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
@@ -137,10 +142,11 @@ function getExpiryInfo(advert: Pick<Advert, "createdAt" | "ownerSubscriptionStat
   return { expired: false, label: `${days}d ${hours}h ${mins}m remaining`, days, hours, mins };
 }
 
-function advertTypeLabel(type: Advert["type"]) {
+function advertTypeLabel(type: Advert["type"], coachSubRole?: string | null) {
+  const coachLabel = coachSubRoleLabel(coachSubRole);
   return type === "players-wanted" ? "Players Wanted for Team"
     : type === "player-looking" ? "Player Looking for Club"
-    : type === "coach-looking" ? "Coach Looking for Team/Club"
+    : type === "coach-looking" ? `${coachLabel} Looking for Team/Club`
     : type === "coach-wanted" ? "Staff (Coach/TD) Wanted for Club"
     : type === "club-trials" ? "Club Trials Info"
     : "Players Wanted for Team";
@@ -166,7 +172,7 @@ function MyAdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void
         </Text>
       </View>
       <View style={localStyles.cardTop}>
-        <Text style={[localStyles.cardType, { color: theme.primary }]}>{advertTypeLabel(advert.type)}</Text>
+        <Text style={[localStyles.cardType, { color: theme.primary }]}>{advertTypeLabel(advert.type, advert.ownerCoachSubRole)}</Text>
         <Text style={[localStyles.cardDistance, { color: colors.mutedForeground }]}>{advert.distanceKm} km</Text>
       </View>
       <Text style={[localStyles.cardTitle, { color: colors.foreground }]}>{advert.title}</Text>
@@ -249,7 +255,7 @@ function MyAdvertDetail({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={localStyles.detailScroll}>
-            <Text style={[localStyles.detailTypeLabel, { color: theme.primary }]}>{advertTypeLabel(advert.type)}</Text>
+            <Text style={[localStyles.detailTypeLabel, { color: theme.primary }]}>{advertTypeLabel(advert.type, advert.ownerCoachSubRole)}</Text>
             <Text style={[localStyles.detailTitle, { color: colors.foreground }]}>{advert.title}</Text>
 
             <View style={localStyles.detailChips}>
@@ -411,7 +417,7 @@ export default function PostScreen() {
   const [selectedMyAdvert, setSelectedMyAdvert] = useState<Advert | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [type, setType] = useState<Advert["type"]>(advertTypesByRole[accountRole][0].value);
+  const [type, setType] = useState<Advert["type"]>(getAdvertTypesByRole(accountRole, currentAccount?.coachSubRole)[0].value);
   const [sport, setSport] = useState(currentAccount?.defaultSport || allowedSports[0] || selectedSport);
   const [suburb, setSuburb] = useState(() => stripStateFromLocation(currentAccount?.location ?? playerProfile.location));
   const [state, setState] = useState(() => stateFromLocation(currentAccount?.location ?? ""));
@@ -469,14 +475,14 @@ export default function PostScreen() {
   }, [currentAccount?.id]);
 
   useEffect(() => {
-    const nextType = advertTypesByRole[activeProfile][0].value;
+    const nextType = getAdvertTypesByRole(activeProfile, currentAccount?.coachSubRole)[0].value;
     setType(nextType);
-  }, [activeProfile]);
+  }, [activeProfile, currentAccount?.coachSubRole]);
 
   useEffect(() => {
-    const nextType = advertTypesByRole[accountRole][0].value;
+    const nextType = getAdvertTypesByRole(accountRole, currentAccount?.coachSubRole)[0].value;
     setType(nextType);
-  }, [accountRole]);
+  }, [accountRole, currentAccount?.coachSubRole]);
 
   useEffect(() => {
     if (editingId) return;
@@ -509,7 +515,8 @@ export default function PostScreen() {
       rolePhrase = "Player Looking for Club";
     } else if (type === "coach-looking") {
       middleSlot = coachTitle.trim();
-      rolePhrase = "Coach Looking for Club";
+      const subRoleLabel = coachSubRoleLabel(currentAccount?.coachSubRole);
+      rolePhrase = `${subRoleLabel} Looking for Club`;
     }
 
     let ending = "";
@@ -611,7 +618,8 @@ export default function PostScreen() {
   };
 
   const isCoach = accountRole === "coach";
-  const isAffiliatedCoach = isCoach && Boolean(currentAccount?.affiliatedClubId);
+  const isPureCoach = isCoach && (!currentAccount?.coachSubRole || currentAccount?.coachSubRole === "coach");
+  const isAffiliatedCoach = isPureCoach && Boolean(currentAccount?.affiliatedClubId);
   const coachClubName = currentAccount?.affiliatedClubName;
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
   const postedByName = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials")
@@ -627,8 +635,8 @@ export default function PostScreen() {
   );
   const activeTheme = getSportTheme(sport, approvedSports);
   const sportChoices = rawAllowedSports.length ? approvedSports.filter((s) => allowedSports.includes(s.name)) : approvedSports;
-  const availableTypes = advertTypesByRole[accountRole].map((item) => {
-    const disabled = item.requiresAffiliation && isCoach && !isAffiliatedCoach;
+  const availableTypes = getAdvertTypesByRole(accountRole, currentAccount?.coachSubRole).map((item) => {
+    const disabled = item.requiresAffiliation && isPureCoach && !isAffiliatedCoach;
     return { ...item, disabled };
   });
   const positionOptions = sportsRegistry.find((s) => s.name === sport)?.positions ?? ["General Player"];
@@ -1292,7 +1300,7 @@ export default function PostScreen() {
 
           {showPlayerDesc && (
             <>
-              <FormLabel text={isCoachLooking ? "About the coach" : "About the player"} />
+              <FormLabel text={isCoachLooking ? "About Yourself" : "About the player"} />
               <Field value={playerDescription} onChangeText={setPlayerDescription} label="" multiline placeholder="Describe the player or coach, experience, goals…" />
               {playerDescContactWarning ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{playerDescContactWarning}</Text> : null}
             </>
