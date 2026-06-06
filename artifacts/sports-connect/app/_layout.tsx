@@ -12,7 +12,7 @@ import * as Notifications from "expo-notifications";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
-import { Alert, ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { Alert, ActivityIndicator, LogBox, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -32,6 +32,12 @@ import {
   useSubscription,
 } from "@/lib/revenuecat";
 import colors from "@/constants/colors";
+
+// @expo/vector-icons v15 + Expo SDK 54 + New Architecture bundles all icon fonts
+// natively into the iOS binary. iOS then rejects the JS-side registration attempt
+// with CTFontManagerError code 104 ("already registered") — the font IS available
+// and all icons render correctly. This suppresses the misleading console noise.
+LogBox.ignoreLogs([/Registering '.*' font failed.*CTFontManagerError/]);
 
 // Configure how local notifications are presented when received in the foreground.
 // Must be called before any notification is scheduled or received.
