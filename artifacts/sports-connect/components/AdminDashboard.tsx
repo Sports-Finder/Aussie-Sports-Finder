@@ -15,6 +15,8 @@ import {
   useSportsConnect,
 } from "@/context/SportsConnectContext";
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
+import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
+import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 import type { ClubApprovalStatus } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 import { parseTrialDate } from "@/utils/dateUtils";
@@ -1067,6 +1069,16 @@ function AccountsSection() {
                   <Feather name="activity" size={12} color={colors.mutedForeground} />
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Default sport: {acc.defaultSport}</Text>
                 </View>
+                {acc.role === "coach" && (acc.coachSubRole || acc.coachCurrentLevel) ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="briefcase" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                      {acc.coachSubRole ? COACH_SUB_ROLES.find((r) => r.value === acc.coachSubRole)?.label ?? acc.coachSubRole : ""}
+                      {acc.coachSubRole && acc.coachCurrentLevel ? " · " : ""}
+                      {acc.coachCurrentLevel ? COACH_EXPERIENCE_LEVELS.find((l) => l.value === acc.coachCurrentLevel)?.label ?? acc.coachCurrentLevel : ""}
+                    </Text>
+                  </View>
+                ) : null}
                 {acc.role === "club" && clubApproval !== "approved" && approveClubs && (
                   <View style={styles.actionRow}>
                     <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => {
@@ -1205,6 +1217,9 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
   const [x, setX] = useState(account.socialLinks.x ?? "");
   const [tiktok, setTiktok] = useState(account.socialLinks.tiktok ?? "");
   const [highlightReelUrl, setHighlightReelUrl] = useState(account.highlightReelUrl ?? "");
+  const [coachSubRole, setCoachSubRole] = useState(account.coachSubRole ?? "");
+  const [coachCurrentLevel, setCoachCurrentLevel] = useState(account.coachCurrentLevel ?? "");
+  const [coachCurrentClub, setCoachCurrentClub] = useState(account.coachCurrentClub ?? "");
 
   const status = account.status ?? "active";
   const clubApproval = account.role === "club" ? (account.clubApprovalStatus ?? "pending") : null;
@@ -1229,6 +1244,9 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
       bio: bio.trim() || undefined,
       socialLinks: { instagram: instagram.trim(), facebook: facebook.trim(), x: x.trim(), tiktok: tiktok.trim() },
       highlightReelUrl: highlightReelUrl.trim() || undefined,
+      coachSubRole: coachSubRole.trim() || undefined,
+      coachCurrentLevel: coachCurrentLevel.trim() || undefined,
+      coachCurrentClub: coachCurrentClub.trim() || undefined,
     });
     Alert.alert("Account updated", "Changes have been saved.");
     onClose();
@@ -1293,6 +1311,13 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
                   <Field label="Gender" value={gender} onChangeText={setGender} />
                   <Field label="Date of birth (DD-MM-YYYY)" value={dateOfBirth} onChangeText={setDateOfBirth} />
                   <Field label="Bio" value={bio} onChangeText={setBio} multiline />
+                  {account.role === "coach" ? (
+                    <>
+                      <Field label="Coach sub-role" value={coachSubRole} onChangeText={setCoachSubRole} />
+                      <Field label="Coach experience level" value={coachCurrentLevel} onChangeText={setCoachCurrentLevel} />
+                      <Field label="Current or previous club" value={coachCurrentClub} onChangeText={setCoachCurrentClub} />
+                    </>
+                  ) : null}
                 </>
               )}
               <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />

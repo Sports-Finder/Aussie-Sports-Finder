@@ -127,6 +127,7 @@ export type UserAccount = {
   playerCurrentLevel?: string;
   playerCurrentAgeGroup?: string;
   playerCurrentClub?: string;
+  coachSubRole?: string;
   coachCurrentLevel?: string;
   coachCurrentClub?: string;
 };

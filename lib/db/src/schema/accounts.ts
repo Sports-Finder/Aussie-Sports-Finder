@@ -51,6 +51,7 @@ export const accountsTable = pgTable("accounts", {
   playerCurrentLevel: text("player_current_level"),
   playerCurrentAgeGroup: text("player_current_age_group"),
   playerCurrentClub: text("player_current_club"),
+  coachSubRole: text("coach_sub_role"),
   coachCurrentLevel: text("coach_current_level"),
   coachCurrentClub: text("coach_current_club"),
   password: text("password"),

@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
 import {
   Alert,
   FlatList,
@@ -280,6 +281,13 @@ function ProfileViewModal({
               {!isClub && (
                 isCoach ? (
                   <>
+                    {account.coachSubRole ? (
+                      <ProfileRow
+                        icon="briefcase"
+                        label={COACH_SUB_ROLES.find((r) => r.value === account.coachSubRole)?.label ?? account.coachSubRole}
+                        colors={colors}
+                      />
+                    ) : null}
                     {account.coachCurrentLevel ? (
                       <ProfileRow
                         icon="award"

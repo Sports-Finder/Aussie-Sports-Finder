@@ -18,6 +18,7 @@ import { useIsPremium } from "@/hooks/useIsPremium";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 import { parseDobAge } from "@/utils/dateUtils";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
 
 type Mode = "view" | "edit";
 const genders = ["Male", "Female", "Pref Not to Say"];
@@ -323,6 +324,7 @@ export default function ProfileScreen() {
       { label: "Bio", value: isGuardian ? guardianBio : playerBio },
       { label: "Sports", value: (currentAccount.sports ?? []).join(", ") },
       ...(isCoach ? [
+        { label: "Coaching role", value: COACH_SUB_ROLES.find((r) => r.value === currentAccount.coachSubRole)?.label ?? currentAccount.coachSubRole ?? "" },
         { label: "Coaching level", value: COACH_EXPERIENCE_LEVELS.find((l) => l.value === currentAccount.coachCurrentLevel)?.label ?? currentAccount.coachCurrentLevel ?? "" },
         { label: "Current or previous club", value: currentAccount.coachCurrentClub ?? "" },
       ] : [
@@ -879,6 +881,12 @@ export default function ProfileScreen() {
             )}
             {isCoach && (
               <>
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>Coaching role type</Text>
+                <View style={styles.wrapRow}>
+                  {COACH_SUB_ROLES.map((sr) => (
+                    <Choice key={sr.value} label={sr.label} active={currentAccount?.coachSubRole === sr.value} onPress={() => updateAccount({ coachSubRole: sr.value })} />
+                  ))}
+                </View>
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>Current coaching level</Text>
                 <View style={styles.wrapRow}>
                   {COACH_EXPERIENCE_LEVELS.map((level) => (

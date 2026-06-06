@@ -12,6 +12,7 @@ import { useColors } from "@/hooks/useColors";
 import { getAgeBlockReason } from "@/utils/ageEligibility";
 import { parseDobAge, formatTrialDateDisplay } from "@/utils/dateUtils";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
@@ -432,6 +433,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                       const isCoachReq = req.role === "coach";
                       const isAffiliatedCoachReq = isCoachReq && !!req.affiliatedClubId;
                       const age = parseDobAge(req.dateOfBirth);
+                      const coachSubRoleLabel = COACH_SUB_ROLES.find((r) => r.value === req.coachSubRole)?.label;
                       const coachLevelLabel = COACH_EXPERIENCE_LEVELS.find((l) => l.value === req.coachCurrentLevel)?.label;
 
                       let facts: { label: string; value: string }[] = [];
@@ -445,6 +447,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                         facts = [
                           req.gender ? { label: "Gender", value: req.gender } : null,
                           age !== null ? { label: "Age", value: String(age) } : null,
+                          coachSubRoleLabel ? { label: "Coaching role", value: coachSubRoleLabel } : null,
                           coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
                           teamAgeGroup ? { label: "Club team age group", value: teamAgeGroup } : null,
                         ].filter(Boolean) as { label: string; value: string }[];
@@ -452,6 +455,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                         facts = [
                           req.gender ? { label: "Gender", value: req.gender } : null,
                           age !== null ? { label: "Age", value: String(age) } : null,
+                          coachSubRoleLabel ? { label: "Coaching role", value: coachSubRoleLabel } : null,
                           coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
                         ].filter(Boolean) as { label: string; value: string }[];
                       } else {

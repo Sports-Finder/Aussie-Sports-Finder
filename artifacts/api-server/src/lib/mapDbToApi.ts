@@ -72,6 +72,7 @@ export function mapAccount(
     playerCurrentLevel: row.playerCurrentLevel as string | undefined,
     playerCurrentAgeGroup: row.playerCurrentAgeGroup as string | undefined,
     playerCurrentClub: row.playerCurrentClub as string | undefined,
+    coachSubRole: row.coachSubRole as string | undefined,
     coachCurrentLevel: row.coachCurrentLevel as string | undefined,
     coachCurrentClub: row.coachCurrentClub as string | undefined,
     password: row.password as string | undefined,

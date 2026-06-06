@@ -20,6 +20,7 @@ import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/contex
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { defaultSportThemes, getSportTheme } from "@/constants/sports";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { COACH_SUB_ROLES } from "@/constants/coachSubRoles";
 import { useColors } from "@/hooks/useColors";
 import { detectContactInfo } from "@/utils/contactDetection";
 
@@ -32,7 +33,7 @@ type SetupStep = "type" | "details";
 const roleCopy: Record<AccountRole, { title: string; subtitle: string }> = {
   player: { title: "I am a Player (18+ only) looking for a Club.", subtitle: "Create a player profile for clubs to review after connection." },
   guardian: { title: "I am a Parent/Guardian of an underage Player (17 years and under) looking for a Club.", subtitle: "Create a player profile managed on behalf of a parent or guardian." },
-  coach: { title: "I am a Coach Looking for a Club or Players", subtitle: "Create a coach profile for clubs to review after connection." },
+  coach: { title: "I am a Coach / Assistant Coach / Trainer / TD looking for a team or club.", subtitle: "Create a coach profile for clubs to review after connection." },
   club: { title: "I am a Club looking for Players or Coaches.", subtitle: "Create a club profile, address and contact details." },
 };
 
@@ -153,6 +154,7 @@ export function AccountSetupGate() {
     playerCurrentLevel: "",
     playerCurrentAgeGroup: "",
     playerCurrentClub: "",
+    coachSubRole: "",
     coachCurrentLevel: "",
     coachCurrentClub: "",
     agreed: false,
@@ -275,6 +277,7 @@ export function AccountSetupGate() {
       playerCurrentLevel: form.playerCurrentLevel || undefined,
       playerCurrentAgeGroup: form.playerCurrentAgeGroup || undefined,
       playerCurrentClub: form.playerCurrentClub || undefined,
+      coachSubRole: form.coachSubRole || undefined,
       coachCurrentLevel: form.coachCurrentLevel || undefined,
       coachCurrentClub: form.coachCurrentClub || undefined,
       highlightReelUrl: form.highlightReelUrl,
@@ -584,6 +587,12 @@ export function AccountSetupGate() {
 
                 {role === "coach" && (
                   <>
+                    <Text style={[styles.label, { color: colors.mutedForeground }]}>What type of coaching role? (required)</Text>
+                    <View style={styles.wrapRow}>
+                      {COACH_SUB_ROLES.map((sr) => (
+                        <Choice key={sr.value} label={sr.label} active={form.coachSubRole === sr.value} onPress={() => update("coachSubRole", sr.value)} colors={colors} />
+                      ))}
+                    </View>
                     <Text style={[styles.label, { color: colors.mutedForeground }]}>Current coaching level (optional)</Text>
                     <View style={styles.wrapRow}>
                       {COACH_EXPERIENCE_LEVELS.map((level) => (
