@@ -11,7 +11,7 @@ export function ScreenShell({ children }: { children: React.ReactNode }) {
   return (
     <View style={[styles.shell, { backgroundColor: colors.background }]}>
       <Image
-        source={require("../../assets/images/wood-texture.jpg")}
+        source={require("../assets/images/wood-texture.jpg")}
         style={[StyleSheet.absoluteFill, styles.textureOverlay]}
         resizeMode="cover"
       />
