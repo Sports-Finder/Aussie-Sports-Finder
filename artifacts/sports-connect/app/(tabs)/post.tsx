@@ -381,6 +381,7 @@ export default function PostScreen() {
   useFocusEffect(
     useCallback(() => {
       setNowMs(Date.now());
+      setSubmitted(false);
       const id = setInterval(() => setNowMs(Date.now()), 30_000);
       return () => clearInterval(id);
     }, [])
