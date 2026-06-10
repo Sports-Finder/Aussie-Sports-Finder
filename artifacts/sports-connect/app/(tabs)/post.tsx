@@ -275,6 +275,7 @@ function MyAdvertDetail({
               {advert.focusArea ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.focusArea}</Text></View> : null}
               {advert.ageGroup ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.ageGroup}</Text></View> : null}
               {advert.preferredAge ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>Age {advert.preferredAge}</Text></View> : null}
+              {advert.previousClub ? <View style={[localStyles.chip, { backgroundColor: colors.secondary }]}><Text style={[localStyles.chipText, { color: colors.secondaryForeground }]}>{advert.previousClub}</Text></View> : null}
               {advert.trialRequired ? <View style={[localStyles.chip, { backgroundColor: colors.amberSoft }]}><Text style={[localStyles.chipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
               {feesLabel ? <View style={[localStyles.chip, { backgroundColor: colors.pitchSoft }]}><Text style={[localStyles.chipText, { color: colors.primary }]}>{feesLabel}</Text></View> : null}
               {advert.opportunityStates && advert.opportunityStates.length > 0 ? (
@@ -305,7 +306,7 @@ function MyAdvertDetail({
             {advert.playerDescription ? (
               <View style={localStyles.detailSection}>
                 <Text style={[localStyles.detailLabel, { color: colors.mutedForeground }]}>
-                  {advert.postedByType === "club" ? "Looking for" : "About the player"}
+                  {advert.postedByType === "club" ? "Looking for" : advert.type === "coach-looking" ? "About the coach" : "About the player"}
                 </Text>
                 <Text style={[localStyles.detailValue, { color: colors.foreground }]}>{advert.playerDescription}</Text>
               </View>
@@ -470,6 +471,7 @@ export default function PostScreen() {
   const [coachPositionTypes, setCoachPositionTypes] = useState<string[]>([]);
   const [coachSalaryText, setCoachSalaryText] = useState("");
   const [coachSalaryTbc, setCoachSalaryTbc] = useState(false);
+  const [previousClub, setPreviousClub] = useState(currentAccount?.coachCurrentClub ?? "");
   const [teamGender, setTeamGender] = useState<string>("");
   const [playerGender, setPlayerGender] = useState<string>("");
   const [title, setTitle] = useState("");
@@ -591,6 +593,7 @@ export default function PostScreen() {
     setCoachPositionTypes(advert.coachPositionTypes ?? []);
     setCoachSalaryText(advert.coachSalary ? String(advert.coachSalary) : "");
     setCoachSalaryTbc(advert.coachSalaryTbc ?? false);
+    setPreviousClub(advert.previousClub ?? currentAccount?.coachCurrentClub ?? "");
     setTeamGender(advert.teamGender ?? "");
     setPlayerGender(advert.playerGender ?? "");
     setSubmitted(false);
@@ -696,12 +699,13 @@ export default function PostScreen() {
 
   const descContactWarning = detectContactInfo(description);
   const playerDescContactWarning = detectContactInfo(playerDescription);
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && (isTechnicalDirector ? focusArea.trim().length > 0 : ageGroup !== null) && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning;
+  const ageGroupOk = isTechnicalDirector || isCoachLooking || isCoachWanted ? true : ageGroup !== null;
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && ageGroupOk && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning;
 
   const validationErrors: string[] = [];
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
   if (state.trim().length <= 1) validationErrors.push("State is missing — add it to your profile");
-  if (!isTechnicalDirector && ageGroup === null) validationErrors.push("Age Group must be selected");
+  if (!isTechnicalDirector && !isCoachLooking && !isCoachWanted && ageGroup === null) validationErrors.push("Age Group must be selected");
   if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick TBD)");
   if (showSchedule && !gameDaysOk) validationErrors.push("Game days must be selected (or tick TBD)");
   if (isClubTrials && trialSlots[0].date.trim().length === 0) validationErrors.push("At least one trial date is required");
@@ -800,6 +804,7 @@ export default function PostScreen() {
     setCoachPositionTypes([]);
     setCoachSalaryText("");
     setCoachSalaryTbc(false);
+    setPreviousClub(currentAccount?.coachCurrentClub ?? "");
     setTeamGender("");
     setPlayerGender("");
     setSubmitted(true);
@@ -884,6 +889,7 @@ export default function PostScreen() {
       coachPositionTypes: isCoachWanted ? coachPositionTypes : undefined,
       coachSalary: isCoachWanted && !coachSalaryTbc && coachSalaryText.trim() ? parseFloat(coachSalaryText.replace(/[^0-9.]/g, "")) : undefined,
       coachSalaryTbc: isCoachWanted ? coachSalaryTbc : undefined,
+      previousClub: isCoachLooking ? previousClub.trim() || undefined : undefined,
       seasonFees,
       feesNegotiable,
       feesFree,
@@ -1096,7 +1102,7 @@ export default function PostScreen() {
           </View>
         ) : null}
 
-        {isCoach && !isAffiliatedCoach && (
+        {isCoach && !isAffiliatedCoach && (!currentAccount?.coachSubRole || currentAccount?.coachSubRole === "coach") && (
           <View style={[localStyles.coachTip, { backgroundColor: colors.muted, borderColor: colors.foreground, borderWidth: 2 }]}>
             <Feather name="info" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
             <Text style={[localStyles.coachTipText, { color: colors.mutedForeground }]}>
@@ -1107,8 +1113,17 @@ export default function PostScreen() {
 
         <View style={(isPlayerFreeLimited || isOverPersonalAdvertLimit) ? { opacity: 0.4, pointerEvents: "none" } : undefined}>
         <View style={[localStyles.sportHeader, { backgroundColor: activeTheme.background, borderColor: activeTheme.soft }]}> 
-          <Text style={[localStyles.sportHeaderKicker, { color: activeTheme.primary }]}>Posting under</Text>
-          <Text style={[localStyles.sportHeaderTitle, { color: activeTheme.text }]}>{sport}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View>
+              <Text style={[localStyles.sportHeaderKicker, { color: activeTheme.primary }]}>Posting under</Text>
+              <Text style={[localStyles.sportHeaderTitle, { color: activeTheme.text }]}>{sport}</Text>
+            </View>
+            {isCoach && currentAccount?.coachSubRole && currentAccount.coachSubRole !== "coach" ? (
+              <View style={[localStyles.roleBadge, { backgroundColor: activeTheme.primary }]}>
+                <Text style={[localStyles.roleBadgeText, { color: "#FFFFFF" }]}>{coachSubRoleLabel(currentAccount.coachSubRole)}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         {editingId ? (
@@ -1187,7 +1202,7 @@ export default function PostScreen() {
             </>
           ) : (
             <>
-              <FormLabel text="Age Group" required />
+              <FormLabel text="Age Group" required={!isCoachLooking && !isCoachWanted} />
               <View style={{ gap: 6 }}>
                 {AGE_GROUPS.map((g) => (
                   <Pressable key={g.label} onPress={() => { setAgeGroup(g); setPreferredAge(null); }} style={[localStyles.ageGroupRow, { backgroundColor: ageGroup?.label === g.label ? colors.primary : colors.secondary, borderColor: ageGroup?.label === g.label ? colors.primary : colors.border }] }>
@@ -1224,7 +1239,7 @@ export default function PostScreen() {
 
           {ageGroup !== null && (isPlayerLooking || isCoachLooking) && (
             <>
-              <FormLabel text={isCoachLooking ? "Coach Gender" : "Player Gender"} />
+              <FormLabel text={isCoachLooking ? `${coachSubRoleLabel(currentAccount?.coachSubRole)} Gender` : "Player Gender"} />
               <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
                 {PLAYER_GENDERS.map((item) => (
                   <Pressable
@@ -1298,7 +1313,7 @@ export default function PostScreen() {
 
           {showCoachTitle && (
             <>
-              <FormLabel text="Coach level / title (optional)" />
+              <FormLabel text={`${coachSubRoleLabel(currentAccount?.coachSubRole)} level / title (optional)`} />
               <View style={localStyles.pillRow}>
                 {coachTitles.map((t) => (
                   <Pill key={t} label={t} active={coachTitle === t} onPress={() => setCoachTitle(coachTitle === t ? "" : t)} />
@@ -1314,9 +1329,16 @@ export default function PostScreen() {
             </>
           )}
 
+          {isCoachLooking && (
+            <>
+              <FormLabel text="Previous Club (optional)" />
+              <Field value={previousClub} onChangeText={setPreviousClub} label="" placeholder="e.g. Northside FC" />
+            </>
+          )}
+
           {showPlayerDesc && (
             <>
-              <FormLabel text={isCoachLooking ? "About Yourself" : "About the player"} />
+              <FormLabel text={isCoachLooking ? "About Your Coaching" : "About the player"} />
               <Field value={playerDescription} onChangeText={setPlayerDescription} label="" multiline placeholder="Describe the player or coach, experience, goals…" />
               {playerDescContactWarning ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{playerDescContactWarning}</Text> : null}
             </>

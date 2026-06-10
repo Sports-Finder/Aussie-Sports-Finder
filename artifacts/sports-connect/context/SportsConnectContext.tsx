@@ -167,6 +167,7 @@ export type Advert = {
   coachPositionTypes?: string[];
   coachSalary?: number;
   coachSalaryTbc?: boolean;
+  previousClub?: string;
   seasonFees?: number;
   feesNegotiable?: boolean;
   feesFree?: boolean;
