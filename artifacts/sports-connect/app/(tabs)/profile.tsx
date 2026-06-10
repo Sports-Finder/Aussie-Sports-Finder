@@ -1,4 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -359,6 +360,11 @@ export default function ProfileScreen() {
 
   return (
     <KeyboardAvoidingView behavior="padding" style={[styles.shell, { backgroundColor: colors.background }]}>
+      <Image
+        source={require("../../assets/images/wood-texture.jpg")}
+        style={[StyleSheet.absoluteFill, { opacity: 0.2 }]}
+        resizeMode="cover"
+      />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 116 }]}
         keyboardShouldPersistTaps="handled"

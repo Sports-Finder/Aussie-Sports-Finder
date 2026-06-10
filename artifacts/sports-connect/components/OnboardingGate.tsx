@@ -236,6 +236,11 @@ export function OnboardingGate() {
 
   return (
     <KeyboardAvoidingView behavior="padding" style={[styles.shell, { backgroundColor: colors.background }]}>
+      <Image
+        source={require("../assets/images/wood-texture.jpg")}
+        style={[StyleSheet.absoluteFill, { opacity: 0.2 }]}
+        resizeMode="cover"
+      />
       <ScrollView
         contentContainerStyle={[
           styles.content,
