@@ -1069,6 +1069,15 @@ function AccountsSection() {
                   <Feather name="activity" size={12} color={colors.mutedForeground} />
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Default sport: {acc.defaultSport}</Text>
                 </View>
+                {acc.dateOfBirth ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                      DOB: {acc.dateOfBirth}
+                      {acc.role === "guardian" && acc.guardianDateOfBirth ? ` · Guardian DOB: ${acc.guardianDateOfBirth}` : ""}
+                    </Text>
+                  </View>
+                ) : null}
                 {acc.role === "coach" && (acc.coachSubRole || acc.coachCurrentLevel) ? (
                   <View style={styles.metaRow}>
                     <Feather name="briefcase" size={12} color={colors.mutedForeground} />

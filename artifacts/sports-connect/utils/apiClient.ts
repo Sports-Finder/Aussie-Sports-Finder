@@ -39,6 +39,7 @@ async function apiFetchWithModToken(path: string, options?: RequestInit): Promis
 export const api = {
   getAdverts: () => apiFetch("/adverts") as Promise<any[]>,
   getAccounts: () => apiFetch("/accounts") as Promise<any[]>,
+  getAdminAccounts: () => apiFetch("/admin/accounts") as Promise<any[]>,
   getConversations: () => apiFetch("/conversations") as Promise<any[]>,
   getProfileImages: () => apiFetch("/profile-images") as Promise<any[]>,
   getSportRequests: () => apiFetch("/sport-requests") as Promise<any[]>,

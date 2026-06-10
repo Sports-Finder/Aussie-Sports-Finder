@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { db, accountsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
-import { mapAccount } from "../lib/mapDbToApi";
+import { mapAccountAdmin } from "../lib/mapDbToApi";
 import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
@@ -48,7 +48,7 @@ router.post("/admin/entitlements", requireAdmin, async (req, res) => {
       return;
     }
 
-    res.json(mapAccount(updated as unknown as Record<string, unknown>));
+    res.json(mapAccountAdmin(updated as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to grant entitlement");
     res.status(502).json({ error: "Failed to grant entitlement via RevenueCat" });
@@ -79,7 +79,7 @@ router.delete("/admin/entitlements", requireAdmin, async (req, res) => {
       return;
     }
 
-    res.json(mapAccount(updated as unknown as Record<string, unknown>));
+    res.json(mapAccountAdmin(updated as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to revoke entitlement");
     res.status(502).json({ error: "Failed to revoke entitlement via RevenueCat" });

@@ -11,9 +11,10 @@ export function mapCoachAffiliate(row: Record<string, unknown>) {
   };
 }
 
-export function mapAccount(
+function _mapAccount(
   row: Record<string, unknown>,
-  affiliates: ReturnType<typeof mapCoachAffiliate>[] = [],
+  affiliates: ReturnType<typeof mapCoachAffiliate>[],
+  includeGuardianDob: boolean,
 ) {
   return {
     id: row.publicId as string,
@@ -27,7 +28,7 @@ export function mapAccount(
     clubName: row.clubName as string | undefined,
     gender: row.gender as string | undefined,
     dateOfBirth: row.dateOfBirth as string | undefined,
-    guardianDateOfBirth: row.guardianDateOfBirth as string | undefined,
+    guardianDateOfBirth: includeGuardianDob ? (row.guardianDateOfBirth as string | undefined) : undefined,
     location: row.location as string | undefined,
     mobile: row.mobile as string | undefined,
     sports: (row.sports as string[]) ?? [],
@@ -81,6 +82,22 @@ export function mapAccount(
     createdAt: new Date(row.createdAt as string).toISOString(),
     updatedAt: new Date(row.updatedAt as string).toISOString(),
   };
+}
+
+/** Public-safe mapper — strips guardianDateOfBirth so it is never leaked to non-admin callers. */
+export function mapAccount(
+  row: Record<string, unknown>,
+  affiliates: ReturnType<typeof mapCoachAffiliate>[] = [],
+) {
+  return _mapAccount(row, affiliates, false);
+}
+
+/** Full mapper — includes guardianDateOfBirth for admin-only endpoints and single-account responses. */
+export function mapAccountAdmin(
+  row: Record<string, unknown>,
+  affiliates: ReturnType<typeof mapCoachAffiliate>[] = [],
+) {
+  return _mapAccount(row, affiliates, true);
 }
 
 export function mapAdvert(row: Record<string, unknown>) {

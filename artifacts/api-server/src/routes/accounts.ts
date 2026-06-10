@@ -2,11 +2,13 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, accountsTable, coachAffiliatesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
-import { mapAccount, mapCoachAffiliate } from "../lib/mapDbToApi";
+import { mapAccount, mapAccountAdmin, mapCoachAffiliate } from "../lib/mapDbToApi";
 import { normalizeDates } from "../lib/normalizeDates";
+import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
 
+/** Public-safe list — strips guardianDateOfBirth. */
 router.get("/accounts", async (_req, res) => {
   try {
     const [rows, affiliateRows] = await Promise.all([
@@ -26,6 +28,29 @@ router.get("/accounts", async (_req, res) => {
   } catch (err) {
     logger.error({ err }, "Failed to fetch accounts");
     res.status(500).json({ error: "Failed to fetch accounts" });
+  }
+});
+
+/** Admin-only list — includes guardianDateOfBirth for review. */
+router.get("/admin/accounts", requireAdmin, async (_req, res) => {
+  try {
+    const [rows, affiliateRows] = await Promise.all([
+      db.select().from(accountsTable),
+      db.select().from(coachAffiliatesTable),
+    ]);
+    const byClub: Record<string, ReturnType<typeof mapCoachAffiliate>[]> = {};
+    for (const a of affiliateRows) {
+      const mapped = mapCoachAffiliate(a as unknown as Record<string, unknown>);
+      (byClub[a.clubAccountId] ??= []).push(mapped);
+    }
+    res.json(
+      rows.map((row) =>
+        mapAccountAdmin(row as unknown as Record<string, unknown>, byClub[row.publicId] ?? []),
+      ),
+    );
+  } catch (err) {
+    logger.error({ err }, "Failed to fetch admin accounts");
+    res.status(500).json({ error: "Failed to fetch admin accounts" });
   }
 });
 
@@ -75,7 +100,7 @@ router.put("/accounts/:publicId", async (req, res) => {
       res.status(404).json({ error: "Account not found" });
       return;
     }
-    res.json(mapAccount(updated as unknown as Record<string, unknown>));
+    res.json(mapAccountAdmin(updated as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to update account");
     res.status(500).json({ error: "Failed to update account" });

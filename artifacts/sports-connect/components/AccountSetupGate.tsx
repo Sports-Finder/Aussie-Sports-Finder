@@ -192,13 +192,16 @@ export function AccountSetupGate() {
       : Boolean(form.fullName.trim());
     const guardianAgeValid = role === "guardian" ? Boolean(age && Number(age) <= 17) : true;
     const playerAgeValid = role === "player" ? Boolean(age && Number(age) >= 18) : true;
+    const coachAgeValid = role === "coach" ? Boolean(age && Number(age) >= 18) : true;
     const coachSubRoleValid = role === "coach" ? Boolean(form.coachSubRole) : true;
     const guardianDobValid = role === "guardian" ? Boolean(form.guardianDateOfBirth) : true;
+    const guardianDobAge = role === "guardian" ? calculateAge(form.guardianDateOfBirth) : "";
+    const guardianOwnAgeValid = role === "guardian" ? Boolean(guardianDobAge && Number(guardianDobAge) >= 18) : true;
     return Boolean(
       nameValid && form.gender && form.dateOfBirth &&
-      guardianAgeValid && playerAgeValid &&
+      guardianAgeValid && playerAgeValid && coachAgeValid &&
       selectedSports.length && defaultSport && form.agreed &&
-      coachSubRoleValid && guardianDobValid
+      coachSubRoleValid && guardianDobValid && guardianOwnAgeValid
     );
   }, [age, defaultSport, form, isClub, role, selectedSports.length]);
 
@@ -206,6 +209,18 @@ export function AccountSetupGate() {
     setForm((current) => ({ ...current, [key]: value }));
 
   const selectRole = (selected: AccountRole) => {
+    // If the user already entered a DOB and is under 18, block "player" and "coach" roles.
+    if (selected === "player" || selected === "coach") {
+      const dobAge = calculateAge(form.dateOfBirth);
+      if (dobAge && Number(dobAge) < 18) {
+        Alert.alert(
+          "Age requirement",
+          `You must be 18 or older to create a ${selected === "player" ? "Player" : "Coach"} account. Please select Parent/Guardian instead.`,
+          [{ text: "OK", onPress: () => setRole("guardian") }],
+        );
+        return;
+      }
+    }
     setRole(selected);
     if (selected === "club") {
       setForm((current) => ({
@@ -256,6 +271,23 @@ export function AccountSetupGate() {
     if (!socialLinksValid) {
       Alert.alert("Social link error", "Only Instagram, Facebook, X/Twitter and TikTok profile links are accepted.");
       return;
+    }
+    // Explicit guard: if user under 18 and selected player or coach, block them
+    if (age && Number(age) < 18 && (role === "player" || role === "coach")) {
+      Alert.alert(
+        "Age requirement",
+        `You must be 18 or older to create a ${role === "player" ? "Player" : "Coach"} account. Please switch to Parent/Guardian.`,
+        [{ text: "OK" }],
+      );
+      return;
+    }
+    // Explicit guard: if guardian's own DOB shows they are under 18, block them
+    if (role === "guardian") {
+      const guardianOwnAge = calculateAge(form.guardianDateOfBirth);
+      if (guardianOwnAge && Number(guardianOwnAge) < 18) {
+        Alert.alert("Guardian age requirement", "The parent/guardian must be 18 or older.");
+        return;
+      }
     }
     if (!requiredDetailsValid) {
       Alert.alert("Missing details", "Complete all required fields, Australian state details, sport selections and the agreement checkbox.");

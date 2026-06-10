@@ -743,6 +743,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return () => { cancelled = true; };
   }, [isAdmin, isModerator, currentModerator]);
 
+  // When admin logs in, re-fetch account data with the admin endpoint so
+  // guardianDateOfBirth is visible for account review.
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    api.getAdminAccounts()
+      .then((data) => {
+        if (!cancelled) setAccounts(data);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [isAdmin]);
+
   const requestSport = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
