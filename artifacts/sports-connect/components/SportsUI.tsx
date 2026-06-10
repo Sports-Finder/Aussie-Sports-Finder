@@ -8,7 +8,16 @@ import { useColors } from "@/hooks/useColors";
 
 export function ScreenShell({ children }: { children: React.ReactNode }) {
   const colors = useColors();
-  return <View style={[styles.shell, { backgroundColor: colors.background }]}>{children}</View>;
+  return (
+    <View style={[styles.shell, { backgroundColor: colors.background }]}>
+      <Image
+        source={require("../../assets/images/wood-texture.jpg")}
+        style={[StyleSheet.absoluteFill, styles.textureOverlay]}
+        resizeMode="cover"
+      />
+      {children}
+    </View>
+  );
 }
 
 export function SectionTitle({ title, action }: { title: string; action?: string }) {
@@ -114,6 +123,7 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 96, paddingTop: 14, textAlignVertical: "top" },
   avatar: { overflow: "hidden", borderWidth: 1 },
   avatarOverlay: { position: "absolute", top: 0, left: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
+  textureOverlay: { opacity: 0.2 },
   empty: { ...subtleShadow, borderWidth: 1, borderRadius: 24, padding: 24, alignItems: "center", gap: 8 },
   emptyTitle: { fontWeight: "700", fontSize: 17, marginTop: 4 },
   emptyText: { fontWeight: "400", fontSize: 14, lineHeight: 20, textAlign: "center" },
