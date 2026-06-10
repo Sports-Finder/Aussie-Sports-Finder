@@ -1479,14 +1479,6 @@ export default function PostScreen() {
           </Text>
         </View>
 
-        {submitted && !editingId ? (
-          <View style={[localStyles.successBox, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
-            <Feather name="check-circle" color="#16A34A" size={24} />
-            <Text style={[localStyles.successTitle, { color: "#15803D" }]}>Advert posted!</Text>
-            <Text style={[localStyles.successText, { color: "#166534" }]}>Your advert is now live in the Discover tab. You can manage and edit it here.</Text>
-          </View>
-        ) : null}
-
         {showErrors && validationErrors.length > 0 ? (
           <View style={[localStyles.errorBox, { backgroundColor: "#FEF2F2", borderColor: "#D9534F" }]}>
             {validationErrors.map((e) => (
@@ -1509,6 +1501,14 @@ export default function PostScreen() {
         />
         <View style={{ height: 220 }} />
         </View>
+
+        {submitted && !editingId ? (
+          <View style={[localStyles.successBox, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
+            <Feather name="check-circle" color="#16A34A" size={24} />
+            <Text style={[localStyles.successTitle, { color: "#15803D" }]}>Advert posted!</Text>
+            <Text style={[localStyles.successText, { color: "#166534" }]}>Your advert is now live in the Discover tab. You can manage and edit it here.</Text>
+          </View>
+        ) : null}
 
         {myAdverts.length > 0 ? (
           <>
