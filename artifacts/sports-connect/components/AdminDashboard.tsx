@@ -1,6 +1,15 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { createContext, useContext, useMemo, useState } from "react";
+
+function lighten(hex: string, amount: number = 0.15): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, ((num >> 16) & 0xff) + Math.round((255 - ((num >> 16) & 0xff)) * amount));
+  const g = Math.min(255, ((num >> 8) & 0xff) + Math.round((255 - ((num >> 8) & 0xff)) * amount));
+  const b = Math.min(255, (num & 0xff) + Math.round((255 - (num & 0xff)) * amount));
+  return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
+}
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -1753,12 +1762,11 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
     >
       <SectionTitle title="Sports Registry" />
 
-      <Pressable
-        onPress={openAdd}
-        style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.primary, alignSelf: "flex-start", marginBottom: 16, opacity: pressed ? 0.8 : 1 }]}
-      >
-        <Feather name="plus" size={15} color="#FFF" />
-        <Text style={styles.actionBtnText}>Add New Sport</Text>
+      <Pressable onPress={openAdd} style={({ pressed }) => [styles.actionBtn, { alignSelf: "flex-start", marginBottom: 16, opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}>
+        <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.actionBtn, { flex: 1 }]}>
+          <Feather name="plus" size={15} color="#FFF" />
+          <Text style={styles.actionBtnText}>Add New Sport</Text>
+        </LinearGradient>
       </Pressable>
 
       {sportsRegistry.length === 0 ? (
@@ -1832,12 +1840,16 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
             style={[inputStyle, { color: colors.foreground, borderColor: colors.foreground, borderWidth: 2, backgroundColor: colors.card, minHeight: 80 }]}
           />
           <View style={[styles.actionRow, { marginTop: 8 }]}>
-            <Pressable onPress={handleSave} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
-              <Feather name={editingSport ? "save" : "plus"} size={15} color="#FFF" />
-              <Text style={styles.actionBtnText}>{editingSport ? "Save Changes" : "Add Sport"}</Text>
+            <Pressable onPress={handleSave} style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}>
+              <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.actionBtn, { flex: 1 }]}>
+                <Feather name={editingSport ? "save" : "plus"} size={15} color="#FFF" />
+                <Text style={styles.actionBtnText}>{editingSport ? "Save Changes" : "Add Sport"}</Text>
+              </LinearGradient>
             </Pressable>
-            <Pressable onPress={resetForm} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.8 : 1 }]}>
-              <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Cancel</Text>
+            <Pressable onPress={resetForm} style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}>
+              <LinearGradient colors={[colors.card, lighten(colors.card)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.actionBtn, { flex: 1, borderColor: colors.foreground, borderWidth: 2 }]}>
+                <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Cancel</Text>
+              </LinearGradient>
             </Pressable>
           </View>
         </ScrollView>
@@ -2031,15 +2043,11 @@ function PermToggle({ label, value, onToggle }: { label: string; value: boolean;
 
 function ActionButton({ icon, label, color, onPress }: { icon: keyof typeof Feather.glyphMap; label: string; color: string; onPress: () => void }) {
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionBtn,
-        { backgroundColor: color, opacity: pressed ? 0.8 : 1 },
-      ]}
-    >
-      <Feather name={icon} size={15} color="#FFF" />
-      <Text style={styles.actionBtnText}>{label}</Text>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}>
+      <LinearGradient colors={[color, lighten(color)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.actionBtn, { flex: 1 }]}>
+        <Feather name={icon} size={15} color="#FFF" />
+        <Text style={styles.actionBtnText}>{label}</Text>
+      </LinearGradient>
     </Pressable>
   );
 }

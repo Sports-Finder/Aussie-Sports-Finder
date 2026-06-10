@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";

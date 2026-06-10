@@ -1,7 +1,16 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+
+function lighten(hex: string, amount: number = 0.15): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, ((num >> 16) & 0xff) + Math.round((255 - ((num >> 16) & 0xff)) * amount));
+  const g = Math.min(255, ((num >> 8) & 0xff) + Math.round((255 - ((num >> 8) & 0xff)) * amount));
+  const b = Math.min(255, (num & 0xff) + Math.round((255 - (num & 0xff)) * amount));
+  return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
+}
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
@@ -325,9 +334,11 @@ function MyAdvertDetail({
 
             <View style={{ height: 20 }} />
 
-            <Pressable onPress={onEdit} style={({ pressed }) => [localStyles.editButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
-              <Feather name="edit-2" color="#FFFFFF" size={16} />
-              <Text style={localStyles.editButtonText}>Edit Advert</Text>
+            <Pressable onPress={onEdit} style={({ pressed }) => [localStyles.editButton, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}>
+              <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[localStyles.editButton, { flex: 1 }]}>
+                <Feather name="edit-2" color="#FFFFFF" size={16} />
+                <Text style={localStyles.editButtonText}>Edit Advert</Text>
+              </LinearGradient>
             </Pressable>
 
             {confirmingDelete ? (
@@ -345,12 +356,16 @@ function MyAdvertDetail({
                 ) : null}
                 <Text style={localStyles.deleteConfirmText}>This cannot be undone. Permanently delete this advert?</Text>
                 <View style={localStyles.deleteConfirmRow}>
-                  <Pressable onPress={() => setConfirmingDelete(false)} style={({ pressed }) => [localStyles.deleteConfirmCancel, { backgroundColor: colors.secondary, opacity: pressed ? 0.7 : 1 }]}>
-                    <Text style={[localStyles.deleteConfirmCancelText, { color: colors.secondaryForeground }]}>Cancel</Text>
+                  <Pressable onPress={() => setConfirmingDelete(false)} style={({ pressed }) => [localStyles.deleteConfirmCancel, { opacity: pressed ? 0.7 : 1, overflow: "hidden" }]}>
+                    <LinearGradient colors={[colors.secondary, lighten(colors.secondary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[localStyles.deleteConfirmCancel, { flex: 1 }]}>
+                      <Text style={[localStyles.deleteConfirmCancelText, { color: colors.secondaryForeground }]}>Cancel</Text>
+                    </LinearGradient>
                   </Pressable>
-                  <Pressable onPress={confirmDelete} style={({ pressed }) => [localStyles.deleteConfirmYes, { opacity: pressed ? 0.8 : 1 }]}>
-                    <Feather name="trash-2" color="#FFFFFF" size={15} />
-                    <Text style={localStyles.deleteConfirmYesText}>Yes, Delete</Text>
+                  <Pressable onPress={confirmDelete} style={({ pressed }) => [localStyles.deleteConfirmYes, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}>
+                    <LinearGradient colors={["#DC2626", "#991B1B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[localStyles.deleteConfirmYes, { flex: 1 }]}>
+                      <Feather name="trash-2" color="#FFFFFF" size={15} />
+                      <Text style={localStyles.deleteConfirmYesText}>Yes, Delete</Text>
+                    </LinearGradient>
                   </Pressable>
                 </View>
               </View>
@@ -1378,9 +1393,11 @@ export default function PostScreen() {
                 </View>
                 );
               })}
-              <Pressable onPress={() => setTrialSlots((prev) => [...prev, { date: "", timeFrom: "", timeTo: "" }])} style={({ pressed }) => [localStyles.addSlotButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.75 : 1 }]}>
-                <Feather name="plus" size={16} color={colors.primary} />
-                <Text style={[localStyles.addSlotText, { color: colors.primary }]}>Add another trial date</Text>
+              <Pressable onPress={() => setTrialSlots((prev) => [...prev, { date: "", timeFrom: "", timeTo: "" }])} style={({ pressed }) => [localStyles.addSlotButton, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
+                <LinearGradient colors={[colors.secondary, lighten(colors.secondary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[localStyles.addSlotButton, { flex: 1 }]}>
+                  <Feather name="plus" size={16} color={colors.primary} />
+                  <Text style={[localStyles.addSlotText, { color: colors.primary }]}>Add another trial date</Text>
+                </LinearGradient>
               </Pressable>
             </>
           )}
@@ -1521,15 +1538,19 @@ export default function PostScreen() {
                     setSimilarityWarning(null);
                     void doCreateAdvert(draft);
                   }}
-                  style={({ pressed }) => [localStyles.simWarnPrimary, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [localStyles.simWarnPrimary, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}
                 >
-                  <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 15 }}>Yes, post as new advert</Text>
+                  <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[localStyles.simWarnPrimary, { flex: 1 }]}>
+                    <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 15 }}>Yes, post as new advert</Text>
+                  </LinearGradient>
                 </Pressable>
                 <Pressable
                   onPress={() => setSimilarityWarning(null)}
-                  style={({ pressed }) => [localStyles.simWarnSecondary, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}
+                  style={({ pressed }) => [localStyles.simWarnSecondary, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}
                 >
-                  <Text style={{ color: colors.secondaryForeground, fontWeight: "700", fontSize: 15 }}>Cancel — edit instead</Text>
+                  <LinearGradient colors={[colors.secondary, lighten(colors.secondary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[localStyles.simWarnSecondary, { flex: 1 }]}>
+                    <Text style={{ color: colors.secondaryForeground, fontWeight: "700", fontSize: 15 }}>Cancel — edit instead</Text>
+                  </LinearGradient>
                 </Pressable>
               </View>
             </View>

@@ -1,7 +1,16 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+
+function lighten(hex: string, amount: number = 0.15): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, ((num >> 16) & 0xff) + Math.round((255 - ((num >> 16) & 0xff)) * amount));
+  const g = Math.min(255, ((num >> 8) & 0xff) + Math.round((255 - ((num >> 8) & 0xff)) * amount));
+  const b = Math.min(255, (num & 0xff) + Math.round((255 - (num & 0xff)) * amount));
+  return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
+}
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -480,17 +489,15 @@ export default function ProfileScreen() {
                     {affiliate.ageGroup ? ` · Age: ${affiliate.ageGroup}` : ""}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 10 }}>
-                    <Pressable
-                      onPress={() => respondToAffiliationRequest(club.id, true)}
-                      style={[styles.mapBtn, { backgroundColor: "#16A34A", flex: 1 }]}
-                    >
-                      <Text style={styles.mapBtnText}>Yes — Accept</Text>
+                    <Pressable onPress={() => respondToAffiliationRequest(club.id, true)} style={[styles.mapBtn, { flex: 1, overflow: "hidden" }]}>
+                      <LinearGradient colors={["#16A34A", "#15803D"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
+                        <Text style={styles.mapBtnText}>Yes — Accept</Text>
+                      </LinearGradient>
                     </Pressable>
-                    <Pressable
-                      onPress={() => respondToAffiliationRequest(club.id, false)}
-                      style={[styles.mapBtn, { backgroundColor: "#DC2626", flex: 1 }]}
-                    >
-                      <Text style={styles.mapBtnText}>No — Decline</Text>
+                    <Pressable onPress={() => respondToAffiliationRequest(club.id, false)} style={[styles.mapBtn, { flex: 1, overflow: "hidden" }]}>
+                      <LinearGradient colors={["#DC2626", "#991B1B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
+                        <Text style={styles.mapBtnText}>No — Decline</Text>
+                      </LinearGradient>
                     </Pressable>
                   </View>
                 </View>
@@ -553,15 +560,19 @@ export default function ProfileScreen() {
                   if (!isPremium) { setShowPaywall(true); return; }
                   setShowCoachAffiliates(true);
                 }}
-                style={({ pressed }) => [styles.mapBtn, { backgroundColor: isPremium ? colors.primary : "#FDE68A", opacity: pressed ? 0.75 : 1, flex: 0, minWidth: 90 }]}
+                style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, flex: 0, minWidth: 90, overflow: "hidden" }]}
               >
                 {isPremium ? (
-                  <Text style={styles.mapBtnText}>View/Edit</Text>
+                  <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
+                    <Text style={styles.mapBtnText}>View/Edit</Text>
+                  </LinearGradient>
                 ) : (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    <Feather name="lock" size={13} color="#92400E" />
-                    <Text style={[styles.mapBtnText, { color: "#92400E" }]}>Upgrade</Text>
-                  </View>
+                  <LinearGradient colors={["#FDE68A", "#FEF08A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Feather name="lock" size={13} color="#92400E" />
+                      <Text style={[styles.mapBtnText, { color: "#92400E" }]}>Upgrade</Text>
+                    </View>
+                  </LinearGradient>
                 )}
               </Pressable>
             </View>
@@ -615,13 +626,17 @@ export default function ProfileScreen() {
             ))}
             {isClub ? (
               <View style={styles.mapRow}>
-                <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
-                  <Feather name="map" color="#FFF" size={16} />
-                  <Text style={styles.mapBtnText}>Apple Maps</Text>
+                <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
+                  <LinearGradient colors={[colors.navy, lighten(colors.navy)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
+                    <Feather name="map" color="#FFF" size={16} />
+                    <Text style={styles.mapBtnText}>Apple Maps</Text>
+                  </LinearGradient>
                 </Pressable>
-                <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
-                  <Feather name="navigation" color="#FFF" size={16} />
-                  <Text style={styles.mapBtnText}>Google Maps</Text>
+                <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
+                  <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
+                    <Feather name="navigation" color="#FFF" size={16} />
+                    <Text style={styles.mapBtnText}>Google Maps</Text>
+                  </LinearGradient>
                 </Pressable>
               </View>
             ) : null}
@@ -685,13 +700,17 @@ export default function ProfileScreen() {
             <Field label="TikTok link" value={socialLinks.tiktok ?? ""} onChangeText={(v) => updateSocial("tiktok", v)} />
 
             <View style={styles.mapRow}>
-              <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
-                <Feather name="map" color="#FFF" size={16} />
-                <Text style={styles.mapBtnText}>Apple Maps</Text>
+              <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
+                <LinearGradient colors={[colors.navy, lighten(colors.navy)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
+                  <Feather name="map" color="#FFF" size={16} />
+                  <Text style={styles.mapBtnText}>Apple Maps</Text>
+                </LinearGradient>
               </Pressable>
-              <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
-                <Feather name="navigation" color="#FFF" size={16} />
-                <Text style={styles.mapBtnText}>Google Maps</Text>
+              <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
+                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
+                  <Feather name="navigation" color="#FFF" size={16} />
+                  <Text style={styles.mapBtnText}>Google Maps</Text>
+                </LinearGradient>
               </Pressable>
             </View>
             <PrimaryButton
@@ -781,11 +800,15 @@ export default function ProfileScreen() {
                     style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                   />
                   <View style={styles.modalActions}>
-                    <Pressable onPress={() => setShowDobPicker(false)} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>
-                      <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>Cancel</Text>
+                    <Pressable onPress={() => setShowDobPicker(false)} style={({ pressed }) => [styles.modalButton, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}>
+                      <LinearGradient colors={[colors.secondary, lighten(colors.secondary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.modalButton, { flex: 1 }]}>
+                        <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>Cancel</Text>
+                      </LinearGradient>
                     </Pressable>
-                    <Pressable onPress={confirmDob} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
-                      <Text style={[styles.modalButtonText, { color: colors.primaryForeground }]}>Set date</Text>
+                    <Pressable onPress={confirmDob} style={({ pressed }) => [styles.modalButton, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}>
+                      <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.modalButton, { flex: 1 }]}>
+                        <Text style={[styles.modalButtonText, { color: colors.primaryForeground }]}>Set date</Text>
+                      </LinearGradient>
                     </Pressable>
                   </View>
                 </View>

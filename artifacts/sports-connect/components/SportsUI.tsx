@@ -1,10 +1,19 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import React from "react";
 import { ImageSourcePropType, Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from "react-native";
 import { ImageSource } from "expo-image";
 
 import { useColors } from "@/hooks/useColors";
+
+function lighten(hex: string, amount: number = 0.15): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, ((num >> 16) & 0xff) + Math.round((255 - ((num >> 16) & 0xff)) * amount));
+  const g = Math.min(255, ((num >> 8) & 0xff) + Math.round((255 - ((num >> 8) & 0xff)) * amount));
+  const b = Math.min(255, (num & 0xff) + Math.round((255 - (num & 0xff)) * amount));
+  return "#" + ((r << 16) | (g << 8) | b).toString(16).padStart(6, "0");
+}
 
 export function ScreenShell({ children }: { children: React.ReactNode }) {
   const colors = useColors();
@@ -43,10 +52,13 @@ export function Pill({ label, active, onPress, onPressWhenDisabled, disabled }: 
 export function PrimaryButton({ label, icon, onPress, onPressWhenDisabled, disabled }: { label: string; icon?: keyof typeof Feather.glyphMap; onPress: () => void; onPressWhenDisabled?: () => void; disabled?: boolean }) {
   const colors = useColors();
   const handlePress = disabled ? (onPressWhenDisabled ?? undefined) : onPress;
+  const bgColors = disabled ? [colors.mutedForeground, colors.mutedForeground] as [string, string] : [colors.primary, lighten(colors.primary)] as [string, string];
   return (
-    <Pressable onPress={handlePress} style={({ pressed }) => [styles.button, { backgroundColor: disabled ? colors.mutedForeground : colors.primary, opacity: pressed ? 0.82 : 1 }]}>
-      {icon ? <Feather name={icon} color={colors.primaryForeground} size={18} /> : null}
-      <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{label}</Text>
+    <Pressable onPress={handlePress} style={({ pressed }) => [styles.button, { opacity: pressed ? 0.82 : 1 }]}>
+      <LinearGradient colors={bgColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.buttonGradient}>
+        {icon ? <Feather name={icon} color={colors.primaryForeground} size={18} /> : null}
+        <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>{label}</Text>
+      </LinearGradient>
     </Pressable>
   );
 }
@@ -114,7 +126,8 @@ const styles = StyleSheet.create({
   sectionAction: { fontWeight: "600", fontSize: 13 },
   pill: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999, marginRight: 8 },
   pillText: { fontWeight: "700", fontSize: 13 },
-  button: { minHeight: 52, borderRadius: 18, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: 18 },
+  button: { minHeight: 52, borderRadius: 18, overflow: "hidden" },
+  buttonGradient: { minHeight: 52, borderRadius: 18, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: 18 },
   buttonText: { fontWeight: "700", fontSize: 15 },
   iconButton: { width: 44, height: 44, borderRadius: 16, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   fieldWrap: { gap: 7, marginBottom: 12 },
