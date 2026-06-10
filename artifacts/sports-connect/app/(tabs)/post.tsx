@@ -101,7 +101,7 @@ function DayPicker({ label, selected, onToggle, tbd, onTbdToggle }: { label: str
   return (
     <View style={{ gap: 6 }}>
       <FormLabel text={label} required />
-      <CheckRow label="TBD (to be decided)" value={tbd} onToggle={onTbdToggle} />
+      <CheckRow label="Any Day & Time" value={tbd} onToggle={onTbdToggle} />
       <View style={[localStyles.dayRow, tbd && { opacity: 0.35 }]}>
         {DAYS.map((d) => (
           <Pressable
@@ -222,7 +222,7 @@ function MyAdvertDetail({
 
   const trainingSchedule = (() => {
     if (!advert.trainingDays?.length && !advert.trainingTbd) return null;
-    if (advert.trainingTbd) return "TBD";
+    if (advert.trainingTbd) return "Any Day & Time";
     const days = (advert.trainingDays ?? []).join(", ");
     const times = [advert.trainingTimeFrom, advert.trainingTimeTo].filter(Boolean).join(" – ");
     return [days, times].filter(Boolean).join("  |  ");
@@ -230,7 +230,7 @@ function MyAdvertDetail({
 
   const gameSchedule = (() => {
     if (!advert.gameDays?.length && !advert.gameTbd) return null;
-    if (advert.gameTbd) return "TBD";
+    if (advert.gameTbd) return "Any Day & Time";
     const days = (advert.gameDays ?? []).join(", ");
     const times = [advert.gameTimeFrom, advert.gameTimeTo].filter(Boolean).join(" – ");
     return [days, times].filter(Boolean).join("  |  ");
@@ -706,8 +706,8 @@ export default function PostScreen() {
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
   if (state.trim().length <= 1) validationErrors.push("State is missing — add it to your profile");
   if (!isTechnicalDirector && !isCoachLooking && !isCoachWanted && ageGroup === null) validationErrors.push("Age Group must be selected");
-  if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick TBD)");
-  if (showSchedule && !gameDaysOk) validationErrors.push("Game days must be selected (or tick TBD)");
+  if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick Any Day & Time)");
+  if (showSchedule && !gameDaysOk) validationErrors.push("Game days must be selected (or tick Any Day & Time)");
   if (isClubTrials && trialSlots[0].date.trim().length === 0) validationErrors.push("At least one trial date is required");
   if (isClubTrials && hasTrialSlotErrors) validationErrors.push("Trial dates must be in chronological order with no duplicates");
   if (isCoachWanted && !coachRole) validationErrors.push("Club role must be selected");
@@ -864,8 +864,8 @@ export default function PostScreen() {
       location: state ? `${suburb.trim()} ${state}` : suburb.trim(),
       level,
       availability: isClubTrials
-        ? trialSlots.filter((s) => s.date.trim()).map((s) => s.date).join(", ") || "TBD"
-        : trainingTbd && gameTbd ? "TBD" : [trainingDays.join("/") || "TBD", gameDays.join("/") || "TBD"].join(" | "),
+        ? trialSlots.filter((s) => s.date.trim()).map((s) => s.date).join(", ") || "Any Day & Time"
+        : trainingTbd && gameTbd ? "Any Day & Time" : [trainingDays.join("/") || "Any Day & Time", gameDays.join("/") || "Any Day & Time"].join(" | "),
       description,
       needs: isPlayersWanted ? "Players wanted" : isClubTrials ? "Club trials" : isCoachWanted ? "Coach wanted" : "Player looking",
       ageGroup: ageGroup?.label,
@@ -1346,9 +1346,9 @@ export default function PostScreen() {
 
           {showSchedule && (
             <>
-              <DayPicker label="Training Days" selected={trainingDays} onToggle={(d) => setTrainingDays(toggleDay(trainingDays, d))} tbd={trainingTbd} onTbdToggle={() => setTrainingTbd(!trainingTbd)} />
+              <DayPicker label={isPlayerLooking ? "Training Days I can be available" : "Training Days"} selected={trainingDays} onToggle={(d) => setTrainingDays(toggleDay(trainingDays, d))} tbd={trainingTbd} onTbdToggle={() => setTrainingTbd(!trainingTbd)} />
               <TimeRow label="Training Time" from={trainingFrom} to={trainingTo} onFromChange={setTrainingFrom} onToChange={setTrainingTo} disabled={trainingTbd} />
-              <DayPicker label="Game Days" selected={gameDays} onToggle={(d) => setGameDays(toggleDay(gameDays, d))} tbd={gameTbd} onTbdToggle={() => setGameTbd(!gameTbd)} />
+              <DayPicker label={isPlayerLooking ? "Game Days I can be available" : "Game Days"} selected={gameDays} onToggle={(d) => setGameDays(toggleDay(gameDays, d))} tbd={gameTbd} onTbdToggle={() => setGameTbd(!gameTbd)} />
               <TimeRow label="Game Time" from={gameFrom} to={gameTo} onFromChange={setGameFrom} onToChange={setGameTo} disabled={gameTbd} />
             </>
           )}
