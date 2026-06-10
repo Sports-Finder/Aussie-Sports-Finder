@@ -1539,6 +1539,14 @@ export default function PostScreen() {
   );
 }
 
+const subtleShadow = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 6,
+  elevation: 3,
+};
+
 const localStyles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 18 },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -1548,14 +1556,14 @@ const localStyles = StyleSheet.create({
   roleBadgeText: { fontWeight: "700", fontSize: 13, textTransform: "capitalize" },
   subBanner: { flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 11 },
   subBannerText: { fontWeight: "700", fontSize: 13, flex: 1 },
-  sportHeader: { borderWidth: 1, borderRadius: 22, padding: 14, gap: 4 },
+  sportHeader: { ...subtleShadow, borderWidth: 1, borderRadius: 22, padding: 14, gap: 4 },
   sportHeaderKicker: { fontWeight: "800", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.8 },
   sportHeaderTitle: { fontWeight: "800", fontSize: 22, letterSpacing: -0.5 },
   editingBanner: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 18, padding: 14 },
   editingBannerText: { fontWeight: "700", fontSize: 13, flex: 1 },
   coachTip: { flexDirection: "row", alignItems: "flex-start", gap: 8, borderWidth: 1, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 10 },
   coachTipText: { fontSize: 13, fontWeight: "500", flex: 1, lineHeight: 18 },
-  formCard: { borderWidth: 1, borderRadius: 28, padding: 18, gap: 4 },
+  formCard: { ...subtleShadow, borderWidth: 1, borderRadius: 28, padding: 18, gap: 4 },
   formTitle: { fontWeight: "800", fontSize: 18, marginBottom: 4 },
   formLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   formHint: { fontWeight: "500", fontSize: 12, marginBottom: 6 },
@@ -1579,15 +1587,15 @@ const localStyles = StyleSheet.create({
   timeInput: { borderWidth: 1, borderRadius: 12, minHeight: 44, paddingHorizontal: 12, fontWeight: "600", fontSize: 14 },
   addSlotButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 14, padding: 12 },
   addSlotText: { fontWeight: "700", fontSize: 14 },
-  titlePreviewCard: { borderWidth: 1, borderRadius: 16, padding: 14, marginTop: 8, marginBottom: 4, gap: 4 },
+  titlePreviewCard: { ...subtleShadow, borderWidth: 1, borderRadius: 16, padding: 14, marginTop: 8, marginBottom: 4, gap: 4 },
   titlePreviewLabel: { fontWeight: "600", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   titlePreviewText: { fontWeight: "700", fontSize: 15, lineHeight: 22 },
   titlePreviewHint: { fontWeight: "400", fontSize: 12, marginTop: 4, fontStyle: "italic" },
-  successBox: { borderWidth: 1, borderRadius: 24, padding: 20, alignItems: "center", gap: 8 },
+  successBox: { ...subtleShadow, borderWidth: 1, borderRadius: 24, padding: 20, alignItems: "center", gap: 8 },
   successTitle: { fontWeight: "800", fontSize: 18 },
   successText: { fontWeight: "500", fontSize: 14, lineHeight: 21, textAlign: "center" },
-  errorBox: { borderWidth: 1, borderRadius: 18, padding: 14, gap: 8 },
-  myCard: { borderWidth: 1, borderRadius: 26, padding: 14, marginBottom: 12 },
+  errorBox: { ...subtleShadow, borderWidth: 1, borderRadius: 18, padding: 14, gap: 8 },
+  myCard: { ...subtleShadow, borderWidth: 1, borderRadius: 26, padding: 14, marginBottom: 12 },
   expiryRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, alignSelf: "flex-start", marginBottom: 8 },
   expiryText: { fontWeight: "700", fontSize: 11 },
   cardTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
@@ -1628,7 +1636,7 @@ const localStyles = StyleSheet.create({
   dupBannerTitle: { fontWeight: "800", fontSize: 14, marginBottom: 2 },
   dupBannerText: { fontWeight: "500", fontSize: 13, lineHeight: 19 },
   dupBannerAction: { marginTop: 6 },
-  simWarnCard: { margin: 24, borderRadius: 28, padding: 24 },
+  simWarnCard: { ...subtleShadow, margin: 24, borderRadius: 28, padding: 24 },
   simWarnPrimary: { borderRadius: 16, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
   simWarnSecondary: { borderRadius: 16, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
 });

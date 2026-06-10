@@ -760,12 +760,20 @@ export default function DiscoverScreen() {
   );
 }
 
+const subtleShadow = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 6,
+  elevation: 3,
+};
+
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, gap: 18 },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 14 },
   kicker: { fontWeight: "700", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 },
   title: { fontWeight: "700", fontSize: 34, lineHeight: 38, letterSpacing: -1, maxWidth: 290, marginTop: 4 },
-  statsBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderWidth: 1, borderRadius: 24, paddingVertical: 14, paddingHorizontal: 12, marginTop: 4 },
+  statsBar: { ...subtleShadow, flexDirection: "row", alignItems: "center", justifyContent: "space-around", borderWidth: 1, borderRadius: 24, paddingVertical: 14, paddingHorizontal: 12, marginTop: 4 },
   statItem: { alignItems: "center", gap: 2, flex: 1 },
   statValue: { fontWeight: "800", fontSize: 22, letterSpacing: -0.5 },
   statLabel: { fontWeight: "600", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 },
@@ -776,7 +784,7 @@ const styles = StyleSheet.create({
   heroContent: { padding: 20 },
   heroTitle: { color: "#FFFFFF", fontWeight: "700", fontSize: 24, letterSpacing: -0.3 },
   heroText: { color: "#E7F4EF", fontWeight: "500", fontSize: 14, lineHeight: 20, marginTop: 6, maxWidth: 300 },
-  sportPanel: { borderWidth: 1, borderRadius: 28, padding: 16, gap: 12 },
+  sportPanel: { ...subtleShadow, borderWidth: 1, borderRadius: 28, padding: 16, gap: 12 },
   sportPanelHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   sportKicker: { fontWeight: "800", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.8 },
   sportTitle: { fontWeight: "800", fontSize: 23, letterSpacing: -0.5, marginTop: 2 },
@@ -788,7 +796,7 @@ const styles = StyleSheet.create({
   addSportRow: { flexDirection: "row", gap: 8 },
   addSportInput: { flex: 1, borderWidth: 1, borderRadius: 16, minHeight: 46, paddingHorizontal: 14, fontWeight: "600", fontSize: 14 },
   addSportButton: { width: 48, height: 46, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  alertCard: { borderRadius: 26, padding: 18, flexDirection: "row", alignItems: "center", gap: 14 },
+  alertCard: { ...subtleShadow, borderRadius: 26, padding: 18, flexDirection: "row", alignItems: "center", gap: 14 },
   alertTextWrap: { flex: 1 },
   alertTitle: { color: "#FFFFFF", fontWeight: "700", fontSize: 17 },
   alertText: { color: "#BFD4CD", fontWeight: "500", fontSize: 13, lineHeight: 19, marginTop: 4 },
@@ -798,7 +806,7 @@ const styles = StyleSheet.create({
   stateLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7 },
   stateScroll: { paddingRight: 20 },
   goldBadge: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#FEF9C3", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#FDE68A" },
-  adCard: { borderWidth: 1, borderRadius: 26, padding: 14, marginBottom: 12, flexDirection: "row", gap: 13 },
+  adCard: { ...subtleShadow, borderWidth: 1, borderRadius: 26, padding: 14, marginBottom: 12, flexDirection: "row", gap: 13 },
   adIcon: { width: 48, height: 48, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   adBody: { flex: 1 },
   adMetaRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
@@ -828,16 +836,16 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   tagText: { fontWeight: "600", fontSize: 12 },
-  connectedBadge: { flexDirection: "row", alignItems: "center", gap: 10, padding: 16, borderRadius: 18 },
+  connectedBadge: { ...subtleShadow, flexDirection: "row", alignItems: "center", gap: 10, padding: 16, borderRadius: 18 },
   pendingCountText: { fontWeight: "700", fontSize: 14, marginBottom: 8 },
-  pendingRequestCard: { borderRadius: 18, borderWidth: 1.5, padding: 16, gap: 14 },
+  pendingRequestCard: { ...subtleShadow, borderRadius: 18, borderWidth: 1.5, padding: 16, gap: 14 },
   pendingRequestText: { fontWeight: "600", fontSize: 14, lineHeight: 20 },
   acceptDenyRow: { flexDirection: "row", gap: 12 },
   acceptBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#22C55E", borderRadius: 14, paddingVertical: 12 },
   denyBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#EF4444", borderRadius: 14, paddingVertical: 12 },
   acceptDenyBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
   connectedText: { fontWeight: "600", fontSize: 14, flex: 1 },
-  emptyState: { borderWidth: 1, borderRadius: 24, padding: 22, alignItems: "center", gap: 8 },
+  emptyState: { ...subtleShadow, borderWidth: 1, borderRadius: 24, padding: 22, alignItems: "center", gap: 8 },
   emptyTitle: { fontWeight: "800", fontSize: 17 },
   emptyText: { fontWeight: "500", fontSize: 14, lineHeight: 20, textAlign: "center" },
 });

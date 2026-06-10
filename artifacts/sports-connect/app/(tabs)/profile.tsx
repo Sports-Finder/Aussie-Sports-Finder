@@ -977,6 +977,14 @@ export default function ProfileScreen() {
   );
 }
 
+const subtleShadow = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 6,
+  elevation: 3,
+};
+
 const styles = StyleSheet.create({
   shell: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 18 },
@@ -984,7 +992,7 @@ const styles = StyleSheet.create({
   subPriceRow: { flexDirection: "row", alignItems: "center" },
   kicker: { fontWeight: "700", fontSize: 13, textTransform: "uppercase", letterSpacing: 1 },
   title: { fontWeight: "800", fontSize: 32, letterSpacing: -0.8, marginTop: 4 },
-  card: { borderWidth: 1, borderRadius: 28, padding: 18, gap: 14 },
+  card: { ...subtleShadow, borderWidth: 1, borderRadius: 28, padding: 18, gap: 14 },
   accountTop: { flexDirection: "row", gap: 14, alignItems: "center" },
   accountIcon: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   accountCopy: { flex: 1 },
@@ -1008,7 +1016,7 @@ const styles = StyleSheet.create({
   dobButton: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 4 },
   dobValue: { fontWeight: "600", fontSize: 15 },
   modalScrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 24 },
-  modalCard: { width: "100%", borderRadius: 24, borderWidth: 1, padding: 22, gap: 14 },
+  modalCard: { ...subtleShadow, width: "100%", borderRadius: 24, borderWidth: 1, padding: 22, gap: 14 },
   input: { borderWidth: 1, borderRadius: 14, minHeight: 46, paddingHorizontal: 14, fontWeight: "600", fontSize: 15 },
   modalActions: { flexDirection: "row", gap: 10 },
   modalButton: { flex: 1, minHeight: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },

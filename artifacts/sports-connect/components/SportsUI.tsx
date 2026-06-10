@@ -90,6 +90,14 @@ export function EmptyState({ icon, title, text }: { icon: keyof typeof Feather.g
   );
 }
 
+const subtleShadow = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 6,
+  elevation: 3,
+};
+
 const styles = StyleSheet.create({
   shell: { flex: 1 },
   sectionTitle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
@@ -106,7 +114,7 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 96, paddingTop: 14, textAlignVertical: "top" },
   avatar: { overflow: "hidden", borderWidth: 1 },
   avatarOverlay: { position: "absolute", top: 0, left: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
-  empty: { borderWidth: 1, borderRadius: 24, padding: 24, alignItems: "center", gap: 8 },
+  empty: { ...subtleShadow, borderWidth: 1, borderRadius: 24, padding: 24, alignItems: "center", gap: 8 },
   emptyTitle: { fontWeight: "700", fontSize: 17, marginTop: 4 },
   emptyText: { fontWeight: "400", fontSize: 14, lineHeight: 20, textAlign: "center" },
 });

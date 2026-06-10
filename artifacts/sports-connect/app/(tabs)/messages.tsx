@@ -826,6 +826,14 @@ export default function MessagesScreen() {
   );
 }
 
+const subtleShadow = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 6,
+  elevation: 3,
+};
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingHorizontal: 20, gap: 20 },
@@ -960,7 +968,7 @@ const styles = StyleSheet.create({
 const participantStyles = StyleSheet.create({
   strip: { borderBottomWidth: 1, flexGrow: 0 },
   stripContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 10, alignItems: "center" },
-  tile: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
+  tile: { ...subtleShadow, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
   tileText: { gap: 2, maxWidth: 120 },
   iconCircle: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   name: { fontWeight: "600", fontSize: 12 },
@@ -980,9 +988,9 @@ const profileStyles = StyleSheet.create({
   displayName: { fontWeight: "700", fontSize: 20, textAlign: "center", letterSpacing: -0.3 },
   rolePill: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
   roleText: { fontWeight: "600", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
-  row: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 14, borderWidth: 1 },
+  row: { ...subtleShadow, flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 14, borderWidth: 1 },
   rowText: { fontWeight: "500", fontSize: 14, flex: 1 },
-  bioBox: { padding: 14, borderRadius: 14 },
+  bioBox: { ...subtleShadow, padding: 14, borderRadius: 14 },
   bioText: { fontWeight: "400", fontSize: 14, lineHeight: 21, fontStyle: "italic" },
   premiumBadge: { position: "absolute", bottom: -2, right: -4, backgroundColor: "#FFF", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#E5E7EB" },
   enlargedWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
