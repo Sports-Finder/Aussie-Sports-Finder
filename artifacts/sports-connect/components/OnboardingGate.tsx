@@ -93,15 +93,15 @@ function OAuthButtons({ bannedEmails, colors }: OAuthButtonsProps) {
         <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
       </View>
 
-      <Pressable onPress={() => handleOAuth("oauth_google")} style={({ pressed }) => [styles.oauthBtn, { opacity: pressed ? 0.7 : 1, overflow: "hidden" }]}>
-        <LinearGradient colors={[colors.secondary, lighten(colors.secondary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.oauthBtn, { flex: 1 }]}>
+      <Pressable onPress={() => handleOAuth("oauth_google")} style={({ pressed }) => [styles.oauthBtn, { opacity: pressed ? 0.7 : 1 }]}>
+        <LinearGradient colors={[colors.secondary, lighten(colors.secondary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.oauthBtn}>
           <Text style={[styles.oauthBtnText, { color: colors.secondaryForeground }]}>Continue with Google</Text>
         </LinearGradient>
       </Pressable>
 
       {Platform.OS === "ios" && (
-        <Pressable onPress={() => handleOAuth("oauth_apple")} style={({ pressed }) => [styles.oauthBtn, { opacity: pressed ? 0.7 : 1, overflow: "hidden" }]}>
-          <LinearGradient colors={["#000000", lighten("#000000", 0.2)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.oauthBtn, { flex: 1 }]}>
+        <Pressable onPress={() => handleOAuth("oauth_apple")} style={({ pressed }) => [styles.oauthBtn, { opacity: pressed ? 0.7 : 1 }]}>
+          <LinearGradient colors={["#000000", lighten("#000000", 0.2)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.oauthBtn}>
             <Text style={[styles.oauthBtnText, { color: "#fff" }]}>Continue with Apple</Text>
           </LinearGradient>
         </Pressable>
@@ -329,9 +329,9 @@ export function OnboardingGate() {
               <Pressable
                 onPress={handleSignIn}
                 disabled={!email || !password || siFetching === "fetching"}
-                style={({ pressed }) => [styles.primaryBtn, { opacity: (!email || !password || siFetching === "fetching" || pressed) ? 0.65 : 1, overflow: "hidden" }]}
+                style={({ pressed }) => [styles.primaryBtn, { opacity: (!email || !password || siFetching === "fetching" || pressed) ? 0.65 : 1 }]}
               >
-                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.primaryBtn, { flex: 1 }]}>
+                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
                   <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Sign in</Text>
                 </LinearGradient>
               </Pressable>
@@ -370,9 +370,9 @@ export function OnboardingGate() {
               <Pressable
                 onPress={handleForgotPassword}
                 disabled={!email || siFetching === "fetching"}
-                style={({ pressed }) => [styles.primaryBtn, { opacity: (!email || siFetching === "fetching" || pressed) ? 0.65 : 1, overflow: "hidden" }]}
+                style={({ pressed }) => [styles.primaryBtn, { opacity: (!email || siFetching === "fetching" || pressed) ? 0.65 : 1 }]}
               >
-                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.primaryBtn, { flex: 1 }]}>
+                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
                   <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Send reset code</Text>
                 </LinearGradient>
               </Pressable>
@@ -441,9 +441,9 @@ export function OnboardingGate() {
               <Pressable
                 onPress={handleResetPassword}
                 disabled={!code || !newPassword || !confirmPassword || siFetching === "fetching"}
-                style={({ pressed }) => [styles.primaryBtn, { opacity: (!code || !newPassword || !confirmPassword || siFetching === "fetching" || pressed) ? 0.65 : 1, overflow: "hidden" }]}
+                style={({ pressed }) => [styles.primaryBtn, { opacity: (!code || !newPassword || !confirmPassword || siFetching === "fetching" || pressed) ? 0.65 : 1 }]}
               >
-                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.primaryBtn, { flex: 1 }]}>
+                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
                   <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Reset password</Text>
                 </LinearGradient>
               </Pressable>
@@ -478,9 +478,9 @@ export function OnboardingGate() {
               <Pressable
                 onPress={handleVerifyMFA}
                 disabled={!code || siFetching === "fetching"}
-                style={({ pressed }) => [styles.primaryBtn, { opacity: (!code || siFetching === "fetching" || pressed) ? 0.65 : 1, overflow: "hidden" }]}
+                style={({ pressed }) => [styles.primaryBtn, { opacity: (!code || siFetching === "fetching" || pressed) ? 0.65 : 1 }]}
               >
-                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.primaryBtn, { flex: 1 }]}>
+                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
                   <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Verify</Text>
                 </LinearGradient>
               </Pressable>
@@ -535,9 +535,9 @@ export function OnboardingGate() {
               <Pressable
                 onPress={handleSignUp}
                 disabled={!email || !password || suFetching === "fetching"}
-                style={({ pressed }) => [styles.primaryBtn, { opacity: (!email || !password || suFetching === "fetching" || pressed) ? 0.65 : 1, overflow: "hidden" }]}
+                style={({ pressed }) => [styles.primaryBtn, { opacity: (!email || !password || suFetching === "fetching" || pressed) ? 0.65 : 1 }]}
               >
-                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.primaryBtn, { flex: 1 }]}>
+                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
                   <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Create account</Text>
                 </LinearGradient>
               </Pressable>
@@ -571,9 +571,9 @@ export function OnboardingGate() {
               <Pressable
                 onPress={handleVerifyEmail}
                 disabled={!code || suFetching === "fetching"}
-                style={({ pressed }) => [styles.primaryBtn, { opacity: (!code || suFetching === "fetching" || pressed) ? 0.65 : 1, overflow: "hidden" }]}
+                style={({ pressed }) => [styles.primaryBtn, { opacity: (!code || suFetching === "fetching" || pressed) ? 0.65 : 1 }]}
               >
-                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.primaryBtn, { flex: 1 }]}>
+                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
                   <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Verify email</Text>
                 </LinearGradient>
               </Pressable>
@@ -671,13 +671,13 @@ const styles = StyleSheet.create({
   smallPrint: { fontWeight: "500", fontSize: 12, lineHeight: 18 },
   label: { fontWeight: "600", fontSize: 13 },
   input: { borderWidth: 1, borderRadius: 16, minHeight: 48, paddingHorizontal: 14, fontWeight: "600", fontSize: 15 },
-  primaryBtn: { minHeight: 50, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  primaryBtn: { minHeight: 50, borderRadius: 18, alignItems: "center", justifyContent: "center", overflow: "hidden", width: "100%" },
   primaryBtnText: { fontWeight: "700", fontSize: 16 },
   btnDisabled: { opacity: 0.65 },
   divider: { flexDirection: "row", alignItems: "center", gap: 10 },
   dividerLine: { flex: 1, height: 1 },
   dividerText: { fontWeight: "600", fontSize: 13 },
-  oauthBtn: { minHeight: 50, borderRadius: 18, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  oauthBtn: { minHeight: 50, borderRadius: 18, alignItems: "center", justifyContent: "center", overflow: "hidden", width: "100%" },
   oauthBtnText: { fontWeight: "700", fontSize: 15 },
   linkBtn: { alignItems: "center", paddingVertical: 2 },
   linkBtnText: { fontWeight: "600", fontSize: 13, textDecorationLine: "underline" },
