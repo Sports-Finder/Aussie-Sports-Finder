@@ -100,7 +100,7 @@ router.put("/accounts/:publicId", async (req, res) => {
       res.status(404).json({ error: "Account not found" });
       return;
     }
-    res.json(mapAccountAdmin(updated as unknown as Record<string, unknown>));
+    res.json(mapAccount(updated as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to update account");
     res.status(500).json({ error: "Failed to update account" });

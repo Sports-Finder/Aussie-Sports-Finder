@@ -209,14 +209,15 @@ export function AccountSetupGate() {
     setForm((current) => ({ ...current, [key]: value }));
 
   const selectRole = (selected: AccountRole) => {
-    // If the user already entered a DOB and is under 18, block "player" and "coach" roles.
+    // If the user already entered a DOB and is under 18, block "player" and "coach" roles
+    // and force them into the Parent/Guardian flow.
     if (selected === "player" || selected === "coach") {
       const dobAge = calculateAge(form.dateOfBirth);
       if (dobAge && Number(dobAge) < 18) {
         Alert.alert(
           "Age requirement",
           `You must be 18 or older to create a ${selected === "player" ? "Player" : "Coach"} account. Please select Parent/Guardian instead.`,
-          [{ text: "OK", onPress: () => setRole("guardian") }],
+          [{ text: "OK", onPress: () => { setRole("guardian"); setStep("details"); } }],
         );
         return;
       }
