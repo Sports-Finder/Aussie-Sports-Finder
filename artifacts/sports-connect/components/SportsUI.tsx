@@ -45,7 +45,7 @@ export function PrimaryButton({ label, icon, onPress, onPressWhenDisabled, disab
 export function IconButton({ icon, onPress, label }: { icon: keyof typeof Feather.glyphMap; onPress: () => void; label: string }) {
   const colors = useColors();
   return (
-    <Pressable accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}>
+    <Pressable accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.iconButton, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.7 : 1 }]}>
       <Feather name={icon} color={colors.foreground} size={20} />
     </Pressable>
   );
@@ -59,7 +59,7 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
       <TextInput
         placeholderTextColor={colors.mutedForeground}
         {...props}
-        style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }, props.multiline ? styles.multiline : null, props.style]}
+        style={[styles.input, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }, props.multiline ? styles.multiline : null, props.style]}
       />
     </View>
   );
@@ -68,7 +68,7 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
 export function ProfileAvatar({ uri, fallback, size = 64, pending }: { uri?: string; fallback: ImageSourcePropType | ImageSource; size?: number; pending?: boolean }) {
   const colors = useColors();
   return (
-    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.pitchSoft, borderColor: colors.border }]}>
+    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: colors.pitchSoft, borderColor: colors.foreground, borderWidth: 2 }]}>
       <Image source={uri ? { uri } : fallback} style={{ width: "100%", height: "100%" }} contentFit="cover" />
       {pending ? (
         <View style={[styles.avatarOverlay, { width: size, height: size, borderRadius: size / 2 }]}>
@@ -82,7 +82,7 @@ export function ProfileAvatar({ uri, fallback, size = 64, pending }: { uri?: str
 export function EmptyState({ icon, title, text }: { icon: keyof typeof Feather.glyphMap; title: string; text: string }) {
   const colors = useColors();
   return (
-    <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View style={[styles.empty, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
       <Feather name={icon} size={28} color={colors.primary} />
       <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{title}</Text>
       <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>{text}</Text>

@@ -170,7 +170,7 @@ type ProfileRowColors = { muted: string; border: string; foreground: string; pri
 
 function ProfileRow({ icon, label, tappable, colors }: { icon: keyof typeof Feather.glyphMap; label: string; tappable?: boolean; colors: ProfileRowColors }) {
   return (
-    <View style={[profileStyles.row, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+    <View style={[profileStyles.row, { backgroundColor: colors.muted, borderColor: colors.foreground, borderWidth: 2 }]}>
       <Feather name={icon} size={14} color={tappable ? colors.primary : colors.mutedForeground} />
       <Text style={[profileStyles.rowText, { color: tappable ? colors.primary : colors.foreground }]} numberOfLines={2}>{label}</Text>
     </View>
@@ -404,7 +404,7 @@ function ConnectedParticipantStrip({
         const icon = isClub ? "shield" : isCoach ? "award" : "user";
         const iconColor = isClub ? "#16A34A" : isCoach ? "#7C3AED" : "#2563EB";
         return (
-          <View key={account.id} style={[participantStyles.tile, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View key={account.id} style={[participantStyles.tile, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={[participantStyles.iconCircle, { backgroundColor: iconColor + "22" }]}>
               <Feather name={icon as any} size={16} color={iconColor} />
             </View>

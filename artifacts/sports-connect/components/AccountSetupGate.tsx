@@ -349,7 +349,7 @@ export function AccountSetupGate() {
 
         {/* ── Role selection step ── */}
         {step === "type" && (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Create an account</Text>
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
               Signed in as {email}
@@ -376,7 +376,7 @@ export function AccountSetupGate() {
 
         {/* ── Profile details step ── */}
         {step === "details" && (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <Pressable
               onPress={() => setStep("type")}
               style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.75 : 1 }]}
@@ -493,7 +493,7 @@ export function AccountSetupGate() {
                   onPress={() => { setDraftDob(form.dateOfBirth); setShowDobPicker(true); }}
                   style={({ pressed }) => [
                     styles.dobButton,
-                    { backgroundColor: colors.background, borderColor: colors.border, opacity: pressed ? 0.78 : 1 },
+                    { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 },
                   ]}
                 >
                   <Text style={[styles.label, { color: colors.mutedForeground }]}>
@@ -506,7 +506,7 @@ export function AccountSetupGate() {
 
                 <Modal transparent visible={showDobPicker} animationType="fade" onRequestClose={() => setShowDobPicker(false)}>
                   <View style={styles.modalScrim}>
-                    <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
                       <Text style={[styles.cardTitle, { color: colors.foreground }]}>Choose date of birth</Text>
                       <TextInput
                         value={draftDob}
@@ -514,7 +514,7 @@ export function AccountSetupGate() {
                         placeholder="DD-MM-YYYY"
                         placeholderTextColor={colors.mutedForeground}
                         keyboardType="number-pad"
-                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                        style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                       />
                       <View style={styles.modalActions}>
                         <Pressable
@@ -550,7 +550,7 @@ export function AccountSetupGate() {
                   <Text style={[styles.label, { color: colors.mutedForeground }]}>
                     {role === "guardian" ? "Parent/Guardian Email Address" : "Email Address"}
                   </Text>
-                  <View style={[styles.input, styles.readonlyInput, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                  <View style={[styles.input, styles.readonlyInput, { backgroundColor: colors.secondary, borderColor: colors.foreground, borderWidth: 2 }]}>
                     <Text style={{ color: colors.mutedForeground, fontWeight: "600", fontSize: 15 }}>{email}</Text>
                   </View>
                   <Text style={[styles.infoNote, { color: colors.mutedForeground }]}>This is your sign-in email from your account.</Text>
@@ -807,7 +807,7 @@ function Input({
   return (
     <View style={styles.inputWrap}>
       <Text style={[styles.label, { color: colors.mutedForeground }]}>{label}</Text>
-      <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: secureTextEntry ? 8 : undefined }]}>
+      <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: secureTextEntry ? 8 : undefined }]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}

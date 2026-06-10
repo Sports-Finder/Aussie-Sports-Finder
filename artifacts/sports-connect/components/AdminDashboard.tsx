@@ -284,7 +284,7 @@ function StatCard({ label, value, icon, color, onPress }: { label: string; value
       disabled={!onPress}
       style={({ pressed }) => [
         styles.statCard,
-        { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
+        { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.85 : 1 },
       ]}
     >
       <View style={[styles.statIcon, { backgroundColor: color + "22" }]}>
@@ -1421,7 +1421,7 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
         const uri = getImageUri(img.id, true);
         const account = accounts.find((a) => a.profileImageId === img.id);
         return (
-          <View key={img.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View key={img.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={styles.itemHeader}>
               <Pressable onPress={() => { if (account) Alert.alert(account.role === "club" ? account.clubName || "Club" : account.fullName || account.playerName || "Player", `Role: ${account.role}\nEmail: ${account.email}\nStatus: ${account.status}`); }} style={{ flex: 1 }}>
                 <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
@@ -1465,7 +1465,7 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
       ) : pendingHighlights.map((link) => {
         const account = accounts.find((a) => a.highlightReelUrl === link.url);
         return (
-        <View key={link.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View key={link.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
           <View style={styles.itemHeader}>
             <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
               {account ? `${account.role === "club" ? account.clubName || "Club" : account.fullName || account.playerName || "Player"} (${account.role === "club" ? "Club" : account.role === "guardian" ? "Parent/Guardian" : account.role === "coach" ? "Coach" : account.role === "player" ? "Player" : account.role})` : link.owner}
@@ -1494,7 +1494,7 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
       {approveSports && (pendingSports.length === 0 ? (
         <EmptyState icon="plus-circle" title="No sport requests" text="New sport suggestions will appear here for review." />
       ) : pendingSports.map((req) => (
-        <View key={req.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View key={req.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
           <View style={styles.itemHeader}>
             <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{req.name}</Text>
             <View style={[styles.badge, { backgroundColor: "#FEF3C7" }]}>
@@ -1766,7 +1766,7 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
       ) : sportsRegistry.map((sport) => {
         const isBuiltIn = BUILT_IN_SPORT_NAMES.has(sport.name.toLowerCase());
         return (
-          <View key={sport.name} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View key={sport.name} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
               <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: sport.primary, marginRight: 10 }} />
               <Text style={[styles.itemTitle, { color: colors.foreground, flex: 1 }]}>{sport.name}</Text>
@@ -1799,7 +1799,7 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
           showsVerticalScrollIndicator={false}
         >
           <SectionTitle title={editingSport ? `Edit ${editingSport.name}` : "Add Sport"} />
-          <Field label="Sport Name" value={formName} onChangeText={setFormName} placeholder="e.g. Handball" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]} />
+          <Field label="Sport Name" value={formName} onChangeText={setFormName} placeholder="e.g. Handball" placeholderTextColor={colors.mutedForeground} style={[inputStyle, { color: colors.foreground, borderColor: colors.foreground, borderWidth: 2, backgroundColor: colors.card }]} />
           <ColorField label="Primary Colour" hex={formPrimary} onChange={setFormPrimary} />
           <ColorField label="Soft Colour" hex={formSoft} onChange={setFormSoft} />
           <ColorField label="Button Colour" hex={formButton} onChange={setFormButton} />
@@ -1807,7 +1807,7 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
           <ColorField label="Text Colour" hex={formText} onChange={setFormText} />
 
           <Text style={[styles.sectionHeader, { color: colors.foreground, marginTop: 8 }]}>Preview</Text>
-          <View style={{ borderRadius: 10, borderWidth: 1, borderColor: colors.border, overflow: "hidden", marginBottom: 8 }}>
+          <View style={{ borderRadius: 10, borderColor: colors.foreground, borderWidth: 2, overflow: "hidden", marginBottom: 8 }}>
             <View style={{ backgroundColor: formBackground, padding: 16, alignItems: "center" }}>
               <Text style={{ color: formText, fontSize: 15, fontWeight: "700", marginBottom: 6 }}>{formName.trim() || "Sport Preview"}</Text>
               <View style={{ width: "100%", borderRadius: 8, backgroundColor: "#FFFFFF", padding: 12, marginBottom: 10, borderWidth: 1, borderColor: formSoft }}>
@@ -1829,14 +1829,14 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
             placeholder="e.g. Goalkeeper, Defender, Midfielder"
             placeholderTextColor={colors.mutedForeground}
             multiline
-            style={[inputStyle, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card, minHeight: 80 }]}
+            style={[inputStyle, { color: colors.foreground, borderColor: colors.foreground, borderWidth: 2, backgroundColor: colors.card, minHeight: 80 }]}
           />
           <View style={[styles.actionRow, { marginTop: 8 }]}>
             <Pressable onPress={handleSave} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
               <Feather name={editingSport ? "save" : "plus"} size={15} color="#FFF" />
               <Text style={styles.actionBtnText}>{editingSport ? "Save Changes" : "Add Sport"}</Text>
             </Pressable>
-            <Pressable onPress={resetForm} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
+            <Pressable onPress={resetForm} style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.8 : 1 }]}>
               <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Cancel</Text>
             </Pressable>
           </View>
@@ -1893,18 +1893,18 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
   return (
     <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
       <SectionTitle title="Features" />
-      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
         <PermToggle label="Show member stats on Discover" value={showMemberStats} onToggle={toggleShowMemberStats} />
         <PermToggle label="Allow sport request field" value={showSportRequestField} onToggle={toggleShowSportRequestField} />
       </View>
 
       <SectionTitle title="Developer" />
-      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
         <PermToggle label="Bypass subscription checks (dev only — remove before launch)" value={devBypassSubscription} onToggle={toggleDevBypassSubscription} />
       </View>
 
       <SectionTitle title="Moderators" action={`${moderators.length}`} />
-      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
         {showAddMod ? (
           <>
             <Field label="Name" value={modName} onChangeText={setModName} />
@@ -1928,7 +1928,7 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
         )}
       </View>
       {moderators.map((mod) => (
-        <View key={mod.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View key={mod.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
           <View style={styles.itemHeader}>
             <Text style={[styles.itemTitle, { color: colors.foreground }]}>{mod.name}</Text>
             <View style={[styles.badge, { backgroundColor: "#EDE9FE" }]}>
@@ -1959,7 +1959,7 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
       {bannedEmails.length === 0 ? (
         <EmptyState icon="check-circle" title="No banned emails" text="Emails you ban from the Accounts section will appear here." />
       ) : bannedEmails.map((email) => (
-        <View key={email} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View key={email} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
           <View style={styles.itemHeader}>
             <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>{email}</Text>
             <View style={[styles.badge, { backgroundColor: "#FEE2E2" }]}>
@@ -1978,7 +1978,7 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
       ))}
 
       <SectionTitle title="Admin passcode" />
-      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
         {showPass ? (
           <>
             <Field label="Current passcode" value={current} onChangeText={setCurrent} secureTextEntry />
@@ -1994,7 +1994,7 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
       </View>
 
       <SectionTitle title="Danger zone" />
-      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
         <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Wipe all database data and clear local storage. This cannot be undone.</Text>
         <View style={styles.actionRow}>
           <ActionButton icon="trash-2" label="Wipe all data" color="#EF4444" onPress={() => {
@@ -2007,7 +2007,7 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
       </View>
 
       <SectionTitle title="Admin session" />
-      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
         <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Sign out of admin to return to standard app permissions.</Text>
         <View style={styles.actionRow}>
           <ActionButton icon="log-out" label="Sign out of admin" color="#EF4444" onPress={() => { adminSignOut(); onClose?.(); }} />
@@ -2063,7 +2063,7 @@ function ColorField({ label, hex, onChange }: { label: string; hex: string; onCh
   return (
     <View style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
-        <View style={{ width: 18, height: 18, borderRadius: 4, backgroundColor: valid ? hex : colors.border, marginRight: 8, borderWidth: 1, borderColor: colors.border }} />
+        <View style={{ width: 18, height: 18, borderRadius: 4, backgroundColor: valid ? hex : colors.border, marginRight: 8, borderColor: colors.foreground, borderWidth: 2 }} />
         <Text style={{ color: colors.foreground, fontWeight: "700", fontSize: 14 }}>{label}</Text>
       </View>
       <TextInput

@@ -106,7 +106,7 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
   const posterAccount = accounts.find((a) => a.id === advert.ownerAccountId);
   const posterIsSubscribed = posterAccount?.subscriptionStatus === "active";
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.adCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.adCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 }]}>
       <View style={[styles.adIcon, { backgroundColor: colors.pitchSoft }]}>
         <Feather name={icon} color={colors.primary} size={20} />
       </View>
@@ -652,7 +652,7 @@ export default function DiscoverScreen() {
           <IconButton icon="bell" label="Notifications" onPress={toggleNotifications} />
         </View>
 
-        <View style={[styles.sportPanel, { backgroundColor: activeTheme?.background ?? colors.card, borderColor: activeTheme?.soft ?? colors.border }]}>
+        <View style={[styles.sportPanel, { backgroundColor: activeTheme?.background ?? colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
           <View style={styles.sportPanelHeader}>
             <View>
               <Text style={[styles.sportKicker, { color: activeTheme?.primary ?? colors.primary }]}>Sports filter</Text>
@@ -683,7 +683,7 @@ export default function DiscoverScreen() {
         </View>
 
         {showMemberStats && (
-          <View style={[styles.statsBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.statsBar, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={styles.statItem}>
               <Text style={[styles.statValue, { color: colors.primary }]}>{accounts.filter((a) => a.role === "club").length}</Text>
               <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Clubs</Text>
@@ -709,7 +709,7 @@ export default function DiscoverScreen() {
           </View>
         </ImageBackground>
 
-        <View style={[styles.alertCard, { backgroundColor: colors.navy }]}>
+        <View style={[styles.alertCard, { backgroundColor: colors.navy, borderColor: colors.foreground, borderWidth: 2 }]}>
           <View style={styles.alertTextWrap}>
             <Text style={styles.alertTitle}>{notificationSettings.enabled ? "Nearby advert alerts are on" : "Turn on nearby advert alerts"}</Text>
             <Text style={styles.alertText}>{nearCount} adverts are within {notificationSettings.radiusKm} km of {notificationSettings.locationLabel}.</Text>
@@ -748,7 +748,7 @@ export default function DiscoverScreen() {
 
         <FlatList data={filtered} scrollEnabled={false} keyExtractor={(item) => item.id} renderItem={({ item }) => <AdvertCard advert={item} onPress={() => setSelected(item)} />} />
         {filtered.length === 0 ? (
-          <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <Feather name="search" color={activeTheme?.primary ?? colors.primary} size={24} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No adverts in this sport yet</Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Try another sport or post the first advert for this category.</Text>

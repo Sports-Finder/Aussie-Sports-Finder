@@ -369,7 +369,7 @@ export default function ProfileScreen() {
         </View>
 
         {currentAccount ? (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={styles.accountTop}>
               <View style={[styles.accountIcon, { backgroundColor: colors.pitchSoft }]}>
                 {isClub ? (
@@ -526,7 +526,7 @@ export default function ProfileScreen() {
         )}
 
         {isClub && currentAccount?.clubApprovalStatus === "approved" && (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={[styles.accountIcon, { backgroundColor: colors.pitchSoft }]}>
                 <MaterialCommunityIcons name="whistle" size={20} color={colors.primary} />
@@ -563,7 +563,7 @@ export default function ProfileScreen() {
         )}
 
         {mode === "view" ? (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={styles.profileTop}>
               <ProfileAvatar
                 uri={isClub ? clubImage : playerImage}
@@ -621,7 +621,7 @@ export default function ProfileScreen() {
             ) : null}
           </View>
         ) : isClub ? (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={styles.profileTop}>
               <ProfileAvatar uri={clubImage} fallback={fallbackImage} size={72} pending={clubImagePending} />
               <View style={styles.profileCopy}>
@@ -707,7 +707,7 @@ export default function ProfileScreen() {
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>Recommended 400 x 400 px. Minimum 200 x 200 px. Maximum file size 2 MB.</Text>
           </View>
         ) : (
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={styles.profileTop}>
               <ProfileAvatar uri={playerImage} fallback={fallbackImage} size={72} pending={playerImagePending} />
               <View style={styles.profileCopy}>
@@ -750,7 +750,7 @@ export default function ProfileScreen() {
 
             <Pressable
               onPress={() => { setDraftDob(currentAccount?.dateOfBirth ?? ""); setShowDobPicker(true); }}
-              style={({ pressed }) => [styles.dobButton, { backgroundColor: colors.background, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}
+              style={({ pressed }) => [styles.dobButton, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 }]}
             >
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
                 {isGuardian ? "Player date of birth (required)" : "Date of birth (required)"}
@@ -764,7 +764,7 @@ export default function ProfileScreen() {
 
             <Modal transparent visible={showDobPicker} animationType="fade" onRequestClose={() => setShowDobPicker(false)}>
               <View style={styles.modalScrim}>
-                <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
                   <Text style={[styles.cardTitle, { color: colors.foreground }]}>Choose date of birth</Text>
                   <TextInput
                     value={draftDob}
@@ -772,7 +772,7 @@ export default function ProfileScreen() {
                     placeholder="DD-MM-YYYY"
                     placeholderTextColor={colors.mutedForeground}
                     keyboardType="number-pad"
-                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                    style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                   />
                   <View style={styles.modalActions}>
                     <Pressable onPress={() => setShowDobPicker(false)} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>

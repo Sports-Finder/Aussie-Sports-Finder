@@ -42,7 +42,7 @@ function CoachAffiliateRow({
       onPress={onTap}
       style={({ pressed }) => [
         styles.row,
-        { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
+        { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.85 : 1 },
       ]}
     >
       <ProfileAvatar uri={uri} fallback={fallback} size={48} />
@@ -120,7 +120,7 @@ function CoachSearchPopup({
           onChangeText={setQuery}
           placeholder="Search by name..."
           placeholderTextColor={colors.mutedForeground}
-          style={[styles.searchInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+          style={[styles.searchInput, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
         />
         <ScrollView contentContainerStyle={[styles.popupList, { paddingBottom: insets.bottom + 20 }]}>
           {coaches.length === 0 ? (
@@ -135,7 +135,7 @@ function CoachSearchPopup({
                 ? `Available after ${new Date(new Date(existing.rejectedAt).getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}`
                 : "";
               return (
-                <View key={coach.id} style={[styles.searchRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View key={coach.id} style={[styles.searchRow, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
                   <ProfileAvatar uri={coachAvatarUri(coach, getImageUri)} fallback={getDefaultAvatar("coach", coach.gender)} size={44} />
                   <View style={styles.searchRowCopy}>
                     <Text style={[styles.searchName, { color: colors.foreground }]}>{coachName(coach)}</Text>
@@ -194,7 +194,7 @@ function CoachProfilePopup({
             <ProfileAvatar uri={uri} fallback={fallback} size={96} />
             <Text style={[styles.rowName, { color: colors.foreground, fontSize: 22 }]}>{coachName(coach)}</Text>
           </View>
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             {[
               { label: "Full name", value: coach.fullName ?? "" },
               { label: "Gender", value: coach.gender ?? "" },
@@ -315,7 +315,7 @@ export default function CoachAffiliatesPage({ onBack }: { onBack: () => void }) 
 
       <Modal visible={editingAffiliate !== null} transparent animationType="fade" onRequestClose={() => setEditingAffiliate(null)}>
         <View style={styles.modalScrim}>
-          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit team details</Text>
             <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Team name</Text>
             <TextInput
@@ -323,7 +323,7 @@ export default function CoachAffiliatesPage({ onBack }: { onBack: () => void }) 
               onChangeText={setEditTeamName}
               placeholder="e.g. Under-12s"
               placeholderTextColor={colors.mutedForeground}
-              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
             />
             <Text style={[styles.fieldLabel, { color: colors.mutedForeground, marginTop: 12 }]}>Age group</Text>
             <TextInput
@@ -331,7 +331,7 @@ export default function CoachAffiliatesPage({ onBack }: { onBack: () => void }) 
               onChangeText={setEditAgeGroup}
               placeholder="e.g. Ages 12-15"
               placeholderTextColor={colors.mutedForeground}
-              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
             />
             <View style={styles.modalActions}>
               <Pressable onPress={() => setEditingAffiliate(null)} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>

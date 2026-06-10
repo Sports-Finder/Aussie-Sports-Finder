@@ -87,7 +87,7 @@ function OAuthButtons({ bannedEmails, colors }: OAuthButtonsProps) {
       <Pressable
         style={({ pressed }) => [
           styles.oauthBtn,
-          { backgroundColor: colors.secondary, borderColor: colors.border },
+          { backgroundColor: colors.secondary, borderColor: colors.foreground, borderWidth: 2 },
           pressed && styles.btnDisabled,
         ]}
         onPress={() => handleOAuth("oauth_google")}
@@ -101,7 +101,7 @@ function OAuthButtons({ bannedEmails, colors }: OAuthButtonsProps) {
         <Pressable
           style={({ pressed }) => [
             styles.oauthBtn,
-            { backgroundColor: "#000", borderColor: colors.border },
+            { backgroundColor: "#000", borderColor: colors.foreground, borderWidth: 2 },
             pressed && styles.btnDisabled,
           ]}
           onPress={() => handleOAuth("oauth_apple")}
@@ -255,7 +255,7 @@ export function OnboardingGate() {
         </View>
 
         {/* Mode tabs */}
-        <View style={[styles.tabs, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+        <View style={[styles.tabs, { backgroundColor: colors.secondary, borderColor: colors.foreground, borderWidth: 2 }]}>
           <Pressable
             style={[styles.tab, (mode === "signin" || mode === "forgot" || mode === "reset") && { backgroundColor: colors.primary }]}
             onPress={() => switchMode("signin")}
@@ -285,14 +285,14 @@ export function OnboardingGate() {
         </View>
 
         {/* Auth card */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
 
           {/* ── Sign in ── */}
           {mode === "signin" && !needsMFAVerify && (
             <>
               <Text style={[styles.label, { color: colors.foreground }]}>Email</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                 value={email}
                 onChangeText={(v) => { setEmail(v); setBannedEmailError(false); }}
                 placeholder="your@email.com"
@@ -308,7 +308,7 @@ export function OnboardingGate() {
               ) : null}
 
               <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
-              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
+              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
                 <TextInput
                   style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 15, paddingHorizontal: 14, minHeight: 48 }}
                   value={password}
@@ -359,7 +359,7 @@ export function OnboardingGate() {
               </Text>
               <Text style={[styles.label, { color: colors.foreground }]}>Email</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                 value={email}
                 onChangeText={(v) => { setEmail(v); setBannedEmailError(false); }}
                 placeholder="your@email.com"
@@ -399,7 +399,7 @@ export function OnboardingGate() {
               </Text>
               <Text style={[styles.label, { color: colors.foreground }]}>Reset code</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                 value={code}
                 onChangeText={setCode}
                 placeholder="6-digit code"
@@ -411,7 +411,7 @@ export function OnboardingGate() {
                 <Text style={styles.error}>{siErrors.fields.code.message}</Text>
               ) : null}
               <Text style={[styles.label, { color: colors.foreground }]}>New password</Text>
-              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
+              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
                 <TextInput
                   style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 15, paddingHorizontal: 14, minHeight: 48 }}
                   value={newPassword}
@@ -429,7 +429,7 @@ export function OnboardingGate() {
                 <Text style={styles.error}>{siErrors.fields.password.message}</Text>
               ) : null}
               <Text style={[styles.label, { color: colors.foreground }]}>Confirm new password</Text>
-              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
+              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
                 <TextInput
                   style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 15, paddingHorizontal: 14, minHeight: 48 }}
                   value={confirmPassword}
@@ -476,7 +476,7 @@ export function OnboardingGate() {
                 We sent a verification code to your email.
               </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                 value={code}
                 onChangeText={setCode}
                 placeholder="6-digit code"
@@ -514,7 +514,7 @@ export function OnboardingGate() {
             <>
               <Text style={[styles.label, { color: colors.foreground }]}>Email</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                 value={email}
                 onChangeText={(v) => { setEmail(v); setBannedEmailError(false); }}
                 placeholder="your@email.com"
@@ -530,7 +530,7 @@ export function OnboardingGate() {
               ) : null}
 
               <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
-              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
+              <View style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, flexDirection: "row", alignItems: "center", paddingHorizontal: 0, paddingRight: 8 }]}>
                 <TextInput
                   style={{ flex: 1, color: colors.foreground, fontWeight: "600", fontSize: 15, paddingHorizontal: 14, minHeight: 48 }}
                   value={password}
@@ -577,7 +577,7 @@ export function OnboardingGate() {
                 We sent a 6-digit code to {email}. Enter it below to complete sign-up.
               </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                 value={code}
                 onChangeText={setCode}
                 placeholder="6-digit code"
@@ -630,7 +630,7 @@ export function OnboardingGate() {
         onRequestClose={() => setShowAdminModal(false)}
       >
         <View style={styles.modalScrim}>
-          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Admin login</Text>
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
               Enter your admin passcode to access moderation tools.
@@ -641,7 +641,7 @@ export function OnboardingGate() {
               placeholder="Admin passcode"
               placeholderTextColor={colors.mutedForeground}
               secureTextEntry
-              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
             />
             <View style={styles.modalActions}>
               <Pressable

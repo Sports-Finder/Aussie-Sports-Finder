@@ -163,7 +163,7 @@ export default function SubscriptionPaywall({
                   : "Stand out to clubs and get unlimited connections."}
               </Text>
 
-              <View style={[styles.featureList, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.featureList, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
                 {features.map((f) => (
                   <View key={f} style={styles.featureRow}>
                     <Feather name="check-circle" size={15} color="#16A34A" />
@@ -231,7 +231,7 @@ export default function SubscriptionPaywall({
       {/* Test-mode purchase confirmation modal */}
       <Modal visible={confirmVisible} transparent animationType="fade" onRequestClose={() => setConfirmVisible(false)}>
         <View style={styles.confirmScrim}>
-          <View style={[styles.confirmCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.confirmCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <Text style={[styles.confirmTitle, { color: colors.foreground }]}>Confirm Test Purchase</Text>
             <Text style={[styles.confirmBody, { color: colors.mutedForeground }]}>
               This is a test-store purchase for{" "}

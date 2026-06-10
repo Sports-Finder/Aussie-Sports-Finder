@@ -117,11 +117,11 @@ function TimeRow({ label, from, to, onFromChange, onToChange, disabled }: { labe
       <View style={localStyles.timeRowInner}>
         <View style={{ flex: 1 }}>
           <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>FROM</Text>
-          <TextInput editable={!disabled} value={from} onChangeText={onFromChange} placeholder="e.g. 6:00 PM" placeholderTextColor={colors.mutedForeground} style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]} />
+          <TextInput editable={!disabled} value={from} onChangeText={onFromChange} placeholder="e.g. 6:00 PM" placeholderTextColor={colors.mutedForeground} style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>TO</Text>
-          <TextInput editable={!disabled} value={to} onChangeText={onToChange} placeholder="e.g. 8:00 PM" placeholderTextColor={colors.mutedForeground} style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]} />
+          <TextInput editable={!disabled} value={to} onChangeText={onToChange} placeholder="e.g. 8:00 PM" placeholderTextColor={colors.mutedForeground} style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]} />
         </View>
       </View>
     </View>
@@ -158,7 +158,7 @@ function MyAdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert);
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [localStyles.myCard, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.78 : 1 }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [localStyles.myCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 }]}>
       {advert.possibleDuplicate ? (
         <View style={[localStyles.expiryRow, { backgroundColor: "#FFFBEB", marginBottom: 4 }]}>
           <Feather name="alert-triangle" size={12} color="#D97706" />
@@ -1081,7 +1081,7 @@ export default function PostScreen() {
         ) : null}
 
         {isCoach && !isAffiliatedCoach && (
-          <View style={[localStyles.coachTip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+          <View style={[localStyles.coachTip, { backgroundColor: colors.muted, borderColor: colors.foreground, borderWidth: 2 }]}>
             <Feather name="info" size={14} color={colors.mutedForeground} style={{ marginTop: 1 }} />
             <Text style={[localStyles.coachTipText, { color: colors.mutedForeground }]}>
               Already coaching at a club? Ask your club admin to send you an affiliation request from the Coach Affiliates section of their profile.
@@ -1353,7 +1353,7 @@ export default function PostScreen() {
                         onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeFrom: v } : s))}
                         placeholder="6:00 PM"
                         placeholderTextColor={colors.mutedForeground}
-                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                       />
                     </View>
                     <View style={{ flex: 1 }}>
@@ -1363,7 +1363,7 @@ export default function PostScreen() {
                         onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeTo: v } : s))}
                         placeholder="8:00 PM"
                         placeholderTextColor={colors.mutedForeground}
-                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
+                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                       />
                     </View>
                     {i > 0 ? (
