@@ -1075,7 +1075,7 @@ function AccountsSection() {
                     <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
                       {acc.coachSubRole ? coachSubRoleLabel(acc.coachSubRole) : ""}
                       {acc.coachSubRole && acc.coachCurrentLevel ? " · " : ""}
-                      {acc.coachCurrentLevel ? COACH_EXPERIENCE_LEVELS.find((l) => l.value === acc.coachCurrentLevel)?.label ?? acc.coachCurrentLevel : ""}
+                      {acc.coachCurrentLevel ? (acc.coachSubRole === "td" ? TD_EXPERIENCE_LEVELS : COACH_EXPERIENCE_LEVELS).find((l) => l.value === acc.coachCurrentLevel)?.label ?? acc.coachCurrentLevel : ""}
                     </Text>
                   </View>
                 ) : null}
@@ -1205,6 +1205,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
   const [location, setLocation] = useState(account.location ?? "");
   const [gender, setGender] = useState(account.gender ?? "");
   const [dateOfBirth, setDateOfBirth] = useState(account.dateOfBirth ?? "");
+  const [guardianDateOfBirth, setGuardianDateOfBirth] = useState(account.guardianDateOfBirth ?? "");
   const [defaultSport, setDefaultSport] = useState(account.defaultSport ?? "");
   const [sports, setSports] = useState(account.sports.join(", ") ?? "");
   const [clubWebsite, setClubWebsite] = useState(account.clubWebsite ?? "");
@@ -1235,6 +1236,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
       location: location.trim() || undefined,
       gender: gender.trim() || undefined,
       dateOfBirth: dateOfBirth.trim() || undefined,
+      guardianDateOfBirth: account.role === "guardian" ? (guardianDateOfBirth.trim() || undefined) : undefined,
       defaultSport: defaultSport.trim() || undefined,
       sports: sports.split(",").map((s) => s.trim()).filter(Boolean),
       clubWebsite: clubWebsite.trim() || undefined,
@@ -1310,6 +1312,9 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
                   ) : null}
                   <Field label="Gender" value={gender} onChangeText={setGender} />
                   <Field label="Date of birth (DD-MM-YYYY)" value={dateOfBirth} onChangeText={setDateOfBirth} />
+                  {account.role === "guardian" ? (
+                    <Field label="Guardian date of birth (DD-MM-YYYY)" value={guardianDateOfBirth} onChangeText={setGuardianDateOfBirth} />
+                  ) : null}
                   <Field label="Bio" value={bio} onChangeText={setBio} multiline />
                   {account.role === "coach" ? (
                     <>

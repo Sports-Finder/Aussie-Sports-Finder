@@ -16,6 +16,7 @@ export const accountsTable = pgTable("accounts", {
   clubName: text("club_name"),
   gender: text("gender"),
   dateOfBirth: text("date_of_birth"),
+  guardianDateOfBirth: text("guardian_date_of_birth"),
   location: text("location"),
   mobile: text("mobile"),
   sports: jsonb("sports").notNull().$type<string[]>(),

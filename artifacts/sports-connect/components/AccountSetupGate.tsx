@@ -128,6 +128,8 @@ export function AccountSetupGate() {
   const [profileImageId, setProfileImageId] = useState<string | undefined>();
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [draftDob, setDraftDob] = useState("");
+  const [dobPickerTarget, setDobPickerTarget] = useState<"player" | "guardian">("player");
+  const [draftGuardianDob, setDraftGuardianDob] = useState("");
   const [form, setForm] = useState({
     fullName: "",
     parentGuardianName: "",
@@ -135,6 +137,7 @@ export function AccountSetupGate() {
     clubName: "",
     gender: "",
     dateOfBirth: "",
+    guardianDateOfBirth: "",
     suburb: "",
     state: "",
     mobile: "",
@@ -190,11 +193,12 @@ export function AccountSetupGate() {
     const guardianAgeValid = role === "guardian" ? Boolean(age && Number(age) <= 17) : true;
     const playerAgeValid = role === "player" ? Boolean(age && Number(age) >= 18) : true;
     const coachSubRoleValid = role === "coach" ? Boolean(form.coachSubRole) : true;
+    const guardianDobValid = role === "guardian" ? Boolean(form.guardianDateOfBirth) : true;
     return Boolean(
       nameValid && form.gender && form.dateOfBirth &&
       guardianAgeValid && playerAgeValid &&
       selectedSports.length && defaultSport && form.agreed &&
-      coachSubRoleValid
+      coachSubRoleValid && guardianDobValid
     );
   }, [age, defaultSport, form, isClub, role, selectedSports.length]);
 
@@ -224,6 +228,10 @@ export function AccountSetupGate() {
 
   const setDob = (date: Date) => {
     update("dateOfBirth", formatDob(date));
+    setShowDobPicker(false);
+  };
+  const setGuardianDob = (date: Date) => {
+    update("guardianDateOfBirth", formatDob(date));
     setShowDobPicker(false);
   };
 
@@ -263,6 +271,7 @@ export function AccountSetupGate() {
       clubName: form.clubName,
       gender: form.gender,
       dateOfBirth: form.dateOfBirth,
+      guardianDateOfBirth: role === "guardian" ? form.guardianDateOfBirth : undefined,
       location: isClub ? `${form.clubSuburb} ${form.state}`.trim() : `${form.suburb} ${form.state}`.trim(),
       mobile: isClub ? form.clubContactMobile : form.mobile,
       sports: isClub ? [defaultSport] : selectedSports,
@@ -494,7 +503,7 @@ export function AccountSetupGate() {
                 </View>
 
                 <Pressable
-                  onPress={() => { setDraftDob(form.dateOfBirth); setShowDobPicker(true); }}
+                  onPress={() => { setDraftDob(form.dateOfBirth); setDobPickerTarget("player"); setShowDobPicker(true); }}
                   style={({ pressed }) => [
                     styles.dobButton,
                     { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 },
@@ -508,13 +517,31 @@ export function AccountSetupGate() {
                   </Text>
                 </Pressable>
 
+                {role === "guardian" && (
+                  <Pressable
+                    onPress={() => { setDraftGuardianDob(form.guardianDateOfBirth); setDobPickerTarget("guardian"); setShowDobPicker(true); }}
+                    style={({ pressed }) => [
+                      styles.dobButton,
+                      { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 },
+                    ]}
+                  >
+                    <Text style={[styles.label, { color: colors.mutedForeground }]}>Parent/Guardian Date of Birth (required)</Text>
+                    <Text style={[styles.dobValue, { color: form.guardianDateOfBirth ? colors.foreground : colors.mutedForeground }]}>
+                      {form.guardianDateOfBirth ? `${form.guardianDateOfBirth} · Age ${calculateAge(form.guardianDateOfBirth)}` : "Tap to choose a date"}
+                    </Text>
+                  </Pressable>
+                )}
+
                 <Modal transparent visible={showDobPicker} animationType="fade" onRequestClose={() => setShowDobPicker(false)}>
                   <View style={styles.modalScrim}>
                     <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
-                      <Text style={[styles.cardTitle, { color: colors.foreground }]}>Choose date of birth</Text>
+                      <Text style={[styles.cardTitle, { color: colors.foreground }]}>{dobPickerTarget === "guardian" ? "Choose guardian date of birth" : "Choose date of birth"}</Text>
                       <TextInput
-                        value={draftDob}
-                        onChangeText={(v) => setDraftDob(formatDobInput(v))}
+                        value={dobPickerTarget === "guardian" ? draftGuardianDob : draftDob}
+                        onChangeText={(v) => {
+                          if (dobPickerTarget === "guardian") setDraftGuardianDob(formatDobInput(v));
+                          else setDraftDob(formatDobInput(v));
+                        }}
                         placeholder="DD-MM-YYYY"
                         placeholderTextColor={colors.mutedForeground}
                         keyboardType="number-pad"
@@ -529,9 +556,11 @@ export function AccountSetupGate() {
                         </Pressable>
                         <Pressable
                           onPress={() => {
-                            const parsed = parseDob(draftDob);
+                            const target = dobPickerTarget === "guardian" ? draftGuardianDob : draftDob;
+                            const parsed = parseDob(target);
                             if (Number.isNaN(parsed.getTime())) return;
-                            setDob(parsed);
+                            if (dobPickerTarget === "guardian") setGuardianDob(parsed);
+                            else setDob(parsed);
                           }}
                           style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
                         >

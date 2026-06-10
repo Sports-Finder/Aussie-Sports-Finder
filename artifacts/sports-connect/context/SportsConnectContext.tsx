@@ -88,6 +88,7 @@ export type UserAccount = {
   clubName?: string;
   gender?: string;
   dateOfBirth?: string;
+  guardianDateOfBirth?: string;
   location?: string;
   mobile?: string;
   sports: string[];

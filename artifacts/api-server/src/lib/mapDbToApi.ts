@@ -27,6 +27,7 @@ export function mapAccount(
     clubName: row.clubName as string | undefined,
     gender: row.gender as string | undefined,
     dateOfBirth: row.dateOfBirth as string | undefined,
+    guardianDateOfBirth: row.guardianDateOfBirth as string | undefined,
     location: row.location as string | undefined,
     mobile: row.mobile as string | undefined,
     sports: (row.sports as string[]) ?? [],
