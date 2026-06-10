@@ -181,8 +181,7 @@ export function AccountSetupGate() {
         form.clubSuburb.trim() &&
         /^\d{4}$/.test(form.clubPostcode) &&
         form.state &&
-        form.clubContactEmail.includes("@") &&
-        form.clubContactMobile.trim()
+        form.clubContactEmail.includes("@")
       );
     }
     const nameValid = role === "guardian"
@@ -194,7 +193,7 @@ export function AccountSetupGate() {
     return Boolean(
       nameValid && form.gender && form.dateOfBirth &&
       guardianAgeValid && playerAgeValid &&
-      form.mobile.trim() && selectedSports.length && defaultSport && form.agreed &&
+      selectedSports.length && defaultSport && form.agreed &&
       coachSubRoleValid
     );
   }, [age, defaultSport, form, isClub, role, selectedSports.length]);
@@ -441,7 +440,7 @@ export function AccountSetupGate() {
                   This defaults to your sign-up email. You can change it to a different public contact address — your login email will not be affected.
                 </Text>
                 <Input
-                  label="Club Contact Mobile Number (required)"
+                  label="Club Contact Mobile Number (optional)"
                   value={form.clubContactMobile}
                   onChangeText={(v) => update("clubContactMobile", v)}
                   keyboardType="phone-pad"
@@ -557,7 +556,7 @@ export function AccountSetupGate() {
                 </View>
 
                 <Input
-                  label={role === "guardian" ? "Parent/Guardian Mobile Number (required)" : "Mobile Number (required)"}
+                  label={role === "guardian" ? "Parent/Guardian Mobile Number (optional)" : "Mobile Number (optional)"}
                   value={form.mobile}
                   onChangeText={(v) => update("mobile", v)}
                   keyboardType="phone-pad"

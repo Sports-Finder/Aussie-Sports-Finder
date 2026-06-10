@@ -199,7 +199,7 @@ function CoachProfilePopup({
               { label: "Full name", value: coach.fullName ?? "" },
               { label: "Gender", value: coach.gender ?? "" },
               { label: "Location", value: coach.location ?? "" },
-              { label: "Mobile", value: coach.mobile ?? "" },
+              ...(coach.mobile ? [{ label: "Mobile", value: coach.mobile }] : []),
               { label: "Sports", value: coach.sports.join(", ") },
               { label: "Bio", value: coach.bio ?? "" },
             ].filter((r) => r.value).map((r) => (

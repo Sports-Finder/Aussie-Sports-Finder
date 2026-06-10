@@ -311,7 +311,7 @@ export default function ProfileScreen() {
         { label: "Postcode", value: currentAccount.clubPostcode ?? "" },
         { label: "State", value: currentAccount.location ? (currentAccount.location.trim().split(" ").pop() ?? "") : "" },
         { label: "Contact email", value: currentAccount.clubContactEmail ?? "", url: currentAccount.clubContactEmail ? `mailto:${currentAccount.clubContactEmail}` : undefined },
-        { label: "Contact mobile", value: currentAccount.clubContactMobile ?? "" },
+        ...(currentAccount.clubContactMobile ? [{ label: "Contact mobile", value: currentAccount.clubContactMobile }] : []),
         { label: "Bio", value: clubBio },
         { label: "Website", value: currentAccount.clubWebsite ?? "", url: link(currentAccount.clubWebsite ?? "") },
         { label: "Instagram", value: socialLinks.instagram ?? "", url: link(socialLinks.instagram ?? "") },
@@ -326,7 +326,7 @@ export default function ProfileScreen() {
       { label: "Gender", value: currentAccount.gender ?? "" },
       { label: "Date of birth", value: currentAccount.dateOfBirth ? `${currentAccount.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` : "" },
       { label: "Location", value: currentAccount.location ?? "" },
-      { label: "Mobile", value: currentAccount.mobile ?? "" },
+      ...(currentAccount.mobile ? [{ label: "Mobile", value: currentAccount.mobile }] : []),
       { label: "Bio", value: isGuardian ? guardianBio : playerBio },
       { label: "Sports", value: (currentAccount.sports ?? []).join(", ") },
       ...(isCoach ? [
@@ -664,7 +664,7 @@ export default function ProfileScreen() {
               ))}
             </View>
             <Field label="Club contact email" value={currentAccount?.clubContactEmail ?? ""} onChangeText={(v) => updateAccount({ clubContactEmail: v })} keyboardType="email-address" />
-            <Field label="Club contact mobile" value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
+            <Field label="Club contact mobile (optional)" value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
             <Field label="Club bio" value={clubBio} onChangeText={(value) => {
               const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
               if (wordCount <= 200) setClubBio(value);
@@ -800,7 +800,7 @@ export default function ProfileScreen() {
               keyboardType="email-address"
             />
             <Field
-              label={isGuardian ? "Parent/Guardian mobile number" : "Mobile number"}
+              label={isGuardian ? "Parent/Guardian mobile number (optional)" : "Mobile number (optional)"}
               value={currentAccount?.mobile ?? ""}
               onChangeText={(v) => updateAccount({ mobile: v })}
               keyboardType="phone-pad"

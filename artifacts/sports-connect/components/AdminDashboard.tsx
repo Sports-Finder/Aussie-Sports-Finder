@@ -1297,7 +1297,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
                   <Field label="Club website" value={clubWebsite} onChangeText={setClubWebsite} autoCapitalize="none" />
                   <Field label="Club address" value={clubAddress} onChangeText={setClubAddress} />
                   <Field label="Club contact email" value={clubContactEmail} onChangeText={setClubContactEmail} autoCapitalize="none" keyboardType="email-address" />
-                  <Field label="Club contact mobile" value={clubContactMobile} onChangeText={setClubContactMobile} />
+                  <Field label="Club contact mobile (optional)" value={clubContactMobile} onChangeText={setClubContactMobile} />
                 </>
               ) : (
                 <>
@@ -1321,7 +1321,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
                 </>
               )}
               <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-              <Field label="Mobile" value={mobile} onChangeText={setMobile} />
+              <Field label="Mobile (optional)" value={mobile} onChangeText={setMobile} />
               <Field label="Location" value={location} onChangeText={setLocation} />
               <Field label="Default sport" value={defaultSport} onChangeText={setDefaultSport} />
               <Field label="Sports (comma-separated)" value={sports} onChangeText={setSports} />
