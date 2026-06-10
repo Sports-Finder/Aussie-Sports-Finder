@@ -1541,12 +1541,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     if (!conv) return;
     const relatedAdvert = adverts.find((a) => a.id === conv.advertId);
     const title = conv.advertTitle ?? relatedAdvert?.title ?? "this advert";
+    const initAcc = accounts.find((a) => a.id === conv.initiatorAccountId);
+    const isGuardianInit = initAcc?.role === "guardian";
+    const guardianPart = isGuardianInit && initAcc.parentGuardianName
+      ? `Parent/Guardian ${initAcc.parentGuardianName} on behalf of ${initAcc.playerName ?? "a player"}`
+      : conv.requesterType === "coach"
+        ? `${conv.playerName} (Coach)`
+        : conv.playerName;
     const activeMsg: Message = {
       id: makeId(),
       sender: "them",
       senderAccountId: conv.ownerAccountId,
       isSystem: true,
-      body: `This chat is now active to discuss "${title}" between ${conv.clubName} & ${conv.requesterType === "coach" ? `${conv.playerName} (Coach)` : conv.playerName}. Please do not share any sensitive information such as credit card, home address etc. All chats are closely monitored and will be closed immediately at any signs or evidence of misuse or abuse from either party.`,
+      body: `This chat is now active to discuss "${title}" between ${conv.clubName} & ${guardianPart}. Please do not share any sensitive information such as credit card, home address etc. All chats are closely monitored and will be closed immediately at any signs or evidence of misuse or abuse from either party.`,
       createdAt: now(),
     };
     setConversations((current) =>

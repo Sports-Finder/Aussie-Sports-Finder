@@ -824,7 +824,7 @@ function FlaggedChatCard({ conv, onOpenChat, onMarkReviewed, onCloseChat }: {
 function ChatsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations, flaggedConversations, adminDeleteConversation, adminCloseConversation, adminMarkFlagReviewed } = useSportsConnect();
+  const { conversations, flaggedConversations, accounts, adminDeleteConversation, adminCloseConversation, adminMarkFlagReviewed } = useSportsConnect();
   const { closeChats, isFullAdmin } = useDashboardPermissions();
   const [openedId, setOpenedId] = useState<string | null>(null);
 
@@ -907,7 +907,15 @@ function ChatsSection() {
               >
                 <View style={styles.itemHeader}>
                   <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
-                    {conv.clubName} <Text style={{ color: colors.mutedForeground }}>↔</Text> {conv.playerName}
+                    {conv.clubName} <Text style={{ color: colors.mutedForeground }}>↔</Text> {
+                      (() => {
+                        const initAcc = accounts.find((a) => a.id === conv.initiatorAccountId);
+                        if (initAcc?.role === "guardian" && initAcc.parentGuardianName) {
+                          return `Parent/Guardian ${initAcc.parentGuardianName} on behalf of ${initAcc.playerName ?? "a player"}`;
+                        }
+                        return conv.playerName;
+                      })()
+                    }
                   </Text>
                   <View style={{ flexDirection: "row", gap: 4, alignItems: "center" }}>
                     {conv.flagged && !conv.flagReviewedAt ? (

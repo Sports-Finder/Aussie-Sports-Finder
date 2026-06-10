@@ -424,6 +424,8 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                       const coachLabel = req?.coachSubRole ? coachSubRoleLabel(req.coachSubRole) : "Coach";
                       const headerText = isAffiliatedCoachReq
                         ? `A ${coachLabel} from a Club in ${location} wants to connect privately. Agree to connect?`
+                        : req?.role === "guardian" && req.parentGuardianName
+                        ? `Parent/Guardian ${req.parentGuardianName} on behalf of ${req.playerName ?? "a player"} from ${location} wants to connect privately. Agree to connect?`
                         : `A ${requesterTypeLabel(firstPending.requesterType, req?.coachSubRole)} from ${location} wants to connect privately. Agree to connect?`;
                       return (
                         <Text style={[styles.pendingRequestText, { color: colors.foreground }]}>{headerText}</Text>
@@ -460,12 +462,24 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                           coachSubRoleLabel ? { label: "Coaching role", value: coachSubRoleLabel } : null,
                           coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
                         ].filter(Boolean) as { label: string; value: string }[];
+                      } else if (req.role === "guardian") {
+                        sectionLabel = "About this guardian & player";
+                        facts = [
+                          req.gender ? { label: "Gender", value: req.gender } : null,
+                          req.dateOfBirth ? { label: "Player DOB", value: `${req.dateOfBirth}${age !== null ? ` \u00b7 Age ${age}` : ""}` } : null,
+                          req.location ? { label: "Location", value: req.location } : null,
+                          (req.playerPositions ?? []).length > 0 ? { label: "Position/s", value: (req.playerPositions ?? []).join(", ") } : null,
+                          req.playerCurrentLevel ? { label: "Playing level", value: req.playerCurrentLevel } : null,
+                          req.playerCurrentAgeGroup ? { label: "Age group", value: req.playerCurrentAgeGroup } : null,
+                          req.playerCurrentClub ? { label: "Current / prev club", value: req.playerCurrentClub } : null,
+                          req.parentGuardianName ? { label: "Guardian", value: req.parentGuardianName } : null,
+                        ].filter(Boolean) as { label: string; value: string }[];
                       } else {
                         // Club or player request
                         sectionLabel = req.role === "club" ? "About this club" : "About this player";
                         facts = [
                           req.gender ? { label: "Gender", value: req.gender } : null,
-                          req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` } : null,
+                          req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` \u00b7 Age ${age}` : ""}` } : null,
                           req.location ? { label: "Location", value: req.location } : null,
                           (req.playerPositions ?? []).length > 0 ? { label: "Position/s", value: (req.playerPositions ?? []).join(", ") } : null,
                           req.playerCurrentLevel ? { label: "Playing level", value: req.playerCurrentLevel } : null,

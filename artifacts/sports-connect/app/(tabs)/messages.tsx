@@ -49,19 +49,40 @@ const avatarStyles = StyleSheet.create({
 
 function anonymousLabel(
   conversation: Conversation,
+  accounts: UserAccount[],
   currentAccountId?: string,
 ): { title: string; subtitle: string } {
   const isAnonymous = conversation.status === "pending" || conversation.status === "denied";
-  if (!isAnonymous) {
-    return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${conversation.playerName}` };
-  }
   const isInitiator = currentAccountId === conversation.initiatorAccountId;
   const isOwner = currentAccountId === conversation.ownerAccountId;
+
+  const guardianLabel = () => {
+    const initAcc = accounts.find((a) => a.id === conversation.initiatorAccountId);
+    if (initAcc?.role === "guardian" && initAcc.parentGuardianName) {
+      return `Parent/Guardian ${initAcc.parentGuardianName} on behalf of ${initAcc.playerName ?? "a player"}`;
+    }
+    return null;
+  };
+
+  if (!isAnonymous) {
+    if (isOwner && conversation.requesterType === "guardian") {
+      const gLabel = guardianLabel();
+      if (gLabel) {
+        return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${gLabel}` };
+      }
+    }
+    return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${conversation.playerName}` };
+  }
+
   if (isInitiator) {
     const ownerType = conversation.advertPostedByType === "club" ? "Club" : conversation.advertPostedByType === "coach" ? coachSubRoleLabel(conversation.advertOwnerCoachSubRole) : "Player";
     return { title: `A ${ownerType} (${conversation.advertLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
   }
   if (isOwner) {
+    const gLabel = guardianLabel();
+    if (gLabel) {
+      return { title: gLabel, subtitle: `${conversation.requesterLocation ?? ""} · ${conversation.sport ?? ""}` };
+    }
     const requesterType = conversation.requesterType === "club" ? "Club" : conversation.requesterType === "coach" ? coachSubRoleLabel(conversation.requesterCoachSubRole) : "Player";
     return { title: `A ${requesterType} (${conversation.requesterLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
   }
@@ -70,6 +91,7 @@ function anonymousLabel(
 
 function ChatBox({ conversation, onPress, boxWidth, currentAccountId }: { conversation: Conversation; onPress: () => void; boxWidth: number; currentAccountId?: string }) {
   const colors = useColors();
+  const { accounts } = useSportsConnect();
   const isPending = conversation.status === "pending";
   const isDenied = conversation.status === "denied";
   const isUserClosed = conversation.status === "closed" && !!conversation.closedByName && !conversation.closedByAdmin;
@@ -80,7 +102,7 @@ function ChatBox({ conversation, onPress, boxWidth, currentAccountId }: { conver
   const badgeColor = isPending ? "#F59E0B" : isUnread ? "#EF4444" : "transparent";
 
   const lastMsg = conversation.messages[0];
-  const { title } = anonymousLabel(conversation, currentAccountId);
+  const { title } = anonymousLabel(conversation, accounts, currentAccountId);
 
   return (
     <Pressable
@@ -150,8 +172,8 @@ function MessageSender({ accountId, isMe }: { accountId?: string; isMe: boolean 
   const { accounts, currentAccount, getImageUri } = useSportsConnect();
   const account = isMe ? currentAccount : accounts.find((a) => a.id === accountId);
   const name = isMe
-    ? (account?.clubName || account?.fullName || account?.playerName || "You")
-    : (account?.clubName || account?.fullName || account?.playerName || "User");
+    ? (account?.clubName || account?.fullName || account?.parentGuardianName || account?.playerName || "You")
+    : (account?.clubName || account?.fullName || account?.parentGuardianName || account?.playerName || "User");
   const uri = getImageUri(account?.profileImageId);
   return (
     <View style={[styles.senderRow, { alignSelf: isMe ? "flex-end" : "flex-start" }]}>
@@ -270,6 +292,9 @@ function ProfileViewModal({
                 <Pressable onPress={() => void openMapApp("apple", addressQuery ?? account.location ?? "")}>
                   <ProfileRow icon="map-pin" label={account.location} tappable colors={colors} />
                 </Pressable>
+              ) : null}
+              {isGuardian && account.playerName ? (
+                <ProfileRow icon="user" label={`On behalf of: ${account.playerName}`} colors={colors} />
               ) : null}
               {(account.sports?.length ?? 0) > 0 ? <ProfileRow icon="activity" label={account.sports.join(", ")} colors={colors} /> : null}
               {account.bio ? (
@@ -401,9 +426,14 @@ function ConnectedParticipantStrip({
       {participants.map((account) => {
         const isClub = account.role === "club";
         const isCoach = account.role === "coach";
-        const name = isClub ? (account.clubName ?? "Club") : (account.fullName ?? account.playerName ?? "User");
-        const icon = isClub ? "shield" : isCoach ? "award" : "user";
-        const iconColor = isClub ? "#16A34A" : isCoach ? "#7C3AED" : "#2563EB";
+        const isGuardian = account.role === "guardian";
+        const name = isClub
+          ? (account.clubName ?? "Club")
+          : isGuardian
+          ? (account.parentGuardianName ?? account.fullName ?? account.playerName ?? "Guardian")
+          : (account.fullName ?? account.playerName ?? "User");
+        const icon = isClub ? "shield" : isCoach ? "award" : isGuardian ? "users" : "user";
+        const iconColor = isClub ? "#16A34A" : isCoach ? "#7C3AED" : isGuardian ? "#2563EB" : "#2563EB";
         return (
           <View key={account.id} style={[participantStyles.tile, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={[participantStyles.iconCircle, { backgroundColor: iconColor + "22" }]}>
@@ -425,14 +455,14 @@ function ConnectedParticipantStrip({
 export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId: string; onClose: () => void; asAdmin?: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations, sendMessage, broadcastMessage, adminSendMessage, markConversationRead, closeConversation, currentAccount, isAdmin } = useSportsConnect();
+  const { conversations, sendMessage, broadcastMessage, adminSendMessage, markConversationRead, closeConversation, currentAccount, accounts, isAdmin } = useSportsConnect();
   const conversation = conversations.find((c) => c.id === conversationId)!;
   const [draft, setDraft] = useState("");
   const [isBroadcast, setIsBroadcast] = useState(false);
   const [viewingProfile, setViewingProfile] = useState<UserAccount | null>(null);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const adminMode = !!asAdmin && isAdmin;
-  const { title: roomTitle, subtitle: roomSubtitle } = anonymousLabel(conversation, currentAccount?.id);
+  const { title: roomTitle, subtitle: roomSubtitle } = anonymousLabel(conversation, accounts, currentAccount?.id);
 
   const connectedSiblings = conversations.filter(
     (c) => c.advertId === conversation.advertId && c.status === "connected"
