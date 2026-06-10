@@ -512,6 +512,33 @@ export function AccountSetupGate() {
                     onChangeText={(v) => update("parentGuardianName", v)}
                   />
                 )}
+                {role === "guardian" && (
+                  <>
+                    <Pressable
+                      onPress={() => { setDraftGuardianDob(form.guardianDateOfBirth); setDobPickerTarget("guardian"); setShowDobPicker(true); }}
+                      style={({ pressed }) => [
+                        styles.dobButton,
+                        { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 },
+                      ]}
+                    >
+                      <Text style={[styles.label, { color: colors.mutedForeground }]}>Parent/Guardian Date of Birth (required)</Text>
+                      <Text style={[styles.dobValue, { color: form.guardianDateOfBirth ? colors.foreground : colors.mutedForeground }]}>
+                        {form.guardianDateOfBirth ? `${form.guardianDateOfBirth} · Age ${calculateAge(form.guardianDateOfBirth)}` : "Tap to choose a date"}
+                      </Text>
+                    </Pressable>
+                    {(() => {
+                      const guardianAge = calculateAge(form.guardianDateOfBirth);
+                      if (guardianAge && Number(guardianAge) < 18) {
+                        return (
+                          <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>
+                            You must be 18 years or older to create this account. You must be the parent or a legal guardian of the player you are creating this account for.
+                          </Text>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </>
+                )}
                 {role === "guardian" ? (
                   <Input
                     label="Player's Full Name (required)"
@@ -549,34 +576,6 @@ export function AccountSetupGate() {
                     {form.dateOfBirth ? `${form.dateOfBirth}${age ? ` · Age ${age}` : ""}` : "Tap to choose a date"}
                   </Text>
                 </Pressable>
-
-                {role === "guardian" && (
-                  <>
-                    <Pressable
-                      onPress={() => { setDraftGuardianDob(form.guardianDateOfBirth); setDobPickerTarget("guardian"); setShowDobPicker(true); }}
-                      style={({ pressed }) => [
-                        styles.dobButton,
-                        { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 },
-                      ]}
-                    >
-                      <Text style={[styles.label, { color: colors.mutedForeground }]}>Parent/Guardian Date of Birth (required)</Text>
-                      <Text style={[styles.dobValue, { color: form.guardianDateOfBirth ? colors.foreground : colors.mutedForeground }]}>
-                        {form.guardianDateOfBirth ? `${form.guardianDateOfBirth} · Age ${calculateAge(form.guardianDateOfBirth)}` : "Tap to choose a date"}
-                      </Text>
-                    </Pressable>
-                    {(() => {
-                      const guardianAge = calculateAge(form.guardianDateOfBirth);
-                      if (guardianAge && Number(guardianAge) < 18) {
-                        return (
-                          <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>
-                            You must be 18 years or older to create this account. You must be the parent or a legal guardian of the player you are creating this account for.
-                          </Text>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </>
-                )}
 
                 <Modal transparent visible={showDobPicker} animationType="fade" onRequestClose={() => setShowDobPicker(false)}>
                   <View style={styles.modalScrim}>
