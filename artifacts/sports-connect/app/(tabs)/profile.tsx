@@ -626,17 +626,13 @@ export default function ProfileScreen() {
             ))}
             {isClub ? (
               <View style={styles.mapRow}>
-                <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
-                  <LinearGradient colors={[colors.navy, lighten(colors.navy)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
-                    <Feather name="map" color="#FFF" size={16} />
-                    <Text style={styles.mapBtnText}>Apple Maps</Text>
-                  </LinearGradient>
+                <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
+                  <Feather name="map" color="#FFF" size={16} />
+                  <Text style={styles.mapBtnText}>Apple Maps</Text>
                 </Pressable>
-                <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
-                  <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
-                    <Feather name="navigation" color="#FFF" size={16} />
-                    <Text style={styles.mapBtnText}>Google Maps</Text>
-                  </LinearGradient>
+                <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
+                  <Feather name="navigation" color="#FFF" size={16} />
+                  <Text style={styles.mapBtnText}>Google Maps</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -700,17 +696,13 @@ export default function ProfileScreen() {
             <Field label="TikTok link" value={socialLinks.tiktok ?? ""} onChangeText={(v) => updateSocial("tiktok", v)} />
 
             <View style={styles.mapRow}>
-              <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
-                <LinearGradient colors={[colors.navy, lighten(colors.navy)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
-                  <Feather name="map" color="#FFF" size={16} />
-                  <Text style={styles.mapBtnText}>Apple Maps</Text>
-                </LinearGradient>
+              <Pressable onPress={() => openMapApp("apple", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.navy, opacity: pressed ? 0.75 : 1 }]}>
+                <Feather name="map" color="#FFF" size={16} />
+                <Text style={styles.mapBtnText}>Apple Maps</Text>
               </Pressable>
-              <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
-                <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
-                  <Feather name="navigation" color="#FFF" size={16} />
-                  <Text style={styles.mapBtnText}>Google Maps</Text>
-                </LinearGradient>
+              <Pressable onPress={() => openMapApp("google", clubMapQuery)} style={({ pressed }) => [styles.mapBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.75 : 1 }]}>
+                <Feather name="navigation" color="#FFF" size={16} />
+                <Text style={styles.mapBtnText}>Google Maps</Text>
               </Pressable>
             </View>
             <PrimaryButton
