@@ -68,7 +68,7 @@ function anonymousLabel(
     if (isOwner && conversation.requesterType === "guardian") {
       const gLabel = guardianLabel();
       if (gLabel) {
-        return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${gLabel}` };
+        return { title: gLabel, subtitle: `${conversation.sport ?? ""} · ${conversation.requesterLocation ?? ""}` };
       }
     }
     return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${conversation.playerName}` };
@@ -102,7 +102,7 @@ function ChatBox({ conversation, onPress, boxWidth, currentAccountId }: { conver
   const badgeColor = isPending ? "#F59E0B" : isUnread ? "#EF4444" : "transparent";
 
   const lastMsg = conversation.messages[0];
-  const { title } = anonymousLabel(conversation, accounts, currentAccountId);
+  const { title, subtitle } = anonymousLabel(conversation, accounts, currentAccountId);
 
   return (
     <Pressable
@@ -151,7 +151,11 @@ function ChatBox({ conversation, onPress, boxWidth, currentAccountId }: { conver
           {title}
         </Text>
 
-        {conversation.sport ? (
+        {subtitle ? (
+          <Text style={[styles.chatBoxSport, { color: isPending ? "#F59E0B" : isDenied ? colors.mutedForeground : isUnread ? "#EF4444" : colors.primary }]} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : conversation.sport ? (
           <Text style={[styles.chatBoxSport, { color: isPending ? "#F59E0B" : isDenied ? colors.mutedForeground : isUnread ? "#EF4444" : colors.primary }]} numberOfLines={1}>
             {conversation.sport}
           </Text>
