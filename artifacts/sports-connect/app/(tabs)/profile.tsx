@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
   choice: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
   choiceText: { fontWeight: "700", fontSize: 13 },
   mapRow: { flexDirection: "row", gap: 10 },
-  mapBtn: { flex: 1, minHeight: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
+  mapBtn: { flex: 1, minHeight: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: 40 },
   mapBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
   dobButton: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 4 },
   dobValue: { fontWeight: "600", fontSize: 15 },

@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   pill: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999, marginRight: 8 },
   pillText: { fontWeight: "700", fontSize: 13 },
   button: { minHeight: 52, borderRadius: 18, overflow: "hidden" },
-  buttonGradient: { minHeight: 52, borderRadius: 18, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: 18 },
+  buttonGradient: { minHeight: 56, borderRadius: 18, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: 40 },
   buttonText: { fontWeight: "700", fontSize: 15 },
   iconButton: { width: 44, height: 44, borderRadius: 16, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   fieldWrap: { gap: 7, marginBottom: 12 },

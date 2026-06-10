@@ -2125,7 +2125,7 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   badgeText: { fontWeight: "700", fontSize: 11, letterSpacing: 0.3 },
   actionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 },
-  actionBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12 },
+  actionBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 40, paddingVertical: 12, borderRadius: 12 },
   actionBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
   helperText: { fontWeight: "500", fontSize: 13, lineHeight: 19 },
   thumbWrap: { width: 120, height: 120, borderRadius: 14, overflow: "hidden", alignSelf: "flex-start", position: "relative" },
