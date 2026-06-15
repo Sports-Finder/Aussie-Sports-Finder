@@ -106,30 +106,20 @@ router.post("/conversations/:publicId/messages", async (req, res) => {
     // Reject if the caller has no linked account or if the account is paused.
     const auth = getAuth(req);
     const clerkUserId = auth.userId;
-    let senderAccountId: string | undefined;
-    if (clerkUserId) {
-      const [sender] = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
-      if (sender) {
-        if (sender.status === "review" || sender.status === "banned" || sender.status === "closed") {
-          res.status(403).json({ error: "Your account is under review. You cannot send messages until the review is complete." });
-          return;
-        }
-        senderAccountId = sender.publicId;
-      }
+    if (!clerkUserId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
-    // If we couldn't resolve an authenticated account, fall back to the
-    // client-supplied senderAccountId only for backward compatibility with
-    // legacy accounts that lack a clerkUserId mapping.
-    if (!senderAccountId) {
-      senderAccountId = req.body?.senderAccountId as string | undefined;
-      if (senderAccountId) {
-        const [sender] = await db.select().from(accountsTable).where(eq(accountsTable.publicId, senderAccountId));
-        if (sender && (sender.status === "review" || sender.status === "banned" || sender.status === "closed")) {
-          res.status(403).json({ error: "Your account is under review. You cannot send messages until the review is complete." });
-          return;
-        }
-      }
+    const [sender] = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
+    if (!sender) {
+      res.status(401).json({ error: "Sender account not found." });
+      return;
     }
+    if (sender.status === "review" || sender.status === "banned" || sender.status === "closed") {
+      res.status(403).json({ error: "Your account is under review. You cannot send messages until the review is complete." });
+      return;
+    }
+    const senderAccountId = sender.publicId;
 
     const body: string = req.body?.body ?? "";
 
@@ -142,9 +132,19 @@ router.post("/conversations/:publicId/messages", async (req, res) => {
     const isTrustedSystemMsg = callerIsAdmin && (req.body?.isSystem || req.body?.isAdmin);
     const flagMatch = body && !isTrustedSystemMsg ? scanMessage(body) : null;
 
+    // Overwrite server-derived sender identity so the client cannot spoof it.
+    const msgPublicId = crypto.randomUUID().replace(/-/g, "");
     const [msg] = await db
       .insert(messagesTable)
-      .values({ ...req.body, conversationId: publicId })
+      .values({
+        publicId: msgPublicId,
+        conversationId: publicId,
+        senderAccountId,
+        sender: req.body?.sender ?? "me",
+        body,
+        isSystem: req.body?.isSystem ?? false,
+        isAdmin: req.body?.isAdmin ?? false,
+      })
       .returning();
 
     // When a pattern matches, upsert the conversation's flag fields.

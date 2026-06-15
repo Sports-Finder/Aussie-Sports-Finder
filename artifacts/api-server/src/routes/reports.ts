@@ -16,20 +16,14 @@ function isAdminCaller(req: Parameters<typeof getAuth>[0]): boolean {
 
 /**
  * Derive the reporter account ID from the authenticated Clerk user.
- * Falls back to the client-supplied reporterAccountId for legacy accounts
- * that were created before clerkUserId was stored on the accounts table.
+ * Returns null if the caller is not authenticated or has no linked account.
  */
 async function resolveReporterAccountId(req: Parameters<typeof getAuth>[0]): Promise<string | null> {
   const auth = getAuth(req);
   const clerkUserId = auth.userId;
-  if (clerkUserId) {
-    const [account] = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
-    if (account) return account.publicId;
-  }
-  // Legacy fallback: accept from client when no clerk mapping exists
-  const clientReporter = (req.body as Record<string, unknown>)?.reporterAccountId;
-  if (typeof clientReporter === "string") return clientReporter;
-  return null;
+  if (!clerkUserId) return null;
+  const [account] = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
+  return account?.publicId ?? null;
 }
 
 /**
