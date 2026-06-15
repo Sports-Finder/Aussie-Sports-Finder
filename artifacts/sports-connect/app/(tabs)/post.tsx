@@ -788,6 +788,7 @@ export default function PostScreen() {
   const descContactWarning = detectContactInfo(description);
   const playerDescContactWarning = detectContactInfo(playerDescription);
   const friendlyInfoContactWarning = detectContactInfo(friendlyInfo);
+  const preferredTeamLevelContactWarning = detectContactInfo(preferredTeamLevel);
   const friendlyInfoWordCount = friendlyInfo.trim().split(/\s+/).filter(Boolean).length;
   const maxFriendlyDates = 5;
   const canAddFriendlyDate = !isClubFriendly || trialSlots.length < maxFriendlyDates;
@@ -1470,7 +1471,8 @@ export default function PostScreen() {
               </View>
 
               <FormLabel text="Preferred Team Level" required />
-              <Field value={preferredTeamLevel} onChangeText={setPreferredTeamLevel} label="" placeholder="e.g. Competitive Amateur, Semi-Pro" />
+              <Field value={preferredTeamLevel} onChangeText={setPreferredTeamLevel} label="" placeholder="e.g. Competitive Amateur, Semi-Pro. Do not add personal details such as mobile numbers or email addresses." />
+              {preferredTeamLevelContactWarning ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{preferredTeamLevelContactWarning}</Text> : null}
 
               <FormLabel text="Friendly Date(s) (DD/MM/YYYY)" required />
               {trialSlots.map((slot, i) => {
