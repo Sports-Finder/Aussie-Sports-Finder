@@ -1449,7 +1449,7 @@ export default function PostScreen() {
                     ]}
                   >
                     <Text style={[localStyles.choiceText, { color: friendlySubType === item ? "#FFFFFF" : colors.secondaryForeground }]}>
-                      {item === "available" ? "Available (we have a team)" : "Wanted (looking for a team)"}
+                      {item === "available" ? "Available (looking & able to host a team)" : "Wanted (cannot host but looking for an opponent)"}
                     </Text>
                   </Pressable>
                 ))}
@@ -1749,15 +1749,19 @@ export default function PostScreen() {
             <CheckRow label="Trial required" value={trialRequired} onToggle={() => setTrialRequired(!trialRequired)} />
           )}
 
-          <FormLabel text="Additional details (optional)" />
-          <Field value={description} onChangeText={(text) => {
-            const words = text.trim().split(/\s+/).filter(Boolean);
-            if (words.length <= 150) setDescription(text);
-          }} label="" multiline placeholder={isPlayerLooking ? "Describe yourself as a player and what you're looking for. Please do not share any of your personal information including mobile or email addresses." : isCoachLooking ? "Describe yourself as a coach and what you're looking for. Please do not share any of your personal information including mobile or email addresses." : "Describe exactly what you're looking for. Do not add personal details such as mobile numbers or email addresses."} />
-          {descContactWarning ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{descContactWarning}</Text> : null}
-          <Text style={{ fontSize: 12, color: description.trim().split(/\s+/).filter(Boolean).length > 140 ? "#D9534F" : colors.mutedForeground, marginTop: 4, textAlign: "right" }}>
-            {description.trim().split(/\s+/).filter(Boolean).length} / 150 words
-          </Text>
+          {!isClubFriendly && (
+            <>
+              <FormLabel text="Additional details (optional)" />
+              <Field value={description} onChangeText={(text) => {
+                const words = text.trim().split(/\s+/).filter(Boolean);
+                if (words.length <= 150) setDescription(text);
+              }} label="" multiline placeholder={isPlayerLooking ? "Describe yourself as a player and what you're looking for. Please do not share any of your personal information including mobile or email addresses." : isCoachLooking ? "Describe yourself as a coach and what you're looking for. Please do not share any of your personal information including mobile or email addresses." : "Describe exactly what you're looking for. Do not add personal details such as mobile numbers or email addresses."} />
+              {descContactWarning ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{descContactWarning}</Text> : null}
+              <Text style={{ fontSize: 12, color: description.trim().split(/\s+/).filter(Boolean).length > 140 ? "#D9534F" : colors.mutedForeground, marginTop: 4, textAlign: "right" }}>
+                {description.trim().split(/\s+/).filter(Boolean).length} / 150 words
+              </Text>
+            </>
+          )}
         </View>
 
         {showErrors && validationErrors.length > 0 ? (
