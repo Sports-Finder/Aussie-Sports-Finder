@@ -471,24 +471,14 @@ export function AccountSetupGate() {
                   onSelect={({ suburb, postcode, state }) => {
                     update("clubSuburb", suburb);
                     update("clubPostcode", postcode);
-                    if (state) update("state", state);
+                    update("state", state);
                   }}
                 />
-                <Input
-                  label="Postcode (required)"
-                  value={form.clubPostcode}
-                  onChangeText={(v) => {
-                    const digits = v.replace(/\D/g, "").slice(0, 4);
-                    update("clubPostcode", digits);
-                  }}
-                  keyboardType="number-pad"
-                />
-                <Text style={[styles.label, { color: colors.mutedForeground }]}>State (required)</Text>
-                <View style={styles.wrapRow}>
-                  {states.map((s) => (
-                    <Choice key={s} label={s} active={form.state === s} onPress={() => update("state", s)} colors={colors} />
-                  ))}
-                </View>
+                {form.clubSuburb ? (
+                  <Text style={[styles.infoNote, { color: colors.mutedForeground, marginTop: -6, marginBottom: 12 }]}>
+                    {form.state}{form.clubPostcode ? ` · ${form.clubPostcode}` : ""}
+                  </Text>
+                ) : null}
                 <Input label="Club Website Address (optional)" value={form.clubWebsite} onChangeText={(v) => update("clubWebsite", v)} />
                 <Input
                   label="Club Contact Email Address (required)"
@@ -635,15 +625,14 @@ export function AccountSetupGate() {
                   value={form.suburb}
                   onSelect={({ suburb, state }) => {
                     update("suburb", suburb);
-                    if (state) update("state", state);
+                    update("state", state);
                   }}
                 />
-                <Text style={[styles.label, { color: colors.mutedForeground }]}>State (required)</Text>
-                <View style={styles.wrapRow}>
-                  {states.map((s) => (
-                    <Choice key={s} label={s} active={form.state === s} onPress={() => update("state", s)} colors={colors} />
-                  ))}
-                </View>
+                {form.suburb ? (
+                  <Text style={[styles.infoNote, { color: colors.mutedForeground, marginTop: -6, marginBottom: 12 }]}>
+                    {form.state}
+                  </Text>
+                ) : null}
 
                 <View style={styles.inputWrap}>
                   <Text style={[styles.label, { color: colors.mutedForeground }]}>

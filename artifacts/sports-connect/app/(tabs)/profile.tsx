@@ -670,21 +670,14 @@ export default function ProfileScreen() {
               onSelect={({ suburb: s, postcode: pc, state: st }) => {
                 setClubSuburb(s);
                 setClubPostcode(pc);
-                if (st) setState(st);
+                setState(st);
               }}
             />
-            <Field
-              label="Postcode"
-              value={clubPostcode}
-              onChangeText={(v) => setClubPostcode(v.replace(/\D/g, "").slice(0, 4))}
-              keyboardType="number-pad"
-            />
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>State</Text>
-            <View style={styles.wrapRow}>
-              {states.map((item) => (
-                <Choice key={item} label={item} active={state === item} onPress={() => setState(item)} />
-              ))}
-            </View>
+            {clubSuburb ? (
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: -6, marginBottom: 12 }}>
+                {state}{clubPostcode ? ` · ${clubPostcode}` : ""}
+              </Text>
+            ) : null}
             <Field label="Club contact email" value={currentAccount?.clubContactEmail ?? ""} onChangeText={(v) => updateAccount({ clubContactEmail: v })} keyboardType="email-address" />
             <Field label="Club contact mobile (optional)" value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
             <Field label="Club bio" value={clubBio} onChangeText={(value) => {
@@ -817,15 +810,14 @@ export default function ProfileScreen() {
               value={suburb}
               onSelect={({ suburb: s, state: st }) => {
                 setSuburb(s);
-                if (st) setState(st);
+                setState(st);
               }}
             />
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>State</Text>
-            <View style={styles.wrapRow}>
-              {states.map((item) => (
-                <Choice key={item} label={item} active={state === item} onPress={() => setState(item)} />
-              ))}
-            </View>
+            {suburb ? (
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: -6, marginBottom: 12 }}>
+                {state}
+              </Text>
+            ) : null}
             <Field
               label={isGuardian ? "Parent/Guardian email address" : "Email address"}
               value={currentAccount?.email ?? ""}
