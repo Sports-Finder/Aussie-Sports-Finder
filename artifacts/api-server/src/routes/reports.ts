@@ -17,6 +17,12 @@ function isAdminCaller(req: Parameters<typeof getAuth>[0]): boolean {
 /**
  * Create a new report.
  * Body: { reporterAccountId, targetAccountId, reason }
+ *
+ * NOTE: reporterAccountId is accepted from the client because the server
+ * currently has no mapping between Clerk userId and local account id.
+ * The accounts table stores socialId (Apple/Google provider ID) and email,
+ * but not a Clerk userId column. To derive the reporter server-side, add
+ * a clerkUserId column to accountsTable and join on getAuth(req).userId.
  */
 router.post("/reports", async (req, res) => {
   try {
@@ -26,6 +32,7 @@ router.post("/reports", async (req, res) => {
       return;
     }
     const publicId = crypto.randomUUID().replace(/-/g, "");
+    const now = new Date();
     const [created] = await db
       .insert(reportsTable)
       .values({
@@ -35,6 +42,12 @@ router.post("/reports", async (req, res) => {
         reason: reason as string,
       })
       .returning();
+    // Atomically set the target account status to "review" so the account is
+    // paused immediately regardless of whether the client update succeeds.
+    await db
+      .update(accountsTable)
+      .set({ status: "review", statusReason: reason as string, statusChangedAt: now })
+      .where(eq(accountsTable.publicId, targetAccountId as string));
     res.status(201).json(mapReport(created as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to create report");

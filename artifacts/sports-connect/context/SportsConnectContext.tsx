@@ -1256,9 +1256,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     // Set target account status to review
     setAccounts((current) => current.map((acc) => acc.id === targetAccountId ? { ...acc, status: "review" as AccountStatus, statusChangedAt: now(), statusReason: reason } : acc));
     try {
+      // The server atomically creates the report AND sets the target account
+      // status to "review", so we don't need a separate updateAccount call.
       await api.createReport({ reporterAccountId, targetAccountId, reason });
-      await api.updateAccount(targetAccountId, { status: "review", statusChangedAt: now(), statusReason: reason });
-    } catch (_) { /* silent */ }
+    } catch (err) {
+      console.warn("[createReport] API sync failed:", err);
+    }
   };
 
   const resolveReport = async (reportId: string, resolution: "ok" | "underage") => {

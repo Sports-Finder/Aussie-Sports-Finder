@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, conversationsTable, messagesTable } from "@workspace/db";
+import { db, conversationsTable, messagesTable, accountsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapConversation, mapMessage } from "../lib/mapDbToApi";
 import { normalizeDates } from "../lib/normalizeDates";
@@ -100,6 +100,15 @@ router.post("/conversations/:publicId/messages", async (req, res) => {
     if (!conv) {
       res.status(404).json({ error: "Conversation not found" });
       return;
+    }
+
+    const senderAccountId = req.body?.senderAccountId as string | undefined;
+    if (senderAccountId) {
+      const [sender] = await db.select().from(accountsTable).where(eq(accountsTable.publicId, senderAccountId));
+      if (sender && (sender.status === "review" || sender.status === "banned" || sender.status === "closed")) {
+        res.status(403).json({ error: "Your account is under review. You cannot send messages until the review is complete." });
+        return;
+      }
     }
 
     const body: string = req.body?.body ?? "";
