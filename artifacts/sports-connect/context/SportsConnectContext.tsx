@@ -210,6 +210,7 @@ export type Advert = {
   friendlyInfo?: string;
   friendlySuburb?: string;
   friendlyState?: string;
+  friendlyPostcode?: string;
 };
 
 export type ForbiddenConnection = {

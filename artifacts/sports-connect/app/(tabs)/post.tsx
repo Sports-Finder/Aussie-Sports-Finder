@@ -490,6 +490,7 @@ export default function PostScreen() {
   const [friendlyInfo, setFriendlyInfo] = useState("");
   const [friendlySuburb, setFriendlySuburb] = useState(() => stripStateFromLocation(currentAccount?.location ?? ""));
   const [friendlyState, setFriendlyState] = useState(() => stateFromLocation(currentAccount?.location ?? ""));
+  const [friendlyPostcode, setFriendlyPostcode] = useState("");
 
   const allowedSportsKey = allowedSports.join(",");
   useEffect(() => {
@@ -554,10 +555,11 @@ export default function PostScreen() {
     } else if (isClubFriendly) {
       const subTypeLabel = friendlySubType === "available" ? "Available" : "Wanted";
       const locationLabel = friendlySubType === "available"
-        ? (venueSuburb.trim() ? `${venueSuburb.trim()}, ${venueState}` : "")
-        : (friendlySuburb.trim() ? `${friendlySuburb.trim()}, ${friendlyState}` : "");
-      const parts = [ageLabel, teamGender.trim(), "Club Friendly", subTypeLabel, locationLabel].filter(Boolean);
-      setTitle(parts.join(" ").replace(/\s+/g, " ").trim());
+        ? (venueSuburb.trim() && venueState ? `${venueSuburb.trim()}, ${venueState}` : "")
+        : (friendlySuburb.trim() && friendlyState ? `${friendlySuburb.trim()}, ${friendlyState}` : "");
+      const parts = [ageLabel, teamGender.trim(), "Club Friendly", subTypeLabel].filter(Boolean);
+      const body = parts.join(" ").replace(/\s+/g, " ").trim();
+      setTitle(locationLabel ? `${body} \u2014 ${locationLabel}` : body);
       return;
     }
 
@@ -631,6 +633,7 @@ export default function PostScreen() {
     setFriendlyInfo(advert.friendlyInfo ?? "");
     setFriendlySuburb(advert.friendlySuburb ?? "");
     setFriendlyState(advert.friendlyState ?? "");
+    setFriendlyPostcode(advert.friendlyPostcode ?? "");
     setSubmitted(false);
     setSelectedMyAdvert(null);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -678,6 +681,7 @@ export default function PostScreen() {
     setFriendlyInfo("");
     setFriendlySuburb("");
     setFriendlyState("");
+    setFriendlyPostcode("");
     setSubmitted(false);
     setShowErrors(false);
   };
@@ -713,6 +717,7 @@ export default function PostScreen() {
   const isCoachWanted = type === "coach-wanted";
   const isClubFriendly = type === "club-friendly";
   const showPlayerDesc = isPlayerLooking || isCoachLooking;
+  const friendlyInfoPlaceholder = friendlySubType === "available" ? "Any extra details about hosting the friendly match (e.g. pitch size, parking, canteen availability)." : "Any extra details about the friendly match you're looking for (e.g. preferred venue area, travel distance).";
   const showCoachTitle = isCoachLooking;
   const showSchedule = isPlayerLooking || isPlayersWanted;
   const showClubFees = isPlayersWanted;
@@ -750,14 +755,18 @@ export default function PostScreen() {
   const preferredTeamLevelOk = !isClubFriendly || preferredTeamLevel.trim().length > 0;
   const groundGateOk = !isClubFriendly || friendlySubType === "wanted" || groundAvailable;
   const venueOk = !isClubFriendly || friendlySubType === "wanted" || (groundAvailable && venueSuburb.trim().length > 0 && venuePostcode.trim().length > 0 && venueState.trim().length > 0);
-  const locationOk = !isClubFriendly || friendlySubType === "available" || (friendlySuburb.trim().length > 0 && friendlyState.trim().length > 0);
+  const locationOk = !isClubFriendly || friendlySubType === "available" || (friendlySuburb.trim().length > 0 && friendlyPostcode.trim().length > 0 && friendlyState.trim().length > 0);
   const refereeTypesOk = !isClubFriendly || friendlySubType === "wanted" || (groundAvailable && refereeTypes.length > 0);
 
   const descContactWarning = detectContactInfo(description);
   const playerDescContactWarning = detectContactInfo(playerDescription);
   const friendlyInfoContactWarning = detectContactInfo(friendlyInfo);
+  const friendlyInfoWordCount = friendlyInfo.trim().split(/\s+/).filter(Boolean).length;
+  const maxFriendlyDates = 5;
+  const canAddFriendlyDate = !isClubFriendly || trialSlots.length < maxFriendlyDates;
   const ageGroupOk = isTechnicalDirector || isCoachLooking || isCoachWanted || isClubFriendly ? true : ageGroup !== null;
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && ageGroupOk && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning && (!isClubFriendly || (friendlyDatesOk && preferredOpponentsOk && preferredTeamLevelOk && groundGateOk && venueOk && locationOk && refereeTypesOk && !friendlyInfoContactWarning));
+  const friendlyInfoOk = !isClubFriendly || (friendlyInfoWordCount <= 100);
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && ageGroupOk && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning && (!isClubFriendly || (friendlyDatesOk && preferredOpponentsOk && preferredTeamLevelOk && groundGateOk && venueOk && locationOk && refereeTypesOk && !friendlyInfoContactWarning && friendlyInfoOk));
 
   const validationErrors: string[] = [];
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
@@ -778,8 +787,9 @@ export default function PostScreen() {
     if (!preferredTeamLevelOk) validationErrors.push("Preferred team level is required");
     if (!groundGateOk) validationErrors.push("Ground/Field Available must be checked — change to 'Wanted' if no ground");
     if (!venueOk) validationErrors.push("Venue suburb, postcode and state are required when ground is available");
-    if (!locationOk) validationErrors.push("Your club location (suburb and state) is required");
+    if (!locationOk) validationErrors.push("Your club location (suburb, postcode and state) is required");
     if (!refereeTypesOk) validationErrors.push("Referee type must be selected when ground is available");
+    if (!friendlyInfoOk) validationErrors.push("Additional info must be 100 words or less");
   }
 
   function toggleDay(list: string[], day: string): string[] {
@@ -884,6 +894,7 @@ export default function PostScreen() {
     setFriendlyInfo("");
     setFriendlySuburb("");
     setFriendlyState("");
+    setFriendlyPostcode("");
     setSubmitted(true);
     setShowErrors(false);
     setDuplicateError(null);
@@ -984,6 +995,7 @@ export default function PostScreen() {
       refereeTypes: isClubFriendly && groundAvailable ? refereeTypes : undefined,
       friendlyInfo: isClubFriendly ? friendlyInfo.trim() || undefined : undefined,
       friendlySuburb: isClubFriendly && friendlySubType === "wanted" ? friendlySuburb.trim() || undefined : undefined,
+      friendlyPostcode: isClubFriendly && friendlySubType === "wanted" ? friendlyPostcode.trim() || undefined : undefined,
       friendlyState: isClubFriendly && friendlySubType === "wanted" ? friendlyState.trim() || undefined : undefined,
     };
     if (editingId) {
@@ -1302,7 +1314,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {((isCoachWanted && !isTechnicalDirector) || (ageGroup !== null && (isPlayersWanted || isClubTrials || isCoachWanted))) && (
+          {((isCoachWanted && !isTechnicalDirector) || (ageGroup !== null && (isPlayersWanted || isClubTrials || isCoachWanted || isClubFriendly))) && (
             <>
               <FormLabel text="Team Gender" required />
               <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
@@ -1487,45 +1499,44 @@ export default function PostScreen() {
                 </View>
                 );
               })}
-              <Pressable onPress={() => setTrialSlots((prev) => [...prev, { date: "", timeFrom: "", timeTo: "" }])} style={({ pressed }) => [localStyles.addSlotButton, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
+              <Pressable onPress={() => { if (canAddFriendlyDate) setTrialSlots((prev) => [...prev, { date: "", timeFrom: "", timeTo: "" }]); }} style={({ pressed }) => [localStyles.addSlotButton, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
                 <LinearGradient colors={[colors.secondary, lighten(colors.secondary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[localStyles.addSlotButton, { flex: 1 }]}>
                   <Feather name="plus" size={16} color={colors.primary} />
                   <Text style={[localStyles.addSlotText, { color: colors.primary }]}>Add another friendly date</Text>
                 </LinearGradient>
               </Pressable>
+              {isClubFriendly && trialSlots.length >= maxFriendlyDates && <Text style={{ fontSize: 12, color: colors.mutedForeground, fontStyle: "italic" }}>Maximum 5 friendly dates allowed</Text>}
 
               {friendlySubType === "available" && (
                 <>
                   <CheckRow label="Ground / Field Available" value={groundAvailable} onToggle={() => setGroundAvailable(!groundAvailable)} />
-                  {groundAvailable && (
-                    <>
-                      <FormLabel text="Venue Suburb" required />
-                      <Field value={venueSuburb} onChangeText={setVenueSuburb} label="" placeholder="e.g. Marrickville" />
-                      <FormLabel text="Venue Postcode" required />
-                      <Field value={venuePostcode} onChangeText={setVenuePostcode} label="" keyboardType="numeric" placeholder="e.g. 2204" />
-                      <FormLabel text="Venue State" required />
-                      <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
-                        {AU_STATES.map((s) => (
-                          <Pressable
-                            key={s}
-                            onPress={() => setVenueState(s)}
-                            style={({ pressed }) => [
-                              localStyles.choice,
-                              { backgroundColor: venueState === s ? colors.primary : colors.secondary, opacity: pressed ? 0.75 : 1 },
-                            ]}
-                          >
-                            <Text style={[localStyles.choiceText, { color: venueState === s ? "#FFFFFF" : colors.secondaryForeground }]}>{s}</Text>
-                          </Pressable>
-                        ))}
-                      </View>
-                      <FormLabel text="Referee Type" required />
-                      <View style={localStyles.pillRow}>
-                        {["Self-refereed", "Neutral referee", "Both teams bring a ref", "No referee needed"].map((r) => (
-                          <Pill key={r} label={r} active={refereeTypes.includes(r)} onPress={() => setRefereeTypes((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])} />
-                        ))}
-                      </View>
-                    </>
-                  )}
+                  <View style={{ opacity: groundAvailable ? 1 : 0.4 }}>
+                    <FormLabel text="Venue Suburb" required={groundAvailable} />
+                    <Field value={venueSuburb} onChangeText={setVenueSuburb} label="" placeholder="e.g. Marrickville" editable={groundAvailable} />
+                    <FormLabel text="Venue Postcode" required={groundAvailable} />
+                    <Field value={venuePostcode} onChangeText={setVenuePostcode} label="" keyboardType="numeric" placeholder="e.g. 2204" editable={groundAvailable} />
+                    <FormLabel text="Venue State" required={groundAvailable} />
+                    <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
+                      {AU_STATES.map((s) => (
+                        <Pressable
+                          key={s}
+                          onPress={() => { if (groundAvailable) setVenueState(s); }}
+                          style={({ pressed }) => [
+                            localStyles.choice,
+                            { backgroundColor: venueState === s ? colors.primary : colors.secondary, opacity: groundAvailable ? (pressed ? 0.75 : 1) : 0.5 },
+                          ]}
+                        >
+                          <Text style={[localStyles.choiceText, { color: venueState === s ? "#FFFFFF" : colors.secondaryForeground }]}>{s}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <FormLabel text="Referee Type" required={groundAvailable} />
+                    <View style={localStyles.pillRow}>
+                      {["Registered/Licensed Referee", "Club/Volunteer Referee"].map((r) => (
+                        <Pill key={r} label={r} active={refereeTypes.includes(r)} onPress={() => { if (groundAvailable) setRefereeTypes((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]); }} />
+                      ))}
+                    </View>
+                  </View>
                   {!groundAvailable && (
                     <Text style={{ fontSize: 12, color: colors.mutedForeground, fontStyle: "italic" }}>
                       Ground/Field Available must be checked to post. If you don&apos;t have a ground, switch to &quot;Wanted&quot;.
@@ -1538,6 +1549,8 @@ export default function PostScreen() {
                 <>
                   <FormLabel text="Your Club Suburb" required />
                   <Field value={friendlySuburb} onChangeText={setFriendlySuburb} label="" placeholder="e.g. Marrickville" />
+                  <FormLabel text="Your Club Postcode" required />
+                  <Field value={friendlyPostcode} onChangeText={setFriendlyPostcode} label="" keyboardType="numeric" placeholder="e.g. 2204" />
                   <FormLabel text="Your Club State" required />
                   <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
                     {AU_STATES.map((s) => (
@@ -1557,7 +1570,13 @@ export default function PostScreen() {
               )}
 
               <FormLabel text="Additional Info (optional)" />
-              <Field value={friendlyInfo} onChangeText={setFriendlyInfo} label="" multiline placeholder="Any extra details about the friendly match request..." />
+              <Field value={friendlyInfo} onChangeText={(text) => {
+                const words = text.trim().split(/\s+/).filter(Boolean);
+                if (words.length <= 100) setFriendlyInfo(text);
+              }} label="" multiline placeholder={friendlyInfoPlaceholder} />
+              <Text style={{ fontSize: 12, color: friendlyInfoWordCount > 90 ? "#D9534F" : colors.mutedForeground, marginTop: 4, textAlign: "right" }}>
+                {friendlyInfoWordCount} / 100 words
+              </Text>
               {friendlyInfoContactWarning ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{friendlyInfoContactWarning}</Text> : null}
             </>
           )}
