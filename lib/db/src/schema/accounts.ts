@@ -55,6 +55,8 @@ export const accountsTable = pgTable("accounts", {
   coachSubRole: text("coach_sub_role"),
   coachCurrentLevel: text("coach_current_level"),
   coachCurrentClub: text("coach_current_club"),
+  ageAttested: boolean("age_attested"),
+  ageAttestedAt: timestamp("age_attested_at", { withTimezone: true }),
   password: text("password"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

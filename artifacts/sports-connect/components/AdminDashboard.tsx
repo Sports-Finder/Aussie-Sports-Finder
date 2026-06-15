@@ -1061,6 +1061,11 @@ function AccountsSection() {
                     <View style={[styles.badge, { backgroundColor: badge.bg }]}>
                       <Text style={[styles.badgeText, { color: badge.fg }]}>{status[0].toUpperCase() + status.slice(1)}</Text>
                     </View>
+                    {acc.ageAttested ? (
+                      <View style={[styles.badge, { backgroundColor: "#DBEAFE" }]}>
+                        <Text style={[styles.badgeText, { color: "#1E40AF" }]}>Age OK</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
                 <View style={styles.metaRow}>

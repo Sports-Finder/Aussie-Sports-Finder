@@ -77,6 +77,8 @@ function _mapAccount(
     coachSubRole: row.coachSubRole as string | undefined,
     coachCurrentLevel: row.coachCurrentLevel as string | undefined,
     coachCurrentClub: row.coachCurrentClub as string | undefined,
+    ageAttested: (row.ageAttested as boolean) ?? undefined,
+    ageAttestedAt: row.ageAttestedAt ? new Date(row.ageAttestedAt as string).toISOString() : undefined,
     password: row.password as string | undefined,
     coachAffiliates: affiliates,
     createdAt: new Date(row.createdAt as string).toISOString(),

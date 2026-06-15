@@ -131,6 +131,8 @@ export type UserAccount = {
   coachSubRole?: string;
   coachCurrentLevel?: string;
   coachCurrentClub?: string;
+  ageAttested?: boolean;
+  ageAttestedAt?: string;
 };
 
 export type Advert = {

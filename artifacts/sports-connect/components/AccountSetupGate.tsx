@@ -23,6 +23,7 @@ import { COACH_EXPERIENCE_LEVELS, TD_EXPERIENCE_LEVELS } from "@/constants/coach
 import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
 import { useColors } from "@/hooks/useColors";
 import { detectContactInfo } from "@/utils/contactDetection";
+import { useRouter } from "expo-router";
 
 const logo = require("@/assets/images/icon.png") as number;
 const states = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
@@ -97,6 +98,7 @@ function isValidSocialLink(platform: keyof SocialLinks, value: string) {
 export function AccountSetupGate() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { signOut } = useAuth();
   const { user } = useUser();
 
@@ -161,6 +163,7 @@ export function AccountSetupGate() {
     coachCurrentLevel: "",
     coachCurrentClub: "",
     agreed: false,
+    ageAttested: false,
   });
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [defaultSport, setDefaultSport] = useState("");
@@ -201,7 +204,8 @@ export function AccountSetupGate() {
       nameValid && form.gender && form.dateOfBirth &&
       guardianAgeValid && playerAgeValid && coachAgeValid &&
       selectedSports.length && defaultSport && form.agreed &&
-      coachSubRoleValid && guardianDobValid && guardianOwnAgeValid
+      coachSubRoleValid && guardianDobValid && guardianOwnAgeValid &&
+      form.ageAttested
     );
   }, [age, defaultSport, form, isClub, role, selectedSports.length]);
 
@@ -333,6 +337,8 @@ export function AccountSetupGate() {
       clubContactMobile: form.clubContactMobile,
       bio: form.bio || undefined,
       socialId,
+      ageAttested: true,
+      ageAttestedAt: new Date().toISOString(),
     });
     if (!created) return;
 
@@ -783,6 +789,19 @@ export function AccountSetupGate() {
             </Text>
 
             <CheckRow
+              active={Boolean(form.ageAttested)}
+              onPress={() => update("ageAttested", !form.ageAttested)}
+              colors={colors}
+            >
+              <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "500", lineHeight: 20 }}>
+                {role === "guardian"
+                  ? "I confirm I am 18 years or older and I am the parent or legal guardian of the player. I understand that misrepresenting my age or guardianship is a breach of the Terms of Service and may result in account termination and reporting to relevant authorities."
+                  : "I confirm I am 18 years or older. I understand that misrepresenting my age is a breach of the Terms of Service and may result in account termination and reporting to relevant authorities."}
+                <Text style={{ color: colors.primary, fontWeight: "700" }} onPress={() => router.push("/terms-of-service")}> Read our Terms of Service</Text>
+              </Text>
+            </CheckRow>
+
+            <CheckRow
               active={Boolean(form.agreed)}
               label={
                 isClub
@@ -914,18 +933,24 @@ function CheckRow({
   label,
   onPress,
   colors,
+  children,
 }: {
   active: boolean;
-  label: string;
+  label?: string;
   onPress: () => void;
   colors: ReturnType<typeof useColors>;
+  children?: React.ReactNode;
 }) {
   return (
     <Pressable onPress={onPress} style={styles.checkRow}>
       <View style={[styles.checkBox, { backgroundColor: active ? colors.primary : colors.card, borderColor: colors.primary }]}>
         {active ? <Feather name="check" color={colors.primaryForeground} size={14} /> : null}
       </View>
-      <Text style={[styles.checkText, { color: colors.foreground }]}>{label}</Text>
+      {children ? (
+        <View style={{ flex: 1 }}>{children}</View>
+      ) : (
+        <Text style={[styles.checkText, { color: colors.foreground }]}>{label}</Text>
+      )}
     </Pressable>
   );
 }
