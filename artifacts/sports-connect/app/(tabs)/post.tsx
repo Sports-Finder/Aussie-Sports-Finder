@@ -558,7 +558,15 @@ export default function PostScreen() {
       const locationLabel = friendlySubType === "available"
         ? (venueSuburb.trim() && venueState ? `${venueSuburb.trim()}, ${venueState}` : "")
         : (friendlySuburb.trim() && friendlyState ? `${friendlySuburb.trim()}, ${friendlyState}` : "");
-      const parts = [ageLabel, teamGender.trim(), "Club Friendly", subTypeLabel].filter(Boolean);
+      const opponentOptions = getFriendlyOpponentOptions(ageGroup?.label ?? "");
+      const selectedOpponents = opponentOptions.filter((o) => preferredOpponents.includes(o));
+      const opponentText = (() => {
+        if (selectedOpponents.length === 0) return "";
+        if (selectedOpponents.length === 1) return selectedOpponents[0];
+        if (selectedOpponents.length === 2) return `${selectedOpponents[0]} or ${selectedOpponents[1]}`;
+        return `${selectedOpponents[0]}\u2013${selectedOpponents[selectedOpponents.length - 1]}`;
+      })();
+      const parts = [teamGender.trim(), preferredTeamLevel.trim(), opponentText, "Club Friendly", subTypeLabel].filter(Boolean);
       const body = parts.join(" ").replace(/\s+/g, " ").trim();
       setTitle(locationLabel ? `${body} \u2014 ${locationLabel}` : body);
       return;
@@ -585,7 +593,7 @@ export default function PostScreen() {
       : [genderLabel, ageLabel, level, middleSlot, sportLabel, profileStateLabel, rolePhrase].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim();
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, focusArea, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender, level, opportunityStates, friendlySubType, venueSuburb, venueState, friendlySuburb, friendlyState]);
+  }, [sport, type, ageGroup, focusArea, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender, level, opportunityStates, friendlySubType, venueSuburb, venueState, friendlySuburb, friendlyState, preferredOpponents, preferredTeamLevel]);
 
   const loadAdvertForEdit = (advert: Advert) => {
     setEditingId(advert.id);
@@ -1434,7 +1442,7 @@ export default function PostScreen() {
           {isClubFriendly && (
             <>
               <FormLabel text="Friendly Type" required />
-              <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
+              <View style={[localStyles.choiceRow, { marginBottom: 12, flexDirection: "column" }]}>
                 {(["available", "wanted"] as const).map((item) => (
                   <Pressable
                     key={item}
@@ -1444,11 +1452,11 @@ export default function PostScreen() {
                       {
                         backgroundColor: friendlySubType === item ? colors.primary : colors.secondary,
                         opacity: pressed ? 0.75 : 1,
-                        flex: 1,
+                        width: "100%",
                       },
                     ]}
                   >
-                    <Text style={[localStyles.choiceText, { color: friendlySubType === item ? "#FFFFFF" : colors.secondaryForeground }]}>
+                    <Text style={[localStyles.choiceText, { color: friendlySubType === item ? "#FFFFFF" : colors.secondaryForeground, textAlign: "center" }]}>
                       {item === "available" ? "Available (looking & able to host a team)" : "Wanted (cannot host but looking for an opponent)"}
                     </Text>
                   </Pressable>
