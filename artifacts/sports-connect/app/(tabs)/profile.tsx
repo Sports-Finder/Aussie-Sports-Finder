@@ -489,15 +489,11 @@ export default function ProfileScreen() {
                     {affiliate.ageGroup ? ` · Age: ${affiliate.ageGroup}` : ""}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 10 }}>
-                    <Pressable onPress={() => respondToAffiliationRequest(club.id, true)} style={[styles.mapBtn, { flex: 1, overflow: "hidden" }]}>
-                      <LinearGradient colors={["#16A34A", "#15803D"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
-                        <Text style={styles.mapBtnText}>Yes — Accept</Text>
-                      </LinearGradient>
+                    <Pressable onPress={() => respondToAffiliationRequest(club.id, true)} style={({ pressed }) => [styles.mapBtn, { flex: 1, backgroundColor: "#16A34A", opacity: pressed ? 0.75 : 1 }]}>
+                      <Text style={styles.mapBtnText}>Yes — Accept</Text>
                     </Pressable>
-                    <Pressable onPress={() => respondToAffiliationRequest(club.id, false)} style={[styles.mapBtn, { flex: 1, overflow: "hidden" }]}>
-                      <LinearGradient colors={["#DC2626", "#991B1B"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1 }]}>
-                        <Text style={styles.mapBtnText}>No — Decline</Text>
-                      </LinearGradient>
+                    <Pressable onPress={() => respondToAffiliationRequest(club.id, false)} style={({ pressed }) => [styles.mapBtn, { flex: 1, backgroundColor: "#DC2626", opacity: pressed ? 0.75 : 1 }]}>
+                      <Text style={styles.mapBtnText}>No — Decline</Text>
                     </Pressable>
                   </View>
                 </View>
