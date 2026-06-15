@@ -730,6 +730,12 @@ export default function PostScreen() {
     if (parts.length !== 3 || parts[2].length !== 4) return null;
     return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
   }
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const oneYearIso = (() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().slice(0, 10);
+  })();
   const trialSlotOrderErrors: boolean[] = trialSlots.map((slot, i) => {
     if (i === 0) return false;
     const prev = trialSlots[i - 1];
@@ -743,6 +749,17 @@ export default function PostScreen() {
   const trialSlotDuplicates: boolean[] = trialSlots.map((slot, i) =>
     trialSlots.some((other, j) => j < i && other.date.trim() !== "" && other.date.trim() === slot.date.trim() && other.timeFrom.trim() === slot.timeFrom.trim())
   );
+  // Club-friendly: per-slot date validation
+  const friendlySlotPastErrors: boolean[] = trialSlots.map((slot) => {
+    const d = parseTrialDateIso(slot.date);
+    if (!d) return false;
+    return d < todayIso;
+  });
+  const friendlySlotFarWarnings: boolean[] = trialSlots.map((slot) => {
+    const d = parseTrialDateIso(slot.date);
+    if (!d) return false;
+    return d > oneYearIso;
+  });
   const hasTrialSlotErrors = trialSlotOrderErrors.some(Boolean) || trialSlotDuplicates.some(Boolean);
   const trialSlotsOk = !isClubTrials || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors);
   const isTechnicalDirector = isCoachWanted && coachRole === "Technical Director";
@@ -750,7 +767,8 @@ export default function PostScreen() {
   const teamGenderOk = (!isPlayersWanted && !isClubTrials && !isCoachWanted && !isClubFriendly) || teamGender.trim().length > 0;
 
   // Club-friendly validation
-  const friendlyDatesOk = !isClubFriendly || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors);
+  const hasFriendlySlotPastErrors = isClubFriendly && friendlySlotPastErrors.some(Boolean);
+  const friendlyDatesOk = !isClubFriendly || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors && !hasFriendlySlotPastErrors);
   const preferredOpponentsOk = !isClubFriendly || preferredOpponents.length > 0;
   const preferredTeamLevelOk = !isClubFriendly || preferredTeamLevel.trim().length > 0;
   const groundGateOk = !isClubFriendly || friendlySubType === "wanted" || groundAvailable;
@@ -1451,6 +1469,11 @@ export default function PostScreen() {
                 const displayDate = parseTrialDate(slot.date)
                   ? parseTrialDate(slot.date)!.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
                   : null;
+                const dateBorderColor = isClubFriendly && friendlySlotPastErrors[i]
+                  ? "#D9534F"
+                  : trialSlotOrderErrors[i] || trialSlotDuplicates[i]
+                    ? "#D9534F"
+                    : colors.border;
                 return (
                 <View key={i} style={{ gap: 6, marginBottom: 8 }}>
                   <View style={{ flexDirection: "row", gap: 8 }}>
@@ -1462,28 +1485,18 @@ export default function PostScreen() {
                         placeholder="DD/MM/YYYY"
                         placeholderTextColor={colors.mutedForeground}
                         keyboardType="number-pad"
-                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: trialSlotOrderErrors[i] || trialSlotDuplicates[i] ? "#D9534F" : colors.border, color: colors.foreground }]}
+                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: dateBorderColor, color: colors.foreground }]}
                       />
                       {displayDate ? (
                         <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>{displayDate}</Text>
                       ) : null}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>FROM</Text>
+                      <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>KICKOFF</Text>
                       <TextInput
                         value={slot.timeFrom}
                         onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeFrom: v } : s))}
                         placeholder="6:00 PM"
-                        placeholderTextColor={colors.mutedForeground}
-                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>TO</Text>
-                      <TextInput
-                        value={slot.timeTo}
-                        onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeTo: v } : s))}
-                        placeholder="8:00 PM"
                         placeholderTextColor={colors.mutedForeground}
                         style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
                       />
@@ -1494,6 +1507,8 @@ export default function PostScreen() {
                       </Pressable>
                     ) : null}
                   </View>
+                  {isClubFriendly && friendlySlotPastErrors[i] && <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 12 }}>Date must be today or in the future</Text>}
+                  {isClubFriendly && friendlySlotFarWarnings[i] && <Text style={{ color: "#000000", fontWeight: "500", fontSize: 12 }}>This is more than a year away, is this date correct?</Text>}
                   {trialSlotOrderErrors[i] && <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 12 }}>Dates must be in chronological order</Text>}
                   {trialSlotDuplicates[i] && <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 12 }}>Duplicate date/time</Text>}
                 </View>
