@@ -11,6 +11,7 @@ import {
   AccountStatus,
   Advert,
   ModeratorPermissions,
+  Report,
   UserAccount,
   useSportsConnect,
 } from "@/context/SportsConnectContext";
@@ -59,6 +60,7 @@ const advertTypeLabels: Record<Advert["type"], string> = {
 const statusBadgeColor = (status?: AccountStatus | "active" | "closed") => {
   if (status === "banned") return { bg: "#FEE2E2", fg: "#991B1B" };
   if (status === "closed") return { bg: "#E5E7EB", fg: "#4B5563" };
+  if (status === "review") return { bg: "#FEF3C7", fg: "#92400E" };
   return { bg: "#DCFCE7", fg: "#166534" };
 };
 
@@ -299,7 +301,7 @@ function StatCard({ label, value, icon, color, onPress }: { label: string; value
 function OverviewSection({ setSection }: { setSection: (s: Section) => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { adverts, conversations, accounts, bannedEmails, profileImages, pendingHighlightLinks, pendingSportRequests } = useSportsConnect();
+  const { adverts, conversations, accounts, bannedEmails, profileImages, pendingHighlightLinks, pendingSportRequests, reports } = useSportsConnect();
 
   const activeAdverts = adverts.filter((a) => a.status !== "closed").length;
   const closedAdverts = adverts.filter((a) => a.status === "closed").length;
@@ -308,6 +310,7 @@ function OverviewSection({ setSection }: { setSection: (s: Section) => void }) {
   const pendingSports = pendingSportRequests.filter((r) => r.status === "pending").length;
   const bannedAccounts = accounts.filter((a) => a.status === "banned").length;
   const pendingClubApprovals = accounts.filter((a) => a.role === "club" && (!a.clubApprovalStatus || a.clubApprovalStatus === "pending")).length;
+  const pendingReports = reports.filter((r) => r.status === "pending").length;
 
   const countsByRole = (role: AccountRole) => accounts.filter((a) => a.role === role).length;
 
@@ -336,6 +339,7 @@ function OverviewSection({ setSection }: { setSection: (s: Section) => void }) {
         <StatCard label="Highlight reels" value={pendingHighlights} icon="video" color="#F59E0B" onPress={() => setSection("moderation")} />
         <StatCard label="Sport requests" value={pendingSports} icon="plus-circle" color="#F59E0B" onPress={() => setSection("moderation")} />
         <StatCard label="Club approvals" value={pendingClubApprovals} icon="check-circle" color="#EF4444" onPress={() => setSection("clubapprovals")} />
+        <StatCard label="Reports" value={pendingReports} icon="flag" color="#EF4444" onPress={() => setSection("moderation")} />
       </View>
     </ScrollView>
   );
@@ -1424,7 +1428,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
 function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: (name: string) => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { profileImages, pendingHighlightLinks, pendingSportRequests, moderateImage, moderateHighlightLink, moderateSportRequest, getImageUri, accounts } = useSportsConnect();
+  const { profileImages, pendingHighlightLinks, pendingSportRequests, moderateImage, moderateHighlightLink, moderateSportRequest, getImageUri, accounts, reports, resolveReport } = useSportsConnect();
   const { approveImages, approveHighlights, approveSports } = useDashboardPermissions();
   const pendingImages = profileImages.filter((i) => i.status === "pending");
   const pendingHighlights = pendingHighlightLinks.filter((l) => l.status === "pending");
@@ -1534,6 +1538,61 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
           </View>
         </View>
       )))}
+
+      {/* Reports section */}
+      <SectionTitle title="Reports" action={`${reports.filter((r) => r.status === "pending").length} pending`} />
+      {reports.length === 0 ? (
+        <EmptyState icon="flag" title="No reports" text="Reported accounts will appear here for review." />
+      ) : reports.map((report) => {
+        const target = accounts.find((a) => a.id === report.targetAccountId);
+        const reporter = accounts.find((a) => a.id === report.reporterAccountId);
+        const isPending = report.status === "pending";
+        return (
+          <View key={report.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
+            <View style={styles.itemHeader}>
+              <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
+                {target ? (target.role === "club" ? target.clubName || "Club" : target.fullName || target.playerName || "User") : "Unknown user"}
+              </Text>
+              <View style={[styles.badge, { backgroundColor: isPending ? "#FEF3C7" : "#D1FAE5" }]}>
+                <Text style={[styles.badgeText, { color: isPending ? "#92400E" : "#065F46" }]}>{isPending ? "Pending" : "Resolved"}</Text>
+              </View>
+            </View>
+            <View style={styles.metaRow}>
+              <Feather name="user" size={12} color={colors.mutedForeground} />
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                Role: {target ? (target.role === "club" ? "Club" : target.role === "guardian" ? "Parent/Guardian" : target.role === "coach" ? "Coach" : "Player") : "Unknown"}
+              </Text>
+            </View>
+            {target?.dateOfBirth ? (
+              <View style={styles.metaRow}>
+                <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>DOB: {target.dateOfBirth}</Text>
+              </View>
+            ) : null}
+            <View style={styles.metaRow}>
+              <Feather name="flag" size={12} color={colors.mutedForeground} />
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{report.reason}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Feather name="clock" size={12} color={colors.mutedForeground} />
+              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                Reported {new Date(report.createdAt).toLocaleDateString()} by {reporter ? (reporter.role === "club" ? reporter.clubName || "Club" : reporter.fullName || reporter.playerName || "User") : "Unknown"}
+              </Text>
+            </View>
+            {isPending ? (
+              <View style={styles.actionRow}>
+                <ActionButton icon="check" label="Reviewed OK" color="#10B981" onPress={() => resolveReport(report.id, "ok")} />
+                <ActionButton icon="x" label="Underage confirmed" color="#EF4444" onPress={() => resolveReport(report.id, "underage")} />
+              </View>
+            ) : (
+              <View style={[styles.metaRow, { marginTop: 4 }]}>
+                <Feather name="check-circle" size={12} color="#16A34A" />
+                <Text style={[styles.metaText, { color: "#16A34A" }]}>{report.resolution}</Text>
+              </View>
+            )}
+          </View>
+        );
+      })}
     </ScrollView>
   );
 }

@@ -7,3 +7,4 @@ export * from "./sportRequests";
 export * from "./bannedEmails";
 export * from "./coachAffiliates";
 export * from "./moderatorSessions";
+export * from "./reports";

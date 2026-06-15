@@ -11,6 +11,7 @@ import coachAffiliatesRouter from "./coachAffiliates";
 import adminEntitlementsRouter from "./adminEntitlements";
 import moderatorSessionsRouter from "./moderatorSessions";
 import flaggedConversationsRouter from "./flaggedConversations";
+import reportsRouter from "./reports";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -36,5 +37,6 @@ router.use(wipeRouter);
 router.use(coachAffiliatesRouter);
 router.use(adminEntitlementsRouter);
 router.use(moderatorSessionsRouter);
+router.use(reportsRouter);
 
 export default router;

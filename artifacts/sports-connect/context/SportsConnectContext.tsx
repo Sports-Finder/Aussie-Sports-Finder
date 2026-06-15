@@ -38,9 +38,21 @@ export type HighlightLink = {
   submittedAt: string;
 };
 
-export type AccountStatus = "active" | "closed" | "banned";
+export type AccountStatus = "active" | "closed" | "banned" | "review";
 export type ClubApprovalStatus = "pending" | "approved" | "rejected";
 export type CoachAffiliateStatus = "pending" | "active" | "rejected" | "blocked";
+
+export type Report = {
+  id: string;
+  reporterAccountId: string;
+  targetAccountId: string;
+  reason: string;
+  status: "pending" | "resolved";
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  resolution?: string;
+};
 
 export type CoachAffiliate = {
   id?: string;
@@ -366,6 +378,9 @@ type SportsConnectState = {
   removeCoachAffiliate: (coachAccountId: string) => void;
   updateCoachAffiliateDetails: (coachAccountId: string, teamName?: string, ageGroup?: string) => void;
   unblockCoachAffiliate: (clubAccountId: string, coachAccountId: string) => void;
+  reports: Report[];
+  createReport: (targetAccountId: string, reason: string) => Promise<void>;
+  resolveReport: (reportId: string, resolution: "ok" | "underage") => Promise<void>;
 };
 
 const storageKey = "sports-connect-state-v11-api-migration";
@@ -599,6 +614,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [isModerator, setIsModerator] = useState(false);
   const [currentModerator, setCurrentModerator] = useState<ModeratorAccount | null>(null);
   const [flaggedConversations, setFlaggedConversations] = useState<Conversation[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [moderators, setModerators] = useState<ModeratorAccount[]>([]);
   const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
   const [bannedEmails, setBannedEmails] = useState<string[]>([]);
@@ -654,13 +670,14 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     async function loadFromApi() {
       let apiOk = false;
       try {
-        const [fetchedAdverts, fetchedAccounts, fetchedConversations, fetchedProfileImages, fetchedSportRequests, fetchedBannedEmails] = await Promise.all([
+        const [fetchedAdverts, fetchedAccounts, fetchedConversations, fetchedProfileImages, fetchedSportRequests, fetchedBannedEmails, fetchedReports] = await Promise.all([
           api.getAdverts(),
           api.getAccounts(),
           api.getConversations(),
           api.getProfileImages(),
           api.getSportRequests(),
           api.getBannedEmails(),
+          api.getReports().catch(() => []),
         ]);
         if (cancelled) return;
         apiOk = true;
@@ -670,6 +687,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         setPendingSportRequests(fetchedSportRequests);
         setBannedEmails(fetchedBannedEmails);
         setAccounts(fetchedAccounts);
+        setReports(fetchedReports);
         // Restore lightweight local-only preferences from AsyncStorage
         try {
           const stored = await AsyncStorage.getItem(storageKey);
@@ -1223,6 +1241,39 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(grant ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
   };
 
+  const createReport = async (targetAccountId: string, reason: string) => {
+    const reporterAccountId = currentAccount?.id;
+    if (!reporterAccountId) return;
+    const newReport: Report = {
+      id: makeId(),
+      reporterAccountId,
+      targetAccountId,
+      reason,
+      status: "pending",
+      createdAt: now(),
+    };
+    setReports((current) => [newReport, ...current]);
+    // Set target account status to review
+    setAccounts((current) => current.map((acc) => acc.id === targetAccountId ? { ...acc, status: "review" as AccountStatus, statusChangedAt: now(), statusReason: reason } : acc));
+    try {
+      await api.createReport({ reporterAccountId, targetAccountId, reason });
+      await api.updateAccount(targetAccountId, { status: "review", statusChangedAt: now(), statusReason: reason });
+    } catch (_) { /* silent */ }
+  };
+
+  const resolveReport = async (reportId: string, resolution: "ok" | "underage") => {
+    const report = reports.find((r) => r.id === reportId);
+    if (!report) return;
+    const targetAccountId = report.targetAccountId;
+    const newStatus: AccountStatus = resolution === "ok" ? "active" : "banned";
+    const newReason = resolution === "ok" ? "Reviewed — Account OK" : "Underage confirmed — Account closed";
+    setReports((current) => current.map((r) => r.id === reportId ? { ...r, status: "resolved", resolvedAt: now(), resolution: newReason } : r));
+    setAccounts((current) => current.map((acc) => acc.id === targetAccountId ? { ...acc, status: newStatus, statusChangedAt: now(), statusReason: newReason } : acc));
+    try {
+      await api.resolveReport(reportId, resolution);
+    } catch (_) { /* silent */ }
+  };
+
   const resetClubApprovalAfterEdit = () => {
     if (!currentAccount || currentAccount.role !== "club") return;
     const clubAccountId = currentAccount.id;
@@ -1626,6 +1677,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const sendMessage = async (conversationId: string, body: string) => {
     const trimmed = body.trim();
     if (!trimmed) return;
+    if (currentAccount?.status === "review") {
+      Alert.alert("Account under review", "Your account is under review. You cannot send messages until the review is complete.");
+      return;
+    }
     const message: Message = { id: makeId(), sender: "me", senderAccountId: currentAccount?.id, body: trimmed, createdAt: now() };
     setConversations((current) => current.map((conversation) => conversation.id === conversationId ? { ...conversation, hasUnread: true, messages: [message, ...conversation.messages] } : conversation));
     try { await api.createMessage(conversationId, { senderAccountId: currentAccount?.id, sender: "me", body: trimmed }); } catch (_) { /* silent */ }
@@ -1635,6 +1690,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const broadcastMessage = async (advertId: string, body: string) => {
     const trimmed = body.trim();
     if (!trimmed) return;
+    if (currentAccount?.status === "review") {
+      Alert.alert("Account under review", "Your account is under review. You cannot send messages until the review is complete.");
+      return;
+    }
     const targets = conversations.filter((c) => c.advertId === advertId && c.status === "connected");
     const senderId = currentAccount?.id;
     const timestamp = now();
@@ -2155,8 +2214,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     removeCoachAffiliate,
     updateCoachAffiliateDetails,
     unblockCoachAffiliate,
+    reports,
+    createReport,
+    resolveReport,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription, toggleDevBypassSubscription]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription, toggleDevBypassSubscription, reports]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

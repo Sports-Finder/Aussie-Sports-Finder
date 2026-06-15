@@ -135,7 +135,7 @@ function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }
 function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void }) {
   const colors = useColors();
   const router = useRouter();
-  const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount, accounts, forbiddenConnections } = useSportsConnect();
+  const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount, accounts, forbiddenConnections, createReport } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert);
   const isOwnAdvert = !!(currentAccount?.id && advert.ownerAccountId && advert.ownerAccountId === currentAccount.id);
@@ -271,7 +271,40 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                   </View>
                 ) : null}
               </View>
-              <IconButton icon="x" label="Close" onPress={onClose} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {!isOwnAdvert && advert.ownerAccountId && currentAccount?.id !== advert.ownerAccountId ? (
+                  <Pressable
+                    onPress={() => {
+                      Alert.alert(
+                        "Report this account",
+                        undefined,
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Underage", onPress: () => {
+                            Alert.alert(
+                              "Report underage user",
+                              "This will report the account to admin for review. The account will be paused from messaging until review is complete.",
+                              [
+                                { text: "Cancel", style: "cancel" },
+                                { text: "Report", style: "destructive", onPress: () => createReport(advert.ownerAccountId!, "I believe this person is underage") },
+                              ]
+                            );
+                          }},
+                          { text: "Inappropriate behaviour", onPress: () => createReport(advert.ownerAccountId!, "Inappropriate behaviour") },
+                          { text: "Spam / fake account", onPress: () => createReport(advert.ownerAccountId!, "Spam / fake account") },
+                          { text: "Other", onPress: () => createReport(advert.ownerAccountId!, "Other") },
+                        ]
+                      );
+                    }}
+                    style={({ pressed }) => [
+                      { flexDirection: "row", alignItems: "center", gap: 6, padding: 8, borderRadius: 12, backgroundColor: "#FEE2E2", borderWidth: 1, borderColor: "#FCA5A5", opacity: pressed ? 0.75 : 1 },
+                    ]}
+                  >
+                    <Feather name="flag" size={14} color="#DC2626" />
+                  </Pressable>
+                ) : null}
+                <IconButton icon="x" label="Close" onPress={onClose} />
+              </View>
             </View>
 
             <Text style={[styles.detailType, { color: theme.primary }]}>{typeLabel(advert.type)}</Text>

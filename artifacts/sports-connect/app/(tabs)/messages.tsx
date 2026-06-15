@@ -217,7 +217,7 @@ function ProfileViewModal({
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { getImageUri } = useSportsConnect();
+  const { getImageUri, currentAccount, createReport } = useSportsConnect();
 
   if (!account) return null;
 
@@ -389,6 +389,40 @@ function ProfileViewModal({
                   ) : null}
                 </>
               ) : null}
+              {/* Report button */}
+              {currentAccount?.id !== account.id && (
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      "Report this account",
+                      undefined,
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Underage", onPress: () => {
+                          Alert.alert(
+                            "Report underage user",
+                            "This will report the account to admin for review. The account will be paused from messaging until review is complete.",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              { text: "Report", style: "destructive", onPress: () => createReport(account.id, "I believe this person is underage") },
+                            ]
+                          );
+                        }},
+                        { text: "Inappropriate behaviour", onPress: () => createReport(account.id, "Inappropriate behaviour") },
+                        { text: "Spam / fake account", onPress: () => createReport(account.id, "Spam / fake account") },
+                        { text: "Other", onPress: () => createReport(account.id, "Other") },
+                      ]
+                    );
+                  }}
+                  style={({ pressed }) => [
+                    profileStyles.reportBtn,
+                    { backgroundColor: "#FEE2E2", borderColor: "#FCA5A5", opacity: pressed ? 0.75 : 1 },
+                  ]}
+                >
+                  <Feather name="flag" size={14} color="#DC2626" />
+                  <Text style={{ color: "#DC2626", fontSize: 14, fontWeight: "600" }}>Report this account</Text>
+                </Pressable>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -1031,4 +1065,5 @@ const profileStyles = StyleSheet.create({
   enlargedWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   enlargedClose: { position: "absolute", top: 24, right: 24, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   enlargedImg: { width: "100%", height: "80%" as any },
+  reportBtn: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 14, borderWidth: 1, marginTop: 8 },
 });

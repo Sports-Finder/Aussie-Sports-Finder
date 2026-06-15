@@ -91,4 +91,9 @@ export const api = {
   /** Admin-only: revoke a previously issued moderator session token. */
   revokeModeratorSession: (token: string) =>
     apiFetch(`/moderator-sessions/${token}`, { method: "DELETE" }),
+
+  createReport: (body: any) => apiFetch("/reports", { method: "POST", body: JSON.stringify(body) }),
+  getReports: () => apiFetch("/reports") as Promise<any[]>,
+  resolveReport: (publicId: string, resolution: "ok" | "underage") =>
+    apiFetch(`/reports/${publicId}/resolve`, { method: "POST", body: JSON.stringify({ resolution }) }),
 };

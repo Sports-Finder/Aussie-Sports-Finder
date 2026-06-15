@@ -217,3 +217,17 @@ export function mapSportRequest(row: Record<string, unknown>) {
 export function mapBannedEmail(row: Record<string, unknown>) {
   return row.email as string;
 }
+
+export function mapReport(row: Record<string, unknown>) {
+  return {
+    id: row.publicId as string,
+    reporterAccountId: row.reporterAccountId as string,
+    targetAccountId: row.targetAccountId as string,
+    reason: row.reason as string,
+    status: row.status as string,
+    createdAt: new Date(row.createdAt as string).toISOString(),
+    resolvedAt: row.resolvedAt ? new Date(row.resolvedAt as string).toISOString() : undefined,
+    resolvedBy: row.resolvedBy as string | undefined,
+    resolution: row.resolution as string | undefined,
+  };
+}
