@@ -1315,7 +1315,6 @@ export default function PostScreen() {
             <Text style={[localStyles.titlePreviewText, { color: colors.foreground }]} numberOfLines={3}>
               {title || "Fill in the form below to generate your title"}
             </Text>
-            <Text style={[localStyles.titlePreviewHint, { color: colors.mutedForeground }]}>Location is taken from your profile</Text>
           </View>
 
           {isTechnicalDirector ? (
