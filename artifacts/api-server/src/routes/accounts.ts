@@ -5,6 +5,7 @@ import { logger } from "../lib/logger";
 import { mapAccount, mapAccountAdmin, mapCoachAffiliate } from "../lib/mapDbToApi";
 import { normalizeDates } from "../lib/normalizeDates";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { getAuth } from "@clerk/express";
 
 const router: IRouter = Router();
 
@@ -59,7 +60,9 @@ router.post("/accounts", async (req, res) => {
     // Strip client-side id (local string id, not a DB serial) and passwordHash
     // (the client sends plain `password`; we store it directly in the `password`
     // column — passwordHash is reserved for future bcrypt migration).
-    const { id: _id, passwordHash: _ph, ...rest } = req.body as Record<string, unknown>;
+    // Also strip any client-supplied clerkUserId so the server always owns
+    // the identity binding.
+    const { id: _id, passwordHash: _ph, clerkUserId: _cuid, ...rest } = req.body as Record<string, unknown>;
     const body = normalizeDates(rest, [
       "createdAt",
       "updatedAt",
@@ -69,7 +72,14 @@ router.post("/accounts", async (req, res) => {
       "subscriptionExpiresAt",
       "lastAdvertClosedAt",
     ]);
-    const [created] = await db.insert(accountsTable).values(body as never).returning();
+    // Derive the Clerk user ID from the authenticated session so the binding
+    // cannot be forged or reassigned by the client.
+    const auth = getAuth(req);
+    const derivedClerkUserId = auth.userId ?? undefined;
+    const [created] = await db.insert(accountsTable).values({
+      ...body,
+      clerkUserId: derivedClerkUserId,
+    } as never).returning();
     res.status(201).json(mapAccount(created as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to create account");
@@ -82,8 +92,8 @@ router.put("/accounts/:publicId", async (req, res) => {
     const publicId = req.params.publicId;
     // Strip read-only / registration-only fields that must never be overwritten
     // via a profile update — id, password (set once at registration), coachAffiliates
-    // (managed by its own endpoints).
-    const { id: _id, password: _pw, coachAffiliates: _ca, ...rawBody } = req.body as Record<string, unknown>;
+    // (managed by its own endpoints), and clerkUserId (server-owned identity binding).
+    const { id: _id, password: _pw, coachAffiliates: _ca, clerkUserId: _cuid, ...rawBody } = req.body as Record<string, unknown>;
     const body = normalizeDates(rawBody, [
       "statusChangedAt",
       "trialStartedAt",

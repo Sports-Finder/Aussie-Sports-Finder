@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, jsonb, serial, varchar, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, serial, varchar, boolean, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -61,7 +62,9 @@ export const accountsTable = pgTable("accounts", {
   password: text("password"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("accounts_clerk_user_id_unique").on(table.clerkUserId).where(sql`${table.clerkUserId} IS NOT NULL`),
+]);
 
 export const insertAccountSchema = createInsertSchema(accountsTable)
   .omit({ id: true, createdAt: true, updatedAt: true })

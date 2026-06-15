@@ -110,11 +110,17 @@ router.post("/conversations/:publicId/messages", async (req, res) => {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    const [sender] = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
-    if (!sender) {
+    const senders = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
+    if (senders.length === 0) {
       res.status(401).json({ error: "Sender account not found." });
       return;
     }
+    if (senders.length > 1) {
+      req.log.error({ clerkUserId }, "Multiple accounts found for the same Clerk user ID");
+      res.status(500).json({ error: "Account identity conflict." });
+      return;
+    }
+    const sender = senders[0];
     if (sender.status === "review" || sender.status === "banned" || sender.status === "closed") {
       res.status(403).json({ error: "Your account is under review. You cannot send messages until the review is complete." });
       return;

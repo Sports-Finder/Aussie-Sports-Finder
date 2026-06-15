@@ -22,8 +22,12 @@ async function resolveReporterAccountId(req: Parameters<typeof getAuth>[0]): Pro
   const auth = getAuth(req);
   const clerkUserId = auth.userId;
   if (!clerkUserId) return null;
-  const [account] = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
-  return account?.publicId ?? null;
+  const accounts = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
+  if (accounts.length > 1) {
+    logger.error({ clerkUserId }, "Multiple accounts found for the same Clerk user ID");
+    return null;
+  }
+  return accounts[0]?.publicId ?? null;
 }
 
 /**
