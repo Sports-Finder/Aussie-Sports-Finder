@@ -1603,7 +1603,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {!isTechnicalDirector && (
+          {!isTechnicalDirector && !isClubFriendly && (
             <>
               <FormLabel text="Level" />
               <Field value={level} onChangeText={setLevel} label="" placeholder="e.g. Competitive Amateur, Semi-Pro" />
@@ -1745,7 +1745,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {!isPlayerLooking && !isCoachLooking && (
+          {!isPlayerLooking && !isCoachLooking && !isClubFriendly && (
             <CheckRow label="Trial required" value={trialRequired} onToggle={() => setTrialRequired(!trialRequired)} />
           )}
 
