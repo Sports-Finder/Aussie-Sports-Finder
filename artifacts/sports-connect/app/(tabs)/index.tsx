@@ -339,7 +339,14 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               <View style={[styles.detailChip, { backgroundColor: theme.soft }]}>
                 <Text style={[styles.detailChipText, { color: theme.primary }]}>{advert.sport}</Text>
               </View>
-              {advert.level ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View> : null}
+              {advert.type === "club-friendly" && advert.friendlySubType ? (
+                <View style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}>
+                  <Text style={[styles.detailChipText, { color: colors.primary }]}>
+                    {advert.friendlySubType === "available" ? "Available" : "Wanted"}
+                  </Text>
+                </View>
+              ) : null}
+              {advert.type !== "club-friendly" && advert.level ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.level}</Text></View> : null}
               {advert.teamGender ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.teamGender}</Text></View> : null}
               {advert.playerGender ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.playerGender}</Text></View> : null}
               <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}>
@@ -348,9 +355,9 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               {advert.focusArea ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.focusArea}</Text></View> : null}
               {advert.ageGroup ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>{advert.ageGroup}</Text></View> : null}
               {advert.preferredAge ? <View style={[styles.detailChip, { backgroundColor: colors.secondary }]}><Text style={[styles.detailChipText, { color: colors.secondaryForeground }]}>Age {advert.preferredAge}</Text></View> : null}
-              {advert.trialRequired ? <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}><Text style={[styles.detailChipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
-              {feesLabel ? <View style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}><Text style={[styles.detailChipText, { color: colors.primary }]}>{feesLabel}</Text></View> : null}
-              {advert.opportunityStates && advert.opportunityStates.length > 0 ? (
+              {advert.type !== "club-friendly" && advert.trialRequired ? <View style={[styles.detailChip, { backgroundColor: colors.amberSoft }]}><Text style={[styles.detailChipText, { color: colors.accentForeground }]}>Trial required</Text></View> : null}
+              {advert.type !== "club-friendly" && feesLabel ? <View style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}><Text style={[styles.detailChipText, { color: colors.primary }]}>{feesLabel}</Text></View> : null}
+              {advert.type !== "club-friendly" && advert.opportunityStates && advert.opportunityStates.length > 0 ? (
                 advert.opportunityStates.length === 8
                   ? <View style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}><Text style={[styles.detailChipText, { color: colors.primary }]}>Open to: Australia</Text></View>
                   : advert.opportunityStates.map((s) => <View key={s} style={[styles.detailChip, { backgroundColor: colors.pitchSoft }]}><Text style={[styles.detailChipText, { color: colors.primary }]}>{s}</Text></View>)
@@ -402,16 +409,16 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               )}
             </View>
 
-            {/* ── Player / club description ── */}
-            {advert.playerDescription ? (
+            {/* ── Player / club description (non-Club-Friendly) ── */}
+            {advert.type !== "club-friendly" && advert.playerDescription ? (
               <DetailRow
                 label={advert.postedByType === "club" ? "Looking for" : "About the player"}
                 value={advert.playerDescription}
               />
             ) : null}
 
-            {/* ── Training days ── */}
-            {trainingSchedule ? (
+            {/* ── Training days (non-Club-Friendly) ── */}
+            {advert.type !== "club-friendly" && trainingSchedule ? (
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>
                   {advert.postedByType === "club" ? "Training days" : "Available training days"}
@@ -420,8 +427,8 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               </View>
             ) : null}
 
-            {/* ── Game days ── */}
-            {gameSchedule ? (
+            {/* ── Game days (non-Club-Friendly) ── */}
+            {advert.type !== "club-friendly" && gameSchedule ? (
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>
                   {advert.postedByType === "club" ? "Game days" : "Available game days"}
@@ -430,13 +437,13 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               </View>
             ) : null}
 
-            {/* ── Schedule note (player-looking only) ── */}
-            {advert.scheduleNote ? (
+            {/* ── Schedule note (non-Club-Friendly) ── */}
+            {advert.type !== "club-friendly" && advert.scheduleNote ? (
               <DetailRow label="Training / game day notes" value={advert.scheduleNote} />
             ) : null}
 
-            {/* ── Trial dates ── */}
-            {advert.trialSlots && advert.trialSlots.length > 0 ? (
+            {/* ── Trial dates (non-Club-Friendly) ── */}
+            {advert.type !== "club-friendly" && advert.trialSlots && advert.trialSlots.length > 0 ? (
               <View style={styles.detailRow}>
                 <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Trial dates</Text>
                 <View style={{ gap: 4 }}>
@@ -452,19 +459,10 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               </View>
             ) : null}
 
-            {/* ── Standard fields ── */}
-            {advert.teamGender ? <DetailRow label="Team Gender" value={advert.teamGender} /> : null}
-            {advert.playerGender ? <DetailRow label="Gender" value={advert.playerGender} /> : null}
-            <DetailRow label="Level" value={advert.level} />
-            {advert.availability && advert.availability !== "TBD | TBD" && !trainingSchedule && !gameSchedule
-              ? <DetailRow label="Availability" value={advert.availability} />
-              : null}
-            <DetailRow label="Additional details" value={advert.description} />
-
             {/* ── Club Friendly fields ── */}
             {advert.type === "club-friendly" && (
               <>
-                {advert.friendlySubType ? <DetailRow label="Friendly Type" value={advert.friendlySubType === "available" ? "Available (we have a team)" : "Wanted (looking for a team)"} /> : null}
+                {advert.friendlySubType ? <DetailRow label="Friendly Type" value={advert.friendlySubType === "available" ? "Available (looking & able to host a team)" : "Wanted (cannot host but looking for an opponent)"} /> : null}
                 {advert.preferredOpponents && advert.preferredOpponents.length > 0 ? <DetailRow label="Preferred Opponent/s" value={advert.preferredOpponents.join(", ")} /> : null}
                 {advert.preferredTeamLevel ? <DetailRow label="Preferred Team Level" value={advert.preferredTeamLevel} /> : null}
                 {advert.trialSlots && advert.trialSlots.length > 0 ? (
@@ -487,6 +485,19 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                 {advert.refereeType ? <DetailRow label="Referee Type" value={advert.refereeType} /> : null}
                 {advert.friendlySuburb ? <DetailRow label="Club Location" value={`${advert.friendlySuburb}${advert.friendlyState ? `, ${advert.friendlyState}` : ""}`} /> : null}
                 {advert.friendlyInfo ? <DetailRow label="Additional Info" value={advert.friendlyInfo} /> : null}
+              </>
+            )}
+
+            {/* ── Standard fields (non-Club-Friendly) ── */}
+            {advert.type !== "club-friendly" && (
+              <>
+                {advert.teamGender ? <DetailRow label="Team Gender" value={advert.teamGender} /> : null}
+                {advert.playerGender ? <DetailRow label="Gender" value={advert.playerGender} /> : null}
+                <DetailRow label="Level" value={advert.level} />
+                {advert.availability && advert.availability !== "TBD | TBD" && !trainingSchedule && !gameSchedule
+                  ? <DetailRow label="Availability" value={advert.availability} />
+                  : null}
+                <DetailRow label="Additional details" value={advert.description} />
               </>
             )}
 
