@@ -487,7 +487,7 @@ export default function PostScreen() {
   const [venueSuburb, setVenueSuburb] = useState("");
   const [venuePostcode, setVenuePostcode] = useState("");
   const [venueState, setVenueState] = useState("");
-  const [refereeTypes, setRefereeTypes] = useState<string[]>([]);
+  const [refereeType, setRefereeType] = useState<string | null>(null);
   const [friendlyInfo, setFriendlyInfo] = useState("");
   const [friendlySuburb, setFriendlySuburb] = useState(() => stripStateFromLocation(currentAccount?.location ?? ""));
   const [friendlyState, setFriendlyState] = useState(() => stateFromLocation(currentAccount?.location ?? ""));
@@ -630,7 +630,7 @@ export default function PostScreen() {
     setVenueSuburb(advert.venueSuburb ?? "");
     setVenuePostcode(advert.venuePostcode ?? "");
     setVenueState(advert.venueState ?? "");
-    setRefereeTypes(advert.refereeTypes ?? []);
+    setRefereeType(advert.refereeType ?? null);
     setFriendlyInfo(advert.friendlyInfo ?? "");
     setFriendlySuburb(advert.friendlySuburb ?? "");
     setFriendlyState(advert.friendlyState ?? "");
@@ -678,7 +678,7 @@ export default function PostScreen() {
     setVenueSuburb("");
     setVenuePostcode("");
     setVenueState("");
-    setRefereeTypes([]);
+    setRefereeType(null);
     setFriendlyInfo("");
     setFriendlySuburb("");
     setFriendlyState("");
@@ -775,7 +775,7 @@ export default function PostScreen() {
   const groundGateOk = !isClubFriendly || friendlySubType === "wanted" || groundAvailable;
   const venueOk = !isClubFriendly || friendlySubType === "wanted" || (groundAvailable && venueSuburb.trim().length > 0 && venuePostcode.trim().length > 0 && venueState.trim().length > 0);
   const locationOk = !isClubFriendly || friendlySubType === "available" || (friendlySuburb.trim().length > 0 && friendlyPostcode.trim().length > 0 && friendlyState.trim().length > 0);
-  const refereeTypesOk = !isClubFriendly || friendlySubType === "wanted" || (groundAvailable && refereeTypes.length > 0);
+  const refereeTypeOk = !isClubFriendly || friendlySubType === "wanted" || (groundAvailable && !!refereeType);
 
   const descContactWarning = detectContactInfo(description);
   const playerDescContactWarning = detectContactInfo(playerDescription);
@@ -785,7 +785,7 @@ export default function PostScreen() {
   const canAddFriendlyDate = !isClubFriendly || trialSlots.length < maxFriendlyDates;
   const ageGroupOk = isTechnicalDirector || isCoachLooking || isCoachWanted || isClubFriendly ? true : ageGroup !== null;
   const friendlyInfoOk = !isClubFriendly || (friendlyInfoWordCount <= 100);
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && ageGroupOk && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning && (!isClubFriendly || (friendlyDatesOk && preferredOpponentsOk && preferredTeamLevelOk && groundGateOk && venueOk && locationOk && refereeTypesOk && !friendlyInfoContactWarning && friendlyInfoOk));
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && ageGroupOk && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning && (!isClubFriendly || (friendlyDatesOk && preferredOpponentsOk && preferredTeamLevelOk && groundGateOk && venueOk && locationOk && refereeTypeOk && !friendlyInfoContactWarning && friendlyInfoOk));
 
   const validationErrors: string[] = [];
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
@@ -807,7 +807,7 @@ export default function PostScreen() {
     if (!groundGateOk) validationErrors.push("Ground/Field Available must be checked — change to 'Wanted' if no ground");
     if (!venueOk) validationErrors.push("Venue suburb, postcode and state are required when ground is available");
     if (!locationOk) validationErrors.push("Your club location (suburb, postcode and state) is required");
-    if (!refereeTypesOk) validationErrors.push("Referee type must be selected when ground is available");
+    if (!refereeTypeOk) validationErrors.push("Referee type must be selected when ground is available");
     if (!friendlyInfoOk) validationErrors.push("Additional info must be 100 words or less");
   }
 
@@ -909,7 +909,7 @@ export default function PostScreen() {
     setVenueSuburb("");
     setVenuePostcode("");
     setVenueState("");
-    setRefereeTypes([]);
+    setRefereeType(null);
     setFriendlyInfo("");
     setFriendlySuburb("");
     setFriendlyState("");
@@ -1011,7 +1011,7 @@ export default function PostScreen() {
       venueSuburb: isClubFriendly && groundAvailable ? venueSuburb.trim() || undefined : undefined,
       venuePostcode: isClubFriendly && groundAvailable ? venuePostcode.trim() || undefined : undefined,
       venueState: isClubFriendly && groundAvailable ? venueState.trim() || undefined : undefined,
-      refereeTypes: isClubFriendly && groundAvailable ? refereeTypes : undefined,
+      refereeType: isClubFriendly && groundAvailable ? refereeType ?? undefined : undefined,
       friendlyInfo: isClubFriendly ? friendlyInfo.trim() || undefined : undefined,
       friendlySuburb: isClubFriendly && friendlySubType === "wanted" ? friendlySuburb.trim() || undefined : undefined,
       friendlyPostcode: isClubFriendly && friendlySubType === "wanted" ? friendlyPostcode.trim() || undefined : undefined,
@@ -1547,7 +1547,7 @@ export default function PostScreen() {
                     <FormLabel text="Referee Type" required={groundAvailable} />
                     <View style={localStyles.pillRow}>
                       {["Registered/Licensed Referee", "Club/Volunteer Referee"].map((r) => (
-                        <Pill key={r} label={r} active={refereeTypes.includes(r)} onPress={() => { if (groundAvailable) setRefereeTypes((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]); }} />
+                        <Pill key={r} label={r} active={refereeType === r} onPress={() => { if (groundAvailable) setRefereeType(r); }} />
                       ))}
                     </View>
                   </View>

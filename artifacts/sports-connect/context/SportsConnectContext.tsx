@@ -206,7 +206,7 @@ export type Advert = {
   venueSuburb?: string;
   venuePostcode?: string;
   venueState?: string;
-  refereeTypes?: string[];
+  refereeType?: string;
   friendlyInfo?: string;
   friendlySuburb?: string;
   friendlyState?: string;

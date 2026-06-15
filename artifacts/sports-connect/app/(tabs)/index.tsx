@@ -484,7 +484,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                 ) : null}
                 {advert.groundAvailable ? <DetailRow label="Ground Available" value="Yes" /> : null}
                 {advert.venueSuburb ? <DetailRow label="Venue" value={`${advert.venueSuburb}${advert.venuePostcode ? ` ${advert.venuePostcode}` : ""}${advert.venueState ? `, ${advert.venueState}` : ""}`} /> : null}
-                {advert.refereeTypes && advert.refereeTypes.length > 0 ? <DetailRow label="Referee Type" value={advert.refereeTypes.join(", ")} /> : null}
+                {advert.refereeType ? <DetailRow label="Referee Type" value={advert.refereeType} /> : null}
                 {advert.friendlySuburb ? <DetailRow label="Club Location" value={`${advert.friendlySuburb}${advert.friendlyState ? `, ${advert.friendlyState}` : ""}`} /> : null}
                 {advert.friendlyInfo ? <DetailRow label="Additional Info" value={advert.friendlyInfo} /> : null}
               </>
