@@ -16,7 +16,7 @@ import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
-type Filter = "all" | "players-wanted" | "player-looking" | "coach-looking" | "coach-wanted" | "club-trials" | "near" | "expiring-soon";
+type Filter = "all" | "players-wanted" | "player-looking" | "coach-looking" | "coach-wanted" | "club-trials" | "club-friendly" | "near" | "expiring-soon";
 type SortOrder = "newest" | "oldest";
 const australianStates = ["All", "NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"] as const;
 type AustralianStateFilter = (typeof australianStates)[number];
@@ -43,6 +43,7 @@ function typeLabel(type: Advert["type"]) {
     : type === "coach-looking" ? "Coach Looking for Team/Club"
     : type === "coach-wanted" ? "Staff (Coach/TD) Wanted for Club"
     : type === "club-trials" ? "Club Trials Info"
+    : type === "club-friendly" ? "Club Friendly"
     : "";
 }
 
@@ -70,6 +71,8 @@ function canRequestConnection(viewerRole: AccountRole, advert: Advert, affiliate
       return viewerIsClub || viewerIsAffiliatedCoach;
     case "coach-looking":
       return viewerIsClub;
+    case "club-friendly":
+      return viewerIsClub || viewerIsAffiliatedCoach;
     default:
       return false;
   }
@@ -88,7 +91,7 @@ function getConnectableAdvertTypes(role: AccountRole, affiliatedClubId?: string 
     types.push("coach-wanted");
   }
   if (viewerIsAffiliatedCoach || viewerIsClub) {
-    types.push("player-looking");
+    types.push("player-looking", "club-friendly");
   }
   if (viewerIsClub) {
     types.push("coach-looking");
@@ -458,6 +461,35 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
               : null}
             <DetailRow label="Additional details" value={advert.description} />
 
+            {/* ── Club Friendly fields ── */}
+            {advert.type === "club-friendly" && (
+              <>
+                {advert.friendlySubType ? <DetailRow label="Friendly Type" value={advert.friendlySubType === "available" ? "Available (we have a team)" : "Wanted (looking for a team)"} /> : null}
+                {advert.preferredOpponents && advert.preferredOpponents.length > 0 ? <DetailRow label="Preferred Opponent/s" value={advert.preferredOpponents.join(", ")} /> : null}
+                {advert.preferredTeamLevel ? <DetailRow label="Preferred Team Level" value={advert.preferredTeamLevel} /> : null}
+                {advert.trialSlots && advert.trialSlots.length > 0 ? (
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: colors.mutedForeground }]}>Friendly Date(s)</Text>
+                    <View style={{ gap: 4 }}>
+                      {advert.trialSlots.map((t, idx) => {
+                        const display = formatTrialDateDisplay(t.date);
+                        return (
+                          <Text key={idx} style={[styles.detailCopy, { color: colors.foreground }]}>
+                            {display ? `${display}  ${t.timeFrom ? t.timeFrom : ""}${t.timeTo ? ` \u2013 ${t.timeTo}` : ""}` : `${t.date} ${t.timeFrom}${t.timeTo ? `\u2013${t.timeTo}` : ""}`}
+                          </Text>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : null}
+                {advert.groundAvailable ? <DetailRow label="Ground Available" value="Yes" /> : null}
+                {advert.venueSuburb ? <DetailRow label="Venue" value={`${advert.venueSuburb}${advert.venuePostcode ? ` ${advert.venuePostcode}` : ""}${advert.venueState ? `, ${advert.venueState}` : ""}`} /> : null}
+                {advert.refereeTypes && advert.refereeTypes.length > 0 ? <DetailRow label="Referee Type" value={advert.refereeTypes.join(", ")} /> : null}
+                {advert.friendlySuburb ? <DetailRow label="Club Location" value={`${advert.friendlySuburb}${advert.friendlyState ? `, ${advert.friendlyState}` : ""}`} /> : null}
+                {advert.friendlyInfo ? <DetailRow label="Additional Info" value={advert.friendlyInfo} /> : null}
+              </>
+            )}
+
             <View style={{ height: 16 }} />
 
             {/* ── Connection section ── */}
@@ -803,10 +835,10 @@ export default function DiscoverScreen() {
         <SectionTitle title={`${selectedSport === allSportsFilterName ? "All sports" : selectedSport} adverts`} action={`${filtered.length} live`} />
         <View style={styles.filterRow}>
           <Pill label="All" active={filter === "all"} onPress={() => setFilter("all")} />
-          {(isAdmin ? (["players-wanted", "player-looking", "coach-looking", "coach-wanted", "club-trials"] as Filter[]) : connectableTypes).map((type) => (
+          {(isAdmin ? (["players-wanted", "player-looking", "coach-looking", "coach-wanted", "club-trials", "club-friendly"] as Filter[]) : connectableTypes).map((type) => (
             <Pill
               key={type}
-              label={type === "players-wanted" ? "Players Wanted" : type === "player-looking" ? "Player Looking" : type === "coach-looking" ? "Coach Looking" : type === "coach-wanted" ? "Coach Wanted" : "Club Trials"}
+              label={type === "players-wanted" ? "Players Wanted" : type === "player-looking" ? "Player Looking" : type === "coach-looking" ? "Coach Looking" : type === "coach-wanted" ? "Coach Wanted" : type === "club-friendly" ? "Club Friendly" : "Club Trials"}
               active={filter === type}
               onPress={() => setFilter(type)}
             />

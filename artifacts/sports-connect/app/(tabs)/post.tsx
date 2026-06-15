@@ -22,7 +22,7 @@ import { ApiError } from "@/utils/apiClient";
 import { detectContactInfo } from "@/utils/contactDetection";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
-import { AgeGroup, AGE_GROUPS } from "@/constants/ageGroups";
+import { AgeGroup, AGE_GROUPS, getFriendlyOpponentOptions } from "@/constants/ageGroups";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 import { coachSubRoleLabel } from "@/constants/coachSubRoles";
 import { formatTrialDateInput, parseTrialDate } from "@/utils/dateUtils";
@@ -49,11 +49,13 @@ function getAdvertTypesByRole(role: AccountRole, subRole?: string | null): { val
       { value: "coach-looking", label: `${coachLabel} looking for Team or Club` },
       { value: "players-wanted", label: "Players Wanted for Team", requiresAffiliation: true },
       { value: "club-trials", label: "Club Trials Info", requiresAffiliation: true },
+      { value: "club-friendly", label: "Club Friendly", requiresAffiliation: true },
     ],
     club: [
       { value: "players-wanted", label: "Players Wanted for Team" },
       { value: "club-trials", label: "Club Trials Info" },
       { value: "coach-wanted", label: "Staff (Coach/TD) Wanted for Club" },
+      { value: "club-friendly", label: "Club Friendly" },
     ],
   };
   return base[role];
@@ -158,6 +160,7 @@ function advertTypeLabel(type: Advert["type"], coachSubRole?: string | null) {
     : type === "coach-looking" ? `${coachLabel} Looking for Team/Club`
     : type === "coach-wanted" ? "Staff (Coach/TD) Wanted for Club"
     : type === "club-trials" ? "Club Trials Info"
+    : type === "club-friendly" ? "Club Friendly"
     : "Players Wanted for Team";
 }
 
@@ -475,6 +478,18 @@ export default function PostScreen() {
   const [teamGender, setTeamGender] = useState<string>("");
   const [playerGender, setPlayerGender] = useState<string>("");
   const [title, setTitle] = useState("");
+  // Club-friendly fields
+  const [friendlySubType, setFriendlySubType] = useState<"available" | "wanted">("available");
+  const [preferredOpponents, setPreferredOpponents] = useState<string[]>([]);
+  const [preferredTeamLevel, setPreferredTeamLevel] = useState("");
+  const [groundAvailable, setGroundAvailable] = useState(false);
+  const [venueSuburb, setVenueSuburb] = useState("");
+  const [venuePostcode, setVenuePostcode] = useState("");
+  const [venueState, setVenueState] = useState("");
+  const [refereeTypes, setRefereeTypes] = useState<string[]>([]);
+  const [friendlyInfo, setFriendlyInfo] = useState("");
+  const [friendlySuburb, setFriendlySuburb] = useState(() => stripStateFromLocation(currentAccount?.location ?? ""));
+  const [friendlyState, setFriendlyState] = useState(() => stateFromLocation(currentAccount?.location ?? ""));
 
   const allowedSportsKey = allowedSports.join(",");
   useEffect(() => {
@@ -514,6 +529,7 @@ export default function PostScreen() {
     const ageLabel = ageGroup ? ageGroup.label.replace(/\(.*\)/, "").trim() : "";
     const isClubSide = type === "players-wanted" || type === "club-trials" || type === "coach-wanted";
     const isLookingType = type === "player-looking" || type === "coach-looking";
+    const isClubFriendly = type === "club-friendly";
     const genderLabel = isClubSide ? teamGender.trim() : playerGender.trim();
     const positionLabel = positions.length === 1 ? positions[0] : "";
 
@@ -535,6 +551,14 @@ export default function PostScreen() {
       middleSlot = coachTitle.trim();
       const subRoleLabel = coachSubRoleLabel(currentAccount?.coachSubRole);
       rolePhrase = `${subRoleLabel} Looking for Club`;
+    } else if (isClubFriendly) {
+      const subTypeLabel = friendlySubType === "available" ? "Available" : "Wanted";
+      const locationLabel = friendlySubType === "available"
+        ? (venueSuburb.trim() ? `${venueSuburb.trim()}, ${venueState}` : "")
+        : (friendlySuburb.trim() ? `${friendlySuburb.trim()}, ${friendlyState}` : "");
+      const parts = [ageLabel, teamGender.trim(), "Club Friendly", subTypeLabel, locationLabel].filter(Boolean);
+      setTitle(parts.join(" ").replace(/\s+/g, " ").trim());
+      return;
     }
 
     let ending = "";
@@ -558,7 +582,7 @@ export default function PostScreen() {
       : [genderLabel, ageLabel, level, middleSlot, sportLabel, profileStateLabel, rolePhrase].filter(Boolean);
     const titleBody = parts.join(" ").replace(/\s+/g, " ").trim();
     setTitle([titleBody, ending].filter(Boolean).join(" ").replace(/\s+/g, " ").trim());
-  }, [sport, type, ageGroup, focusArea, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender, level, opportunityStates]);
+  }, [sport, type, ageGroup, focusArea, coachTitle, coachRole, positions, suburb, state, teamGender, playerGender, level, opportunityStates, friendlySubType, venueSuburb, venueState, friendlySuburb, friendlyState]);
 
   const loadAdvertForEdit = (advert: Advert) => {
     setEditingId(advert.id);
@@ -596,6 +620,17 @@ export default function PostScreen() {
     setPreviousClub(advert.previousClub ?? currentAccount?.coachCurrentClub ?? "");
     setTeamGender(advert.teamGender ?? "");
     setPlayerGender(advert.playerGender ?? "");
+    setFriendlySubType(advert.friendlySubType ?? "available");
+    setPreferredOpponents(advert.preferredOpponents ?? []);
+    setPreferredTeamLevel(advert.preferredTeamLevel ?? "");
+    setGroundAvailable(advert.groundAvailable ?? false);
+    setVenueSuburb(advert.venueSuburb ?? "");
+    setVenuePostcode(advert.venuePostcode ?? "");
+    setVenueState(advert.venueState ?? "");
+    setRefereeTypes(advert.refereeTypes ?? []);
+    setFriendlyInfo(advert.friendlyInfo ?? "");
+    setFriendlySuburb(advert.friendlySuburb ?? "");
+    setFriendlyState(advert.friendlyState ?? "");
     setSubmitted(false);
     setSelectedMyAdvert(null);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -632,6 +667,17 @@ export default function PostScreen() {
     setCoachSalaryTbc(false);
     setTeamGender("");
     setPlayerGender("");
+    setFriendlySubType("available");
+    setPreferredOpponents([]);
+    setPreferredTeamLevel("");
+    setGroundAvailable(false);
+    setVenueSuburb("");
+    setVenuePostcode("");
+    setVenueState("");
+    setRefereeTypes([]);
+    setFriendlyInfo("");
+    setFriendlySuburb("");
+    setFriendlyState("");
     setSubmitted(false);
     setShowErrors(false);
   };
@@ -641,7 +687,7 @@ export default function PostScreen() {
   const isAffiliatedCoach = isPureCoach && Boolean(currentAccount?.affiliatedClubId);
   const coachClubName = currentAccount?.affiliatedClubName;
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
-  const postedByName = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials")
+  const postedByName = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials" || type === "club-friendly")
     ? `${playerProfile.name} (Affiliated Coach \u2013 ${coachClubName})`
     : ownerName;
   const isClub = accountRole === "club";
@@ -665,6 +711,7 @@ export default function PostScreen() {
   const isPlayersWanted = type === "players-wanted";
   const isClubTrials = type === "club-trials";
   const isCoachWanted = type === "coach-wanted";
+  const isClubFriendly = type === "club-friendly";
   const showPlayerDesc = isPlayerLooking || isCoachLooking;
   const showCoachTitle = isCoachLooking;
   const showSchedule = isPlayerLooking || isPlayersWanted;
@@ -695,17 +742,27 @@ export default function PostScreen() {
   const trialSlotsOk = !isClubTrials || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors);
   const isTechnicalDirector = isCoachWanted && coachRole === "Technical Director";
   const coachWantedOk = !isCoachWanted || (coachRole.trim().length > 0 && (!isTechnicalDirector || focusArea.trim().length > 0) && (isTechnicalDirector || coachExperienceLevel.trim().length > 0) && coachPositionTypes.length > 0);
-  const teamGenderOk = (!isPlayersWanted && !isClubTrials && !isCoachWanted) || teamGender.trim().length > 0;
+  const teamGenderOk = (!isPlayersWanted && !isClubTrials && !isCoachWanted && !isClubFriendly) || teamGender.trim().length > 0;
+
+  // Club-friendly validation
+  const friendlyDatesOk = !isClubFriendly || (trialSlots[0].date.trim().length > 0 && !hasTrialSlotErrors);
+  const preferredOpponentsOk = !isClubFriendly || preferredOpponents.length > 0;
+  const preferredTeamLevelOk = !isClubFriendly || preferredTeamLevel.trim().length > 0;
+  const groundGateOk = !isClubFriendly || friendlySubType === "wanted" || groundAvailable;
+  const venueOk = !isClubFriendly || friendlySubType === "wanted" || (groundAvailable && venueSuburb.trim().length > 0 && venuePostcode.trim().length > 0 && venueState.trim().length > 0);
+  const locationOk = !isClubFriendly || friendlySubType === "available" || (friendlySuburb.trim().length > 0 && friendlyState.trim().length > 0);
+  const refereeTypesOk = !isClubFriendly || friendlySubType === "wanted" || (groundAvailable && refereeTypes.length > 0);
 
   const descContactWarning = detectContactInfo(description);
   const playerDescContactWarning = detectContactInfo(playerDescription);
-  const ageGroupOk = isTechnicalDirector || isCoachLooking || isCoachWanted ? true : ageGroup !== null;
-  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && ageGroupOk && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning;
+  const friendlyInfoContactWarning = detectContactInfo(friendlyInfo);
+  const ageGroupOk = isTechnicalDirector || isCoachLooking || isCoachWanted || isClubFriendly ? true : ageGroup !== null;
+  const canSubmit = title.trim().length > 4 && sport.trim().length > 1 && suburb.trim().length > 1 && state.trim().length > 1 && ageGroupOk && scheduleOk && trialSlotsOk && coachWantedOk && teamGenderOk && !descContactWarning && !playerDescContactWarning && (!isClubFriendly || (friendlyDatesOk && preferredOpponentsOk && preferredTeamLevelOk && groundGateOk && venueOk && locationOk && refereeTypesOk && !friendlyInfoContactWarning));
 
   const validationErrors: string[] = [];
   if (suburb.trim().length <= 1) validationErrors.push("Location (suburb) is missing — add it to your profile");
   if (state.trim().length <= 1) validationErrors.push("State is missing — add it to your profile");
-  if (!isTechnicalDirector && !isCoachLooking && !isCoachWanted && ageGroup === null) validationErrors.push("Age Group must be selected");
+  if (!isTechnicalDirector && !isCoachLooking && !isCoachWanted && !isClubFriendly && ageGroup === null) validationErrors.push("Age Group must be selected");
   if (showSchedule && !trainingDaysOk) validationErrors.push("Training days must be selected (or tick Any Day & Time)");
   if (showSchedule && !gameDaysOk) validationErrors.push("Game days must be selected (or tick Any Day & Time)");
   if (isClubTrials && trialSlots[0].date.trim().length === 0) validationErrors.push("At least one trial date is required");
@@ -714,7 +771,16 @@ export default function PostScreen() {
   if (isTechnicalDirector && !focusArea) validationErrors.push("Focus area must be selected");
   if (!isTechnicalDirector && isCoachWanted && !coachExperienceLevel) validationErrors.push("Experience level must be selected");
   if (isCoachWanted && coachPositionTypes.length === 0) validationErrors.push("Position type must be selected");
-  if ((isPlayersWanted || isClubTrials || (isCoachWanted && !isTechnicalDirector)) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
+  if ((isPlayersWanted || isClubTrials || isClubFriendly || (isCoachWanted && !isTechnicalDirector)) && !teamGender.trim()) validationErrors.push("Team gender must be selected");
+  if (isClubFriendly) {
+    if (!friendlyDatesOk) validationErrors.push("At least one friendly date is required");
+    if (!preferredOpponentsOk) validationErrors.push("Preferred opponent/s must be selected");
+    if (!preferredTeamLevelOk) validationErrors.push("Preferred team level is required");
+    if (!groundGateOk) validationErrors.push("Ground/Field Available must be checked — change to 'Wanted' if no ground");
+    if (!venueOk) validationErrors.push("Venue suburb, postcode and state are required when ground is available");
+    if (!locationOk) validationErrors.push("Your club location (suburb and state) is required");
+    if (!refereeTypesOk) validationErrors.push("Referee type must be selected when ground is available");
+  }
 
   function toggleDay(list: string[], day: string): string[] {
     return list.includes(day) ? list.filter((d) => d !== day) : [...list, day];
@@ -741,7 +807,7 @@ export default function PostScreen() {
   // Exception: affiliated coaches can post unlimited players-wanted and club-trials
   // (acting on behalf of their club), but are still capped at 1 coach-looking advert.
   const isOverPersonalAdvertLimit = !isClub && !editingId && (() => {
-    if (isAffiliatedCoach && (isPlayersWanted || isClubTrials)) return false;
+    if (isAffiliatedCoach && (isPlayersWanted || isClubTrials || isClubFriendly)) return false;
     const countable = isAffiliatedCoach
       ? activeMyAdverts.filter((a) => a.type === "coach-looking")
       : activeMyAdverts;
@@ -807,6 +873,17 @@ export default function PostScreen() {
     setPreviousClub(currentAccount?.coachCurrentClub ?? "");
     setTeamGender("");
     setPlayerGender("");
+    setFriendlySubType("available");
+    setPreferredOpponents([]);
+    setPreferredTeamLevel("");
+    setGroundAvailable(false);
+    setVenueSuburb("");
+    setVenuePostcode("");
+    setVenueState("");
+    setRefereeTypes([]);
+    setFriendlyInfo("");
+    setFriendlySuburb("");
+    setFriendlyState("");
     setSubmitted(true);
     setShowErrors(false);
     setDuplicateError(null);
@@ -867,7 +944,7 @@ export default function PostScreen() {
         ? trialSlots.filter((s) => s.date.trim()).map((s) => s.date).join(", ") || "Any Day & Time"
         : trainingTbd && gameTbd ? "Any Day & Time" : [trainingDays.join("/") || "Any Day & Time", gameDays.join("/") || "Any Day & Time"].join(" | "),
       description,
-      needs: isPlayersWanted ? "Players wanted" : isClubTrials ? "Club trials" : isCoachWanted ? "Coach wanted" : "Player looking",
+      needs: isPlayersWanted ? "Players wanted" : isClubTrials ? "Club trials" : isCoachWanted ? "Coach wanted" : isClubFriendly ? "Club friendly" : "Player looking",
       ageGroup: ageGroup?.label,
       preferredAge: preferredAge ?? undefined,
       positions: showCoachTitle ? [] : positions,
@@ -882,7 +959,7 @@ export default function PostScreen() {
       gameTimeTo: gameTo.trim() || undefined,
       gameTbd,
       scheduleNote: isPlayerLooking ? scheduleNote.trim() || undefined : undefined,
-      trialSlots: isClubTrials ? trialSlots.filter((s) => s.date.trim()) : undefined,
+      trialSlots: (isClubTrials || isClubFriendly) ? trialSlots.filter((s) => s.date.trim()) : undefined,
       focusArea: isTechnicalDirector ? focusArea || undefined : undefined,
       coachRole: isCoachWanted ? coachRole || undefined : undefined,
       coachExperienceLevel: isCoachWanted ? coachExperienceLevel || undefined : undefined,
@@ -894,9 +971,20 @@ export default function PostScreen() {
       feesNegotiable,
       feesFree,
       trialRequired,
-      teamGender: (isPlayersWanted || isClubTrials || (isCoachWanted && !isTechnicalDirector)) ? teamGender.trim() || undefined : undefined,
+      teamGender: (isPlayersWanted || isClubTrials || isClubFriendly || (isCoachWanted && !isTechnicalDirector)) ? teamGender.trim() || undefined : undefined,
       playerGender: (isPlayerLooking || isCoachLooking) ? playerGender.trim() || undefined : undefined,
       opportunityStates: (isPlayerLooking || isCoachLooking) ? opportunityStates : undefined,
+      friendlySubType: isClubFriendly ? friendlySubType : undefined,
+      preferredOpponents: isClubFriendly ? preferredOpponents : undefined,
+      preferredTeamLevel: isClubFriendly ? preferredTeamLevel.trim() || undefined : undefined,
+      groundAvailable: isClubFriendly ? groundAvailable : undefined,
+      venueSuburb: isClubFriendly && groundAvailable ? venueSuburb.trim() || undefined : undefined,
+      venuePostcode: isClubFriendly && groundAvailable ? venuePostcode.trim() || undefined : undefined,
+      venueState: isClubFriendly && groundAvailable ? venueState.trim() || undefined : undefined,
+      refereeTypes: isClubFriendly && groundAvailable ? refereeTypes : undefined,
+      friendlyInfo: isClubFriendly ? friendlyInfo.trim() || undefined : undefined,
+      friendlySuburb: isClubFriendly && friendlySubType === "wanted" ? friendlySuburb.trim() || undefined : undefined,
+      friendlyState: isClubFriendly && friendlySubType === "wanted" ? friendlyState.trim() || undefined : undefined,
     };
     if (editingId) {
       updateAdvert(editingId, draft);
@@ -904,7 +992,7 @@ export default function PostScreen() {
       resetForm();
       return;
     }
-    const affiliateExtras = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials")
+    const affiliateExtras = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials" || type === "club-friendly")
       ? { postedBy: postedByName, affiliatedClubId: currentAccount?.affiliatedClubId }
       : {};
     const finalDraft = { ...draft, ...affiliateExtras };
@@ -1300,7 +1388,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {!isCoachWanted && !isCoachLooking && (
+          {!isCoachWanted && !isCoachLooking && !isClubFriendly && (
             <>
               <FormLabel text="Position(s)" />
               <View style={localStyles.pillRow}>
@@ -1308,6 +1396,169 @@ export default function PostScreen() {
                   <Pill key={p} label={p} active={positions.includes(p)} onPress={() => togglePosition(p)} />
                 ))}
               </View>
+            </>
+          )}
+
+          {/* ── Club Friendly form ── */}
+          {isClubFriendly && (
+            <>
+              <FormLabel text="Friendly Type" required />
+              <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
+                {(["available", "wanted"] as const).map((item) => (
+                  <Pressable
+                    key={item}
+                    onPress={() => setFriendlySubType(item)}
+                    style={({ pressed }) => [
+                      localStyles.choice,
+                      {
+                        backgroundColor: friendlySubType === item ? colors.primary : colors.secondary,
+                        opacity: pressed ? 0.75 : 1,
+                        flex: 1,
+                      },
+                    ]}
+                  >
+                    <Text style={[localStyles.choiceText, { color: friendlySubType === item ? "#FFFFFF" : colors.secondaryForeground }]}>
+                      {item === "available" ? "Available (we have a team)" : "Wanted (looking for a team)"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <FormLabel text="Preferred Opponent/s" required />
+              <View style={localStyles.pillRow}>
+                {getFriendlyOpponentOptions(ageGroup?.label ?? "").map((o) => (
+                  <Pill key={o} label={o} active={preferredOpponents.includes(o)} onPress={() => setPreferredOpponents((prev) => prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o])} />
+                ))}
+              </View>
+
+              <FormLabel text="Preferred Team Level" required />
+              <Field value={preferredTeamLevel} onChangeText={setPreferredTeamLevel} label="" placeholder="e.g. Competitive Amateur, Semi-Pro" />
+
+              <FormLabel text="Friendly Date(s) (DD/MM/YYYY)" required />
+              {trialSlots.map((slot, i) => {
+                const displayDate = parseTrialDate(slot.date)
+                  ? parseTrialDate(slot.date)!.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+                  : null;
+                return (
+                <View key={i} style={{ gap: 6, marginBottom: 8 }}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <View style={{ flex: 2 }}>
+                      <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>DATE</Text>
+                      <TextInput
+                        value={slot.date}
+                        onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, date: formatTrialDateInput(v) } : s))}
+                        placeholder="DD/MM/YYYY"
+                        placeholderTextColor={colors.mutedForeground}
+                        keyboardType="number-pad"
+                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: trialSlotOrderErrors[i] || trialSlotDuplicates[i] ? "#D9534F" : colors.border, color: colors.foreground }]}
+                      />
+                      {displayDate ? (
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>{displayDate}</Text>
+                      ) : null}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>FROM</Text>
+                      <TextInput
+                        value={slot.timeFrom}
+                        onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeFrom: v } : s))}
+                        placeholder="6:00 PM"
+                        placeholderTextColor={colors.mutedForeground}
+                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[localStyles.timeSubLabel, { color: colors.mutedForeground }]}>TO</Text>
+                      <TextInput
+                        value={slot.timeTo}
+                        onChangeText={(v) => setTrialSlots((prev) => prev.map((s, j) => j === i ? { ...s, timeTo: v } : s))}
+                        placeholder="8:00 PM"
+                        placeholderTextColor={colors.mutedForeground}
+                        style={[localStyles.timeInput, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
+                      />
+                    </View>
+                    {i > 0 ? (
+                      <Pressable onPress={() => setTrialSlots((prev) => prev.filter((_, j) => j !== i))} style={{ alignSelf: "flex-end", marginBottom: 4 }}>
+                        <Feather name="x-circle" size={20} color="#D9534F" />
+                      </Pressable>
+                    ) : null}
+                  </View>
+                  {trialSlotOrderErrors[i] && <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 12 }}>Dates must be in chronological order</Text>}
+                  {trialSlotDuplicates[i] && <Text style={{ color: "#D9534F", fontWeight: "600", fontSize: 12 }}>Duplicate date/time</Text>}
+                </View>
+                );
+              })}
+              <Pressable onPress={() => setTrialSlots((prev) => [...prev, { date: "", timeFrom: "", timeTo: "" }])} style={({ pressed }) => [localStyles.addSlotButton, { opacity: pressed ? 0.75 : 1, overflow: "hidden" }]}>
+                <LinearGradient colors={[colors.secondary, lighten(colors.secondary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[localStyles.addSlotButton, { flex: 1 }]}>
+                  <Feather name="plus" size={16} color={colors.primary} />
+                  <Text style={[localStyles.addSlotText, { color: colors.primary }]}>Add another friendly date</Text>
+                </LinearGradient>
+              </Pressable>
+
+              {friendlySubType === "available" && (
+                <>
+                  <CheckRow label="Ground / Field Available" value={groundAvailable} onToggle={() => setGroundAvailable(!groundAvailable)} />
+                  {groundAvailable && (
+                    <>
+                      <FormLabel text="Venue Suburb" required />
+                      <Field value={venueSuburb} onChangeText={setVenueSuburb} label="" placeholder="e.g. Marrickville" />
+                      <FormLabel text="Venue Postcode" required />
+                      <Field value={venuePostcode} onChangeText={setVenuePostcode} label="" keyboardType="numeric" placeholder="e.g. 2204" />
+                      <FormLabel text="Venue State" required />
+                      <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
+                        {AU_STATES.map((s) => (
+                          <Pressable
+                            key={s}
+                            onPress={() => setVenueState(s)}
+                            style={({ pressed }) => [
+                              localStyles.choice,
+                              { backgroundColor: venueState === s ? colors.primary : colors.secondary, opacity: pressed ? 0.75 : 1 },
+                            ]}
+                          >
+                            <Text style={[localStyles.choiceText, { color: venueState === s ? "#FFFFFF" : colors.secondaryForeground }]}>{s}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                      <FormLabel text="Referee Type" required />
+                      <View style={localStyles.pillRow}>
+                        {["Self-refereed", "Neutral referee", "Both teams bring a ref", "No referee needed"].map((r) => (
+                          <Pill key={r} label={r} active={refereeTypes.includes(r)} onPress={() => setRefereeTypes((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])} />
+                        ))}
+                      </View>
+                    </>
+                  )}
+                  {!groundAvailable && (
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, fontStyle: "italic" }}>
+                      Ground/Field Available must be checked to post. If you don&apos;t have a ground, switch to &quot;Wanted&quot;.
+                    </Text>
+                  )}
+                </>
+              )}
+
+              {friendlySubType === "wanted" && (
+                <>
+                  <FormLabel text="Your Club Suburb" required />
+                  <Field value={friendlySuburb} onChangeText={setFriendlySuburb} label="" placeholder="e.g. Marrickville" />
+                  <FormLabel text="Your Club State" required />
+                  <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
+                    {AU_STATES.map((s) => (
+                      <Pressable
+                        key={s}
+                        onPress={() => setFriendlyState(s)}
+                        style={({ pressed }) => [
+                          localStyles.choice,
+                          { backgroundColor: friendlyState === s ? colors.primary : colors.secondary, opacity: pressed ? 0.75 : 1 },
+                        ]}
+                      >
+                        <Text style={[localStyles.choiceText, { color: friendlyState === s ? "#FFFFFF" : colors.secondaryForeground }]}>{s}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <FormLabel text="Additional Info (optional)" />
+              <Field value={friendlyInfo} onChangeText={setFriendlyInfo} label="" multiline placeholder="Any extra details about the friendly match request..." />
+              {friendlyInfoContactWarning ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4 }}>{friendlyInfoContactWarning}</Text> : null}
             </>
           )}
 

@@ -55,6 +55,7 @@ const advertTypeLabels: Record<Advert["type"], string> = {
   "players-wanted": "Players Wanted",
   "club-trials": "Club Trials",
   "coach-wanted": "Coach Wanted",
+  "club-friendly": "Club Friendly",
 };
 
 const statusBadgeColor = (status?: AccountStatus | "active" | "closed") => {

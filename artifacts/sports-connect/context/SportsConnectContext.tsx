@@ -10,7 +10,7 @@ import { getAgeBlockReason } from "../utils/ageEligibility";
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
 import { api, ApiError, setModeratorToken } from "@/utils/apiClient";
 
-type AdvertType = "player-looking" | "coach-looking" | "players-wanted" | "club-trials" | "coach-wanted";
+type AdvertType = "player-looking" | "coach-looking" | "players-wanted" | "club-trials" | "coach-wanted" | "club-friendly";
 type ProfileType = "player" | "club";
 type ImageStatus = "pending" | "approved" | "rejected";
 export type AccountRole = "player" | "guardian" | "coach" | "club";
@@ -199,6 +199,17 @@ export type Advert = {
   possibleDuplicate?: boolean;
   opportunityStates?: string[];
   ownerCoachSubRole?: string | null;
+  friendlySubType?: "available" | "wanted";
+  preferredOpponents?: string[];
+  preferredTeamLevel?: string;
+  groundAvailable?: boolean;
+  venueSuburb?: string;
+  venuePostcode?: string;
+  venueState?: string;
+  refereeTypes?: string[];
+  friendlyInfo?: string;
+  friendlySuburb?: string;
+  friendlyState?: string;
 };
 
 export type ForbiddenConnection = {
@@ -1538,7 +1549,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     const requesterIsAffiliatedCoach =
       currentAccount?.role === "coach" &&
       !!currentAccount?.affiliatedClubId &&
-      advert.type === "player-looking";
+      (advert.type === "player-looking" || advert.type === "club-friendly");
     const participants: string[] | undefined = (() => {
       if (hasAffiliatedClub && advert.ownerAccountId && advert.affiliatedClubId) {
         return [advert.ownerAccountId, advert.affiliatedClubId];
