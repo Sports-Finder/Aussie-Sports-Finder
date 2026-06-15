@@ -16,7 +16,7 @@ import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
-type Filter = "all" | "players-wanted" | "player-looking" | "near" | "expiring-soon";
+type Filter = "all" | "players-wanted" | "player-looking" | "coach-looking" | "coach-wanted" | "club-trials" | "near" | "expiring-soon";
 type SortOrder = "newest" | "oldest";
 const australianStates = ["All", "NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"] as const;
 type AustralianStateFilter = (typeof australianStates)[number];
@@ -73,6 +73,27 @@ function canRequestConnection(viewerRole: AccountRole, advert: Advert, affiliate
     default:
       return false;
   }
+}
+
+function getConnectableAdvertTypes(role: AccountRole, affiliatedClubId?: string | null): Filter[] {
+  const viewerIsPlayerOrParent = role === "player" || role === "guardian";
+  const viewerIsCoach = role === "coach";
+  const viewerIsClub = role === "club";
+  const viewerIsAffiliatedCoach = viewerIsCoach && !!affiliatedClubId;
+  const types: Filter[] = [];
+  if (viewerIsPlayerOrParent) {
+    types.push("players-wanted", "club-trials");
+  }
+  if (viewerIsCoach) {
+    types.push("coach-wanted");
+  }
+  if (viewerIsAffiliatedCoach || viewerIsClub) {
+    types.push("player-looking");
+  }
+  if (viewerIsClub) {
+    types.push("coach-looking");
+  }
+  return types;
 }
 
 function requesterTypeLabel(type?: AccountRole, coachSubRole?: string | null, count = 1): string {
@@ -634,6 +655,14 @@ export default function DiscoverScreen() {
     }
   }, [profileSports, selectedSport, setSelectedSport]);
 
+  const connectableTypes = getConnectableAdvertTypes(currentAccount?.role ?? "player", currentAccount?.affiliatedClubId ?? null);
+
+  useEffect(() => {
+    if (filter !== "all" && filter !== "near" && filter !== "expiring-soon" && !isAdmin && !connectableTypes.includes(filter)) {
+      setFilter("all");
+    }
+  }, [filter, connectableTypes, isAdmin]);
+
   const filtered = useMemo(() => {
     const base = adverts.filter((advert) => {
       if (!isAdmin && advert.status === "closed") return false;
@@ -648,7 +677,10 @@ export default function DiscoverScreen() {
         const expiry = getExpiryInfo(advert);
         return !expiry.expired && expiry.expiringSoon;
       }
-      if (filter === "all") return true;
+      if (filter === "all") {
+        if (isAdmin) return true;
+        return connectableTypes.includes(advert.type as Filter);
+      }
       return advert.type === filter;
     });
     // Sort newest-first by default, oldest-first when toggled.
@@ -656,7 +688,7 @@ export default function DiscoverScreen() {
       const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       return sortOrder === "newest" ? diff : -diff;
     });
-  }, [adverts, filter, sortOrder, notificationSettings.radiusKm, selectedSport, stateFilter, isAdmin, profileSports]);
+  }, [adverts, filter, sortOrder, notificationSettings.radiusKm, selectedSport, stateFilter, isAdmin, profileSports, connectableTypes]);
 
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
 
@@ -771,14 +803,20 @@ export default function DiscoverScreen() {
         <SectionTitle title={`${selectedSport === allSportsFilterName ? "All sports" : selectedSport} adverts`} action={`${filtered.length} live`} />
         <View style={styles.filterRow}>
           <Pill label="All" active={filter === "all"} onPress={() => setFilter("all")} />
-          <Pill label="Players wanted" active={filter === "players-wanted"} onPress={() => setFilter("players-wanted")} />
-          <Pill label="Players looking" active={filter === "player-looking"} onPress={() => setFilter("player-looking")} />
+          {(isAdmin ? (["players-wanted", "player-looking", "coach-looking", "coach-wanted", "club-trials"] as Filter[]) : connectableTypes).map((type) => (
+            <Pill
+              key={type}
+              label={type === "players-wanted" ? "Players Wanted" : type === "player-looking" ? "Player Looking" : type === "coach-looking" ? "Coach Looking" : type === "coach-wanted" ? "Coach Wanted" : "Club Trials"}
+              active={filter === type}
+              onPress={() => setFilter(type)}
+            />
+          ))}
           <Pill label="Near me" active={filter === "near"} onPress={() => setFilter("near")} />
           <Pill label="⏳ Expiring soon" active={filter === "expiring-soon"} onPress={() => setFilter("expiring-soon")} />
         </View>
         <View style={[styles.filterRow, { marginTop: -6 }]}>
           <Pill
-            label={sortOrder === "newest" ? "↓ Newest first" : "↑ Oldest first"}
+            label={sortOrder === "newest" ? "Oldest first" : "Newest first"}
             active={false}
             onPress={() => setSortOrder((s) => s === "newest" ? "oldest" : "newest")}
           />
