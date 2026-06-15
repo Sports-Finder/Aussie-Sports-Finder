@@ -15,6 +15,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
+import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { useAuth } from "@clerk/expo";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
@@ -663,7 +664,15 @@ export default function ProfileScreen() {
             </View>
 
             <Field label="Club Street Number & Street Address" value={clubMapAddress} onChangeText={setClubMapAddress} placeholder="e.g. 123 Smith Street" />
-            <Field label="Suburb" value={clubSuburb} onChangeText={setClubSuburb} />
+            <SuburbAutocomplete
+              label="Suburb"
+              value={clubSuburb}
+              onSelect={({ suburb: s, postcode: pc, state: st }) => {
+                setClubSuburb(s);
+                setClubPostcode(pc);
+                if (st) setState(st);
+              }}
+            />
             <Field
               label="Postcode"
               value={clubPostcode}
@@ -803,7 +812,14 @@ export default function ProfileScreen() {
               </View>
             </Modal>
 
-            <Field label="Suburb" value={suburb} onChangeText={setSuburb} />
+            <SuburbAutocomplete
+              label="Suburb"
+              value={suburb}
+              onSelect={({ suburb: s, state: st }) => {
+                setSuburb(s);
+                if (st) setState(st);
+              }}
+            />
             <Text style={[styles.label, { color: colors.mutedForeground }]}>State</Text>
             <View style={styles.wrapRow}>
               {states.map((item) => (

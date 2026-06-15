@@ -16,6 +16,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
+import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { defaultSportThemes, getSportTheme } from "@/constants/sports";
@@ -463,10 +464,15 @@ export function AccountSetupGate() {
                   value={form.clubAddress}
                   onChangeText={(v) => update("clubAddress", v)}
                 />
-                <Input
+                <SuburbAutocomplete
                   label="Suburb (required)"
+                  required
                   value={form.clubSuburb}
-                  onChangeText={(v) => update("clubSuburb", v)}
+                  onSelect={({ suburb, postcode, state }) => {
+                    update("clubSuburb", suburb);
+                    update("clubPostcode", postcode);
+                    if (state) update("state", state);
+                  }}
                 />
                 <Input
                   label="Postcode (required)"
@@ -623,11 +629,19 @@ export function AccountSetupGate() {
                   </View>
                 </Modal>
 
-                <Input label="Suburb (required)" value={form.suburb} onChangeText={(v) => update("suburb", v)} />
+                <SuburbAutocomplete
+                  label="Suburb (required)"
+                  required
+                  value={form.suburb}
+                  onSelect={({ suburb, state }) => {
+                    update("suburb", suburb);
+                    if (state) update("state", state);
+                  }}
+                />
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>State (required)</Text>
                 <View style={styles.wrapRow}>
-                  {states.map((state) => (
-                    <Choice key={state} label={state} active={form.state === state} onPress={() => update("state", state)} colors={colors} />
+                  {states.map((s) => (
+                    <Choice key={s} label={s} active={form.state === s} onPress={() => update("state", s)} colors={colors} />
                   ))}
                 </View>
 

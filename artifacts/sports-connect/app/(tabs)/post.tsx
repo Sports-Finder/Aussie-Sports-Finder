@@ -14,6 +14,7 @@ function lighten(hex: string, amount: number = 0.15): string {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
+import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { Advert, AccountRole, useSportsConnect } from "@/context/SportsConnectContext";
 import { getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
@@ -1527,24 +1528,22 @@ export default function PostScreen() {
                   <CheckRow label="Ground / Field Available" value={groundAvailable} onToggle={() => setGroundAvailable(!groundAvailable)} />
                   <View style={{ opacity: groundAvailable ? 1 : 0.4 }}>
                     <FormLabel text="Venue Suburb" required={groundAvailable} />
-                    <Field value={venueSuburb} onChangeText={setVenueSuburb} label="" placeholder="e.g. Marrickville" editable={groundAvailable} />
-                    <FormLabel text="Venue Postcode" required={groundAvailable} />
-                    <Field value={venuePostcode} onChangeText={setVenuePostcode} label="" keyboardType="numeric" placeholder="e.g. 2204" editable={groundAvailable} />
-                    <FormLabel text="Venue State" required={groundAvailable} />
-                    <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
-                      {AU_STATES.map((s) => (
-                        <Pressable
-                          key={s}
-                          onPress={() => { if (groundAvailable) setVenueState(s); }}
-                          style={({ pressed }) => [
-                            localStyles.choice,
-                            { backgroundColor: venueState === s ? colors.primary : colors.secondary, opacity: groundAvailable ? (pressed ? 0.75 : 1) : 0.5 },
-                          ]}
-                        >
-                          <Text style={[localStyles.choiceText, { color: venueState === s ? "#FFFFFF" : colors.secondaryForeground }]}>{s}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
+                    <SuburbAutocomplete
+                      label=""
+                      value={venueSuburb}
+                      onSelect={({ suburb, postcode, state }) => {
+                        setVenueSuburb(suburb);
+                        setVenuePostcode(postcode);
+                        setVenueState(state);
+                      }}
+                      placeholder="Start typing a suburb…"
+                      editable={groundAvailable}
+                    />
+                    {venueSuburb && venueState ? (
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 8, marginTop: -6 }}>
+                        {venueState} {venuePostcode}
+                      </Text>
+                    ) : null}
                     <FormLabel text="Referee Type" required={groundAvailable} />
                     <View style={localStyles.pillRow}>
                       {["Registered/Licensed Referee", "Club/Volunteer Referee"].map((r) => (
@@ -1563,24 +1562,21 @@ export default function PostScreen() {
               {friendlySubType === "wanted" && (
                 <>
                   <FormLabel text="Your Club Suburb" required />
-                  <Field value={friendlySuburb} onChangeText={setFriendlySuburb} label="" placeholder="e.g. Marrickville" />
-                  <FormLabel text="Your Club Postcode" required />
-                  <Field value={friendlyPostcode} onChangeText={setFriendlyPostcode} label="" keyboardType="numeric" placeholder="e.g. 2204" />
-                  <FormLabel text="Your Club State" required />
-                  <View style={[localStyles.choiceRow, { marginBottom: 12 }]}>
-                    {AU_STATES.map((s) => (
-                      <Pressable
-                        key={s}
-                        onPress={() => setFriendlyState(s)}
-                        style={({ pressed }) => [
-                          localStyles.choice,
-                          { backgroundColor: friendlyState === s ? colors.primary : colors.secondary, opacity: pressed ? 0.75 : 1 },
-                        ]}
-                      >
-                        <Text style={[localStyles.choiceText, { color: friendlyState === s ? "#FFFFFF" : colors.secondaryForeground }]}>{s}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
+                  <SuburbAutocomplete
+                    label=""
+                    value={friendlySuburb}
+                    onSelect={({ suburb, postcode, state }) => {
+                      setFriendlySuburb(suburb);
+                      setFriendlyPostcode(postcode);
+                      setFriendlyState(state);
+                    }}
+                    placeholder="Start typing a suburb…"
+                  />
+                  {friendlySuburb && friendlyState ? (
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 8, marginTop: -6 }}>
+                      {friendlyState} {friendlyPostcode}
+                    </Text>
+                  ) : null}
                 </>
               )}
 
