@@ -1360,7 +1360,7 @@ export default function PostScreen() {
             </>
           )}
 
-          {ageGroup !== null && !isTechnicalDirector && (ageGroup.max - ageGroup.min <= 10) && (
+          {ageGroup !== null && !isTechnicalDirector && !isClubFriendly && (ageGroup.max - ageGroup.min <= 10) && (
             <>
               <FormLabel text="Preferred age (optional)" />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={localStyles.sportPickerScroll}>
