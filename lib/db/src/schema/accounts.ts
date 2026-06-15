@@ -9,6 +9,7 @@ export const accountsTable = pgTable("accounts", {
   authMethod: varchar("auth_method", { length: 20 }).notNull(),
   email: text("email").notNull().unique(),
   socialId: text("social_id"),
+  clerkUserId: text("clerk_user_id"),
   passwordHash: text("password_hash"),
   fullName: text("full_name"),
   parentGuardianName: text("parent_guardian_name"),

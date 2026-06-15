@@ -123,6 +123,7 @@ export type UserAccount = {
   statusReason?: string;
   bio?: string;
   socialId?: string;
+  clerkUserId?: string;
   profileImageDeclines?: number;
   clubApprovalStatus?: ClubApprovalStatus;
   coachAffiliates?: CoachAffiliate[];
@@ -281,7 +282,7 @@ type NotificationSettings = {
 };
 
 type DraftAdvert = Omit<Advert, "id" | "createdAt" | "distanceKm" | "postedBy" | "postedByType">;
-type DraftAccount = Omit<UserAccount, "id" | "createdAt" | "approved"> & { socialId?: string };
+type DraftAccount = Omit<UserAccount, "id" | "createdAt" | "approved"> & { socialId?: string; clerkUserId?: string };
 const normalizeAdvertType = (type: Advert["type"]): Advert["type"] => {
   if (type === "player-looking") return "coach-looking";
   return type;

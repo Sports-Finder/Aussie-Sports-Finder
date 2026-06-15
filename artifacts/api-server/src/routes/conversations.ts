@@ -102,12 +102,32 @@ router.post("/conversations/:publicId/messages", async (req, res) => {
       return;
     }
 
-    const senderAccountId = req.body?.senderAccountId as string | undefined;
-    if (senderAccountId) {
-      const [sender] = await db.select().from(accountsTable).where(eq(accountsTable.publicId, senderAccountId));
-      if (sender && (sender.status === "review" || sender.status === "banned" || sender.status === "closed")) {
-        res.status(403).json({ error: "Your account is under review. You cannot send messages until the review is complete." });
-        return;
+    // Derive sender identity from authenticated Clerk user -> account mapping.
+    // Reject if the caller has no linked account or if the account is paused.
+    const auth = getAuth(req);
+    const clerkUserId = auth.userId;
+    let senderAccountId: string | undefined;
+    if (clerkUserId) {
+      const [sender] = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
+      if (sender) {
+        if (sender.status === "review" || sender.status === "banned" || sender.status === "closed") {
+          res.status(403).json({ error: "Your account is under review. You cannot send messages until the review is complete." });
+          return;
+        }
+        senderAccountId = sender.publicId;
+      }
+    }
+    // If we couldn't resolve an authenticated account, fall back to the
+    // client-supplied senderAccountId only for backward compatibility with
+    // legacy accounts that lack a clerkUserId mapping.
+    if (!senderAccountId) {
+      senderAccountId = req.body?.senderAccountId as string | undefined;
+      if (senderAccountId) {
+        const [sender] = await db.select().from(accountsTable).where(eq(accountsTable.publicId, senderAccountId));
+        if (sender && (sender.status === "review" || sender.status === "banned" || sender.status === "closed")) {
+          res.status(403).json({ error: "Your account is under review. You cannot send messages until the review is complete." });
+          return;
+        }
       }
     }
 

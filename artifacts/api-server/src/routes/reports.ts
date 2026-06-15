@@ -15,40 +15,60 @@ function isAdminCaller(req: Parameters<typeof getAuth>[0]): boolean {
 }
 
 /**
+ * Derive the reporter account ID from the authenticated Clerk user.
+ * Falls back to the client-supplied reporterAccountId for legacy accounts
+ * that were created before clerkUserId was stored on the accounts table.
+ */
+async function resolveReporterAccountId(req: Parameters<typeof getAuth>[0]): Promise<string | null> {
+  const auth = getAuth(req);
+  const clerkUserId = auth.userId;
+  if (clerkUserId) {
+    const [account] = await db.select().from(accountsTable).where(eq(accountsTable.clerkUserId, clerkUserId));
+    if (account) return account.publicId;
+  }
+  // Legacy fallback: accept from client when no clerk mapping exists
+  const clientReporter = (req.body as Record<string, unknown>)?.reporterAccountId;
+  if (typeof clientReporter === "string") return clientReporter;
+  return null;
+}
+
+/**
  * Create a new report.
- * Body: { reporterAccountId, targetAccountId, reason }
- *
- * NOTE: reporterAccountId is accepted from the client because the server
- * currently has no mapping between Clerk userId and local account id.
- * The accounts table stores socialId (Apple/Google provider ID) and email,
- * but not a Clerk userId column. To derive the reporter server-side, add
- * a clerkUserId column to accountsTable and join on getAuth(req).userId.
+ * Body: { targetAccountId, reason }  (reporterAccountId is derived from auth)
  */
 router.post("/reports", async (req, res) => {
   try {
-    const { reporterAccountId, targetAccountId, reason } = req.body as Record<string, unknown>;
-    if (!reporterAccountId || !targetAccountId || !reason) {
+    const { targetAccountId, reason } = req.body as Record<string, unknown>;
+    if (!targetAccountId || !reason) {
       res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+    const reporterAccountId = await resolveReporterAccountId(req);
+    if (!reporterAccountId) {
+      res.status(401).json({ error: "Reporter identity could not be verified." });
       return;
     }
     const publicId = crypto.randomUUID().replace(/-/g, "");
     const now = new Date();
-    const [created] = await db
-      .insert(reportsTable)
-      .values({
-        publicId,
-        reporterAccountId: reporterAccountId as string,
-        targetAccountId: targetAccountId as string,
-        reason: reason as string,
-      })
-      .returning();
-    // Atomically set the target account status to "review" so the account is
-    // paused immediately regardless of whether the client update succeeds.
-    await db
-      .update(accountsTable)
-      .set({ status: "review", statusReason: reason as string, statusChangedAt: now })
-      .where(eq(accountsTable.publicId, targetAccountId as string));
-    res.status(201).json(mapReport(created as unknown as Record<string, unknown>));
+    await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(reportsTable)
+        .values({
+          publicId,
+          reporterAccountId,
+          targetAccountId: targetAccountId as string,
+          reason: reason as string,
+        })
+        .returning();
+      await tx
+        .update(accountsTable)
+        .set({ status: "review", statusReason: reason as string, statusChangedAt: now })
+        .where(eq(accountsTable.publicId, targetAccountId as string));
+      return created;
+    });
+    // Fetch the created row outside the transaction so mapReport works on a plain object
+    const [createdRow] = await db.select().from(reportsTable).where(eq(reportsTable.publicId, publicId));
+    res.status(201).json(mapReport(createdRow as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to create report");
     res.status(500).json({ error: "Failed to create report" });
@@ -99,28 +119,33 @@ router.post("/reports/:publicId/resolve", async (req, res) => {
       return;
     }
     const now = new Date();
+    const auth = getAuth(req);
+    await db.transaction(async (tx) => {
+      await tx
+        .update(reportsTable)
+        .set({
+          status: "resolved",
+          resolvedAt: now,
+          resolvedBy: auth.userId ?? undefined,
+          resolution: resolution === "ok" ? "Reviewed — Account OK" : "Underage confirmed — Account closed",
+        })
+        .where(eq(reportsTable.publicId, req.params.publicId));
+      if (resolution === "underage") {
+        await tx
+          .update(accountsTable)
+          .set({ status: "banned", statusReason: "Underage confirmed via report", statusChangedAt: now })
+          .where(eq(accountsTable.publicId, report.targetAccountId));
+      } else {
+        await tx
+          .update(accountsTable)
+          .set({ status: "active", statusReason: undefined, statusChangedAt: now })
+          .where(eq(accountsTable.publicId, report.targetAccountId));
+      }
+    });
     const [resolved] = await db
-      .update(reportsTable)
-      .set({
-        status: "resolved",
-        resolvedAt: now,
-        resolution: resolution === "ok" ? "Reviewed — Account OK" : "Underage confirmed — Account closed",
-      })
-      .where(eq(reportsTable.publicId, req.params.publicId))
-      .returning();
-    // Update target account status
-    if (resolution === "underage") {
-      await db
-        .update(accountsTable)
-        .set({ status: "banned", statusReason: "Underage confirmed via report", statusChangedAt: now })
-        .where(eq(accountsTable.publicId, report.targetAccountId));
-    } else {
-      // Set back to active
-      await db
-        .update(accountsTable)
-        .set({ status: "active", statusReason: undefined, statusChangedAt: now })
-        .where(eq(accountsTable.publicId, report.targetAccountId));
-    }
+      .select()
+      .from(reportsTable)
+      .where(eq(reportsTable.publicId, req.params.publicId));
     res.json(mapReport(resolved as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to resolve report");

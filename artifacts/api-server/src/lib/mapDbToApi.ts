@@ -22,6 +22,7 @@ function _mapAccount(
     authMethod: row.authMethod as string,
     email: row.email as string,
     socialId: row.socialId as string | undefined,
+    clerkUserId: row.clerkUserId as string | undefined,
     fullName: row.fullName as string | undefined,
     parentGuardianName: row.parentGuardianName as string | undefined,
     playerName: row.playerName as string | undefined,

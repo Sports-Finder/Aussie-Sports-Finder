@@ -337,6 +337,7 @@ export function AccountSetupGate() {
       clubContactMobile: form.clubContactMobile,
       bio: form.bio || undefined,
       socialId,
+      clerkUserId: user?.id,
       ageAttested: true,
       ageAttestedAt: new Date().toISOString(),
     });
