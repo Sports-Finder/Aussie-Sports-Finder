@@ -397,8 +397,10 @@ type SportsConnectState = {
   updateCoachAffiliateDetails: (coachAccountId: string, teamName?: string, ageGroup?: string) => void;
   unblockCoachAffiliate: (clubAccountId: string, coachAccountId: string) => void;
   reports: Report[];
-  createReport: (targetAccountId: string, reason: string) => Promise<void>;
+  createReport: (targetAccountId: string, reason: string, advertId?: string) => Promise<void>;
   resolveReport: (reportId: string, resolution: "ok" | "underage") => Promise<void>;
+  reportedAdvertIds: string[];
+  hasReportedAdvert: (advertId: string) => boolean;
 };
 
 const storageKey = "sports-connect-state-v11-api-migration";
@@ -633,6 +635,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [currentModerator, setCurrentModerator] = useState<ModeratorAccount | null>(null);
   const [flaggedConversations, setFlaggedConversations] = useState<Conversation[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [reportedAdvertIds, setReportedAdvertIds] = useState<string[]>([]);
   const [pendingHighFlagAlerts, setPendingHighFlagAlerts] = useState<Conversation[]>([]);
   const seenHighFlagIds = useRef<Set<string>>(new Set());
   const [pendingAdminNavConversationId, setPendingAdminNavConversationId] = useState<string | null>(null);
@@ -719,11 +722,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
               activeProfile?: ProfileType;
               notificationSettings?: NotificationSettings;
               pendingHighlightLinks?: HighlightLink[];
+              reportedAdvertIds?: string[];
             };
             if (parsed.selectedSport) setSelectedSport(parsed.selectedSport);
             if (parsed.activeProfile) setActiveProfile(parsed.activeProfile);
             if (parsed.notificationSettings) setNotificationSettings(parsed.notificationSettings);
             if (parsed.pendingHighlightLinks?.length) setPendingHighlightLinks(parsed.pendingHighlightLinks);
+            if (parsed.reportedAdvertIds?.length) setReportedAdvertIds(parsed.reportedAdvertIds);
           }
         } catch (_) {
           // ignore
@@ -741,11 +746,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
               activeProfile?: ProfileType;
               notificationSettings?: NotificationSettings;
               pendingHighlightLinks?: HighlightLink[];
+              reportedAdvertIds?: string[];
             };
             if (parsed.selectedSport) setSelectedSport(parsed.selectedSport);
             if (parsed.activeProfile) setActiveProfile(parsed.activeProfile);
             if (parsed.notificationSettings) setNotificationSettings(parsed.notificationSettings);
             if (parsed.pendingHighlightLinks?.length) setPendingHighlightLinks(parsed.pendingHighlightLinks);
+            if (parsed.reportedAdvertIds?.length) setReportedAdvertIds(parsed.reportedAdvertIds);
           }
         } catch (_) {
           // ignore
@@ -758,9 +765,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
-    const snapshot = { selectedSport, activeProfile, pendingHighlightLinks, notificationSettings };
+    const snapshot = { selectedSport, activeProfile, pendingHighlightLinks, notificationSettings, reportedAdvertIds };
     AsyncStorage.setItem(storageKey, JSON.stringify(snapshot)).catch(() => undefined);
-  }, [selectedSport, activeProfile, pendingHighlightLinks, notificationSettings]);
+  }, [selectedSport, activeProfile, pendingHighlightLinks, notificationSettings, reportedAdvertIds]);
 
   // Load flagged conversations for admins and moderators with closeChats.
   // Admins are server-verified via Clerk userId (ADMIN_USER_IDS).
@@ -1377,7 +1384,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(grant ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
   };
 
-  const createReport = async (targetAccountId: string, reason: string) => {
+  const createReport = async (targetAccountId: string, reason: string, advertId?: string) => {
     const reporterAccountId = currentAccount?.id;
     if (!reporterAccountId) return;
     const newReport: Report = {
@@ -1391,6 +1398,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setReports((current) => [newReport, ...current]);
     // Set target account status to review
     setAccounts((current) => current.map((acc) => acc.id === targetAccountId ? { ...acc, status: "review" as AccountStatus, statusChangedAt: now(), statusReason: reason } : acc));
+    if (advertId) {
+      setReportedAdvertIds((current) => (current.includes(advertId) ? current : [...current, advertId]));
+    }
     try {
       // The server atomically creates the report AND sets the target account
       // status to "review", so we don't need a separate updateAccount call.
@@ -1399,6 +1409,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       console.warn("[createReport] API sync failed:", err);
     }
   };
+
+  const hasReportedAdvert = (advertId: string) => reportedAdvertIds.includes(advertId);
 
   const resolveReport = async (reportId: string, resolution: "ok" | "underage") => {
     const report = reports.find((r) => r.id === reportId);
@@ -2368,8 +2380,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     reports,
     createReport,
     resolveReport,
+    reportedAdvertIds,
+    hasReportedAdvert,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription, toggleDevBypassSubscription, reports, pendingHighFlagAlerts]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription, toggleDevBypassSubscription, reports, pendingHighFlagAlerts, reportedAdvertIds]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }
