@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -75,12 +75,67 @@ type DashboardContext = ModeratorPermissions & { isFullAdmin: boolean };
 const DashboardPermissionsContext = createContext<DashboardContext>({ ...FULL_PERMISSIONS, isFullAdmin: true });
 const useDashboardPermissions = () => useContext(DashboardPermissionsContext);
 
+function HighFlagAlertBanner({ onGoToChats }: { onGoToChats: () => void }) {
+  const { pendingHighFlagAlerts, dismissHighFlagAlert } = useSportsConnect();
+  if (pendingHighFlagAlerts.length === 0) return null;
+  return (
+    <View style={{ gap: 6, paddingHorizontal: 16, paddingTop: 8 }}>
+      {pendingHighFlagAlerts.map((conv) => (
+        <View
+          key={conv.id}
+          style={{
+            backgroundColor: "#FEF2F2",
+            borderRadius: 10,
+            borderWidth: 1.5,
+            borderColor: "#FECACA",
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <Feather name="alert-octagon" size={18} color="#DC2626" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: "800", color: "#991B1B", lineHeight: 17 }}>
+              HIGH — {conv.flagCategory ?? "Unknown category"}
+            </Text>
+            <Text style={{ fontSize: 11, color: "#B91C1C", marginTop: 1 }}>
+              New high-severity flag detected · tap to review
+            </Text>
+          </View>
+          <Pressable
+            onPress={onGoToChats}
+            style={{ backgroundColor: "#DC2626", borderRadius: 7, paddingHorizontal: 10, paddingVertical: 6 }}
+          >
+            <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 12 }}>Review</Text>
+          </Pressable>
+          <Pressable onPress={() => dismissHighFlagAlert(conv.id)} hitSlop={8}>
+            <Feather name="x" size={16} color="#DC2626" />
+          </Pressable>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function AdminContent({ onExit }: { onExit?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [section, setSection] = useState<Section>("overview");
   const [sportsPrefillName, setSportsPrefillName] = useState<string | undefined>();
-  const { flaggedConversations } = useSportsConnect();
+  const { flaggedConversations, pendingAdminNavConversationId, clearPendingAdminNav } = useSportsConnect();
+
+  // When the user taps a push notification for a HIGH flag, the layout sets
+  // pendingAdminNavConversationId. React to that here by switching to the Chats
+  // section (where the flagged conversation can be reviewed) and clearing the flag.
+  useEffect(() => {
+    if (!pendingAdminNavConversationId) return;
+    setSection("chats");
+    clearPendingAdminNav();
+  // clearPendingAdminNav is stable; run only when the nav ID changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAdminNavConversationId]);
 
   const unreviewedFlagCount = useMemo(
     () => flaggedConversations.filter((c) => !c.flagReviewedAt).length,
@@ -147,6 +202,8 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
         })}
       </ScrollView>
 
+      <HighFlagAlertBanner onGoToChats={() => setSection("chats")} />
+
       <View style={styles.body}>
         {section === "overview" && <OverviewSection setSection={setSection} />}
         {section === "adverts" && <AdvertsSection />}
@@ -180,10 +237,19 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
 }
 
 export function ModeratorPage({ onExit }: { onExit: () => void }) {
-  const { currentModerator, flaggedConversations } = useSportsConnect();
+  const { currentModerator, flaggedConversations, pendingAdminNavConversationId, clearPendingAdminNav } = useSportsConnect();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [section, setSection] = useState<Section>("overview");
+
+  // Mirror the admin deep-link: notification tap → switch to Chats section.
+  useEffect(() => {
+    if (!pendingAdminNavConversationId || !currentModerator?.permissions?.closeChats) return;
+    setSection("chats");
+    clearPendingAdminNav();
+  // clearPendingAdminNav is stable.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAdminNavConversationId, currentModerator]);
 
   // useMemo must be called unconditionally (before any early return) to satisfy
   // the Rules of Hooks. Safely accesses currentModerator via optional chaining.
@@ -263,6 +329,10 @@ export function ModeratorPage({ onExit }: { onExit: () => void }) {
             );
           })}
         </ScrollView>
+
+        {perms.closeChats && (
+          <HighFlagAlertBanner onGoToChats={() => setSection("chats")} />
+        )}
 
         <View style={styles.body}>
           {activeSection === "overview" && (

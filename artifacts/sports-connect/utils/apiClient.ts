@@ -96,4 +96,18 @@ export const api = {
   getReports: () => apiFetch("/reports") as Promise<any[]>,
   resolveReport: (publicId: string, resolution: "ok" | "underage") =>
     apiFetch(`/reports/${publicId}/resolve`, { method: "POST", body: JSON.stringify({ resolution }) }),
+
+  /**
+   * Register this device's Expo push token so the server can deliver
+   * HIGH-severity flag notifications immediately (without polling).
+   * Idempotent — safe to call on every admin/moderator login.
+   */
+  registerAdminPushToken: (token: string, label?: string) =>
+    apiFetchWithModToken("/admin/push-tokens", {
+      method: "POST",
+      body: JSON.stringify({ token, label }),
+    }),
+  /** Unregister this device's push token on admin/moderator logout. */
+  unregisterAdminPushToken: (token: string) =>
+    apiFetchWithModToken(`/admin/push-tokens/${encodeURIComponent(token)}`, { method: "DELETE" }),
 };

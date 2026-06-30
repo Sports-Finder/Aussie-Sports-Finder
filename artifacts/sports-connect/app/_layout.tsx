@@ -25,6 +25,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AccountSetupGate } from "@/components/AccountSetupGate";
 import { OnboardingGate } from "@/components/OnboardingGate";
 import { SportsConnectProvider, useSportsConnect } from "@/context/SportsConnectContext";
+import { router } from "expo-router";
 import {
   initializeRevenueCat,
   identifyRevenueCatUser,
@@ -109,6 +110,27 @@ function RootLayoutNav() {
 }
 
 const BANNED_EMAIL_MSG = "Your account has been banned by an administrator and access has been revoked.";
+
+// Listens for notification taps and routes admin/moderator to the Chats section.
+// Must live inside SportsConnectProvider so it can call setAdminNavConversationId.
+function NotificationDeepLink() {
+  const { setAdminNavConversationId } = useSportsConnect();
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      const conversationId = typeof data?.conversationId === "string" ? data.conversationId : null;
+      if (conversationId) {
+        setAdminNavConversationId(conversationId);
+        // Navigate to profile tab so the admin/moderator dashboard is visible.
+        router.push("/(tabs)/profile");
+      }
+    });
+    return () => sub.remove();
+  // setAdminNavConversationId is stable (referentially stable from context).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
 
 function AppContent() {
   const { isSignedIn, isLoaded, getToken, signOut } = useAuth();
@@ -233,6 +255,7 @@ export default function RootLayout() {
               <SportsConnectProvider>
                 <SubscriptionProvider>
                   <SubscriptionSync />
+                  <NotificationDeepLink />
                   <GestureHandlerRootView style={{ flex: 1 }}>
                     <KeyboardProvider>
                       <AppContent />

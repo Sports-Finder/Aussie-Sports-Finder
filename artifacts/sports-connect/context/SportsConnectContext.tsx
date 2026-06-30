@@ -358,6 +358,11 @@ type SportsConnectState = {
   adminDeleteConversation: (conversationId: string) => Promise<void>;
   adminCloseConversation: (conversationId: string) => Promise<void>;
   adminMarkFlagReviewed: (conversationId: string) => Promise<void>;
+  pendingHighFlagAlerts: Conversation[];
+  dismissHighFlagAlert: (conversationId: string) => void;
+  pendingAdminNavConversationId: string | null;
+  setAdminNavConversationId: (id: string) => void;
+  clearPendingAdminNav: () => void;
   forbiddenConnections: ForbiddenConnection[];
   adminApproveClub: (accountId: string) => Promise<void>;
   adminRejectClub: (accountId: string) => Promise<void>;
@@ -628,6 +633,10 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [currentModerator, setCurrentModerator] = useState<ModeratorAccount | null>(null);
   const [flaggedConversations, setFlaggedConversations] = useState<Conversation[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [pendingHighFlagAlerts, setPendingHighFlagAlerts] = useState<Conversation[]>([]);
+  const seenHighFlagIds = useRef<Set<string>>(new Set());
+  const [pendingAdminNavConversationId, setPendingAdminNavConversationId] = useState<string | null>(null);
+  const adminPushTokenRef = useRef<string | null>(null);
   const [moderators, setModerators] = useState<ModeratorAccount[]>([]);
   const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
   const [bannedEmails, setBannedEmails] = useState<string[]>([]);
@@ -758,22 +767,86 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   // Moderators must have a server-issued session token (DB-backed, checked
   // server-side on each request) — set both on login AND on app-start restore
   // from AsyncStorage, so the token is always in sync with the active user.
+  //
+  // After the initial load, polls every 30 s and fires an immediate local
+  // push notification (plus an in-app banner) for any newly arrived HIGH
+  // severity flags not seen in the current session.
   useEffect(() => {
     const canSeeFlagged = isAdmin || (isModerator && currentModerator?.permissions?.closeChats);
     if (!canSeeFlagged) {
       setFlaggedConversations([]);
       setModeratorToken(null);
+      seenHighFlagIds.current.clear();
       return;
     }
     // Set the active moderator token (null for admins — they use Clerk auth).
     setModeratorToken(
       isModerator && currentModerator?.sessionToken ? currentModerator.sessionToken : null
     );
+
     let cancelled = false;
-    api.getFlaggedConversations().then((data) => {
-      if (!cancelled) setFlaggedConversations(data);
+
+    async function scheduleHighFlagNotification(conv: Conversation): Promise<void> {
+      try {
+        type PermResult = { granted: boolean };
+        const perms = await (Notifications.getPermissionsAsync() as unknown as Promise<PermResult>);
+        const finalPerms = perms.granted
+          ? perms
+          : await (Notifications.requestPermissionsAsync() as unknown as Promise<PermResult>);
+        if (finalPerms.granted) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "⚠️ HIGH severity flag",
+              body: `HIGH — ${conv.flagCategory ?? "Unknown category"} detected. Tap to review the flagged chat.`,
+              data: { conversationId: conv.id },
+            },
+            trigger: null,
+          });
+        }
+      } catch (_) { /* notifications not available or not permitted */ }
+    }
+
+    // Initial load — mark all existing HIGH flags as already-seen so the
+    // first poll cycle does not produce spurious alerts for pre-existing flags.
+    api.getFlaggedConversations().then((data: Conversation[]) => {
+      if (cancelled) return;
+      setFlaggedConversations(data);
+      data.forEach((c) => {
+        if (c.flagSeverity === "high") seenHighFlagIds.current.add(c.id);
+      });
     }).catch(() => undefined);
-    return () => { cancelled = true; };
+
+    // Poll every 30 s; alert only on genuinely new HIGH flags.
+    const pollInterval = setInterval(async () => {
+      if (cancelled) return;
+      try {
+        const data: Conversation[] = await api.getFlaggedConversations();
+        if (cancelled) return;
+
+        const newHighFlags = data.filter(
+          (c) => c.flagSeverity === "high" && !seenHighFlagIds.current.has(c.id)
+        );
+        newHighFlags.forEach((c) => seenHighFlagIds.current.add(c.id));
+
+        if (newHighFlags.length > 0) {
+          setPendingHighFlagAlerts((prev) => {
+            const existingIds = new Set(prev.map((c) => c.id));
+            const toAdd = newHighFlags.filter((c) => !existingIds.has(c.id));
+            return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+          });
+          for (const conv of newHighFlags) {
+            await scheduleHighFlagNotification(conv);
+          }
+        }
+
+        setFlaggedConversations(data);
+      } catch (_) { /* silent — network may be unavailable */ }
+    }, 30_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(pollInterval);
+    };
   }, [isAdmin, isModerator, currentModerator]);
 
   // When admin logs in, re-fetch account data with the admin endpoint so
@@ -788,6 +861,56 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [isAdmin]);
+
+  // Register this device's Expo push token with the server whenever admin or
+  // a closeChats moderator is active. The server uses the stored token to push
+  // an immediate notification the moment a HIGH-severity flag fires — without
+  // waiting for this device to poll. Token is unregistered on logout via cleanup.
+  useEffect(() => {
+    const canReceiveAlerts = isAdmin || (isModerator && currentModerator?.permissions?.closeChats);
+    if (!canReceiveAlerts) {
+      // Unregister on logout if we have a token stored
+      if (adminPushTokenRef.current) {
+        api.unregisterAdminPushToken(adminPushTokenRef.current).catch(() => undefined);
+        adminPushTokenRef.current = null;
+      }
+      return;
+    }
+    let cancelled = false;
+    async function registerToken(): Promise<void> {
+      try {
+        type PermResult = { granted: boolean };
+        const perms = await (Notifications.getPermissionsAsync() as unknown as Promise<PermResult>);
+        const finalPerms = perms.granted
+          ? perms
+          : await (Notifications.requestPermissionsAsync() as unknown as Promise<PermResult>);
+        if (!finalPerms.granted || cancelled) return;
+
+        // getExpoPushTokenAsync requires a project ID in production; in dev it
+        // falls back gracefully. Cast to access the data field.
+        type PushTokenResult = { data: string };
+        let tokenData: string;
+        try {
+          const result = await (Notifications.getExpoPushTokenAsync() as unknown as Promise<PushTokenResult>);
+          tokenData = result.data;
+        } catch (_) {
+          return;
+        }
+        if (cancelled) return;
+        adminPushTokenRef.current = tokenData;
+        await api.registerAdminPushToken(tokenData, Platform.OS);
+      } catch (_) { /* silent — best effort */ }
+    }
+    void registerToken();
+    return () => {
+      cancelled = true;
+      // Unregister the token so stale sessions do not receive notifications.
+      if (adminPushTokenRef.current) {
+        api.unregisterAdminPushToken(adminPushTokenRef.current).catch(() => undefined);
+        adminPushTokenRef.current = null;
+      }
+    };
+  }, [isAdmin, isModerator, currentModerator]);
 
   const requestSport = (name: string) => {
     const trimmed = name.trim();
@@ -1321,6 +1444,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     try { await api.deleteConversation(conversationId); } catch (_) { /* silent */ }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined);
   };
+
+  const dismissHighFlagAlert = (conversationId: string) => {
+    setPendingHighFlagAlerts((prev) => prev.filter((c) => c.id !== conversationId));
+  };
+
+  const setAdminNavConversationId = (id: string) => setPendingAdminNavConversationId(id);
+  const clearPendingAdminNav = () => setPendingAdminNavConversationId(null);
 
   const adminMarkFlagReviewed = async (conversationId: string) => {
     try {
@@ -2191,6 +2321,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     adminDeleteConversation,
     adminCloseConversation,
     adminMarkFlagReviewed,
+    pendingHighFlagAlerts,
+    dismissHighFlagAlert,
+    pendingAdminNavConversationId,
+    setAdminNavConversationId,
+    clearPendingAdminNav,
     forbiddenConnections,
     adminApproveClub,
     adminRejectClub,
@@ -2234,7 +2369,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     createReport,
     resolveReport,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription, toggleDevBypassSubscription, reports]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription, toggleDevBypassSubscription, reports, pendingHighFlagAlerts]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

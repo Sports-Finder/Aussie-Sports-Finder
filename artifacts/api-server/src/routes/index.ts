@@ -12,6 +12,7 @@ import adminEntitlementsRouter from "./adminEntitlements";
 import moderatorSessionsRouter from "./moderatorSessions";
 import flaggedConversationsRouter from "./flaggedConversations";
 import reportsRouter from "./reports";
+import adminPushTokensRouter from "./adminPushTokens";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -19,10 +20,11 @@ const router: IRouter = Router();
 // Health check is public — no auth required
 router.use(healthRouter);
 
-// Flagged-queue endpoints are registered before requireAuth so that moderators
-// (who have no Clerk account) can authenticate via X-Moderator-Token.
+// Flagged-queue and push-token endpoints are registered before requireAuth so
+// that moderators (no Clerk account) can authenticate via X-Moderator-Token.
 // Access control is enforced inside each handler (admin Clerk OR DB session).
 router.use(flaggedConversationsRouter);
+router.use(adminPushTokensRouter);
 
 // All routes below this point require a valid Clerk session
 router.use(requireAuth);

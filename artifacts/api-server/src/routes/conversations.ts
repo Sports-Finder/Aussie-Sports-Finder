@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, conversationsTable, messagesTable, accountsTable } from "@workspace/db";
+import { db, conversationsTable, messagesTable, accountsTable, adminPushTokensTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapConversation, mapMessage } from "../lib/mapDbToApi";
 import { normalizeDates } from "../lib/normalizeDates";
 import { scanMessage } from "../lib/contentSafety";
+import { sendExpoPushNotifications } from "../lib/expoPush";
 import { getAuth } from "@clerk/express";
 
 const router: IRouter = Router();
@@ -190,6 +191,29 @@ router.post("/conversations/:publicId/messages", async (req, res) => {
         { conversationId: publicId, category: flagMatch.category, severity: flagMatch.severity },
         "Conversation flagged for predatory content"
       );
+
+      // HIGH severity flags require immediate admin notification.
+      // Fetch all registered admin/moderator push tokens and send via Expo Push API.
+      // LOW/MEDIUM flags accumulate silently in the queue — no push sent.
+      if (flagMatch.severity === "high" && escalates) {
+        try {
+          const tokenRows = await db.select().from(adminPushTokensTable);
+          const tokens = tokenRows.map((r) => r.token);
+          if (tokens.length > 0) {
+            await sendExpoPushNotifications(tokens, {
+              title: "⚠️ HIGH severity flag",
+              body: `HIGH — ${flagMatch.category} detected. Tap to review the flagged chat.`,
+              data: { conversationId: publicId, screen: "admin-chats" },
+            });
+            req.log.info(
+              { conversationId: publicId, category: flagMatch.category, tokenCount: tokens.length },
+              "Admin push notifications sent for HIGH flag"
+            );
+          }
+        } catch (pushErr) {
+          req.log.error({ pushErr }, "Failed to send admin push notifications for HIGH flag");
+        }
+      }
     }
 
     res.status(201).json(mapMessage(msg));
