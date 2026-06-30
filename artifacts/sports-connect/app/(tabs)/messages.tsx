@@ -493,7 +493,7 @@ function ConnectedParticipantStrip({
 export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId: string; onClose: () => void; asAdmin?: boolean }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { conversations, sendMessage, broadcastMessage, adminSendMessage, markConversationRead, closeConversation, currentAccount, accounts, isAdmin } = useSportsConnect();
+  const { conversations, sendMessage, broadcastMessage, adminSendMessage, markConversationRead, closeConversation, currentAccount, accounts, isAdmin, createReport } = useSportsConnect();
   const conversation = conversations.find((c) => c.id === conversationId)!;
   const [draft, setDraft] = useState("");
   const [isBroadcast, setIsBroadcast] = useState(false);
@@ -566,19 +566,45 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
               </Text>
             </View>
             {conversation.status === "connected" && !adminMode ? (
-              <Pressable
-                onPress={() => Alert.alert(
-                  "Close this chat?",
-                  "This will end the conversation. The other party will see that the connection was closed.",
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Close Chat", style: "destructive", onPress: () => { closeConversation(conversationId); onClose(); } },
-                  ]
-                )}
-                style={({ pressed }) => [styles.backBtn, { backgroundColor: "#FEE2E2", opacity: pressed ? 0.75 : 1 }]}
-              >
-                <Feather name="x-circle" size={20} color="#DC2626" />
-              </Pressable>
+              <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                <Pressable
+                  onPress={() => {
+                    const otherId =
+                      conversation.initiatorAccountId === currentAccount?.id
+                        ? conversation.ownerAccountId
+                        : conversation.initiatorAccountId;
+                    if (!otherId) return;
+                    Alert.alert(
+                      "Report this user?",
+                      "This will flag the account for admin review.",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Report",
+                          style: "destructive",
+                          onPress: () => createReport(otherId, "Reported via chat"),
+                        },
+                      ]
+                    );
+                  }}
+                  style={({ pressed }) => [styles.backBtn, { backgroundColor: "#FEF3C7", opacity: pressed ? 0.75 : 1 }]}
+                >
+                  <Feather name="flag" size={18} color="#D97706" />
+                </Pressable>
+                <Pressable
+                  onPress={() => Alert.alert(
+                    "Close this chat?",
+                    "This will end the conversation. The other party will see that the connection was closed.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Close Chat", style: "destructive", onPress: () => { closeConversation(conversationId); onClose(); } },
+                    ]
+                  )}
+                  style={({ pressed }) => [styles.backBtn, { backgroundColor: "#FEE2E2", opacity: pressed ? 0.75 : 1 }]}
+                >
+                  <Feather name="x-circle" size={20} color="#DC2626" />
+                </Pressable>
+              </View>
             ) : (
               <View style={[styles.onlineDot, {
                 backgroundColor: conversation.status === "pending" ? "#F59E0B"

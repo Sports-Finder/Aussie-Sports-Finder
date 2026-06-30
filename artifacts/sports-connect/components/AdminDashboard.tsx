@@ -124,6 +124,7 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
   const insets = useSafeAreaInsets();
   const [section, setSection] = useState<Section>("overview");
   const [sportsPrefillName, setSportsPrefillName] = useState<string | undefined>();
+  const [accountsInitialFilter, setAccountsInitialFilter] = useState<AccountRole | "banned" | undefined>();
   const { flaggedConversations, pendingAdminNavConversationId, clearPendingAdminNav } = useSportsConnect();
 
   // When the user taps a push notification for a HIGH flag, the layout sets
@@ -205,10 +206,15 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
       <HighFlagAlertBanner onGoToChats={() => setSection("chats")} />
 
       <View style={styles.body}>
-        {section === "overview" && <OverviewSection setSection={setSection} />}
+        {section === "overview" && (
+          <OverviewSection
+            setSection={(s) => { setSection(s); if (s !== "accounts") setAccountsInitialFilter(undefined); }}
+            onBannedAccounts={() => { setAccountsInitialFilter("banned"); setSection("accounts"); }}
+          />
+        )}
         {section === "adverts" && <AdvertsSection />}
         {section === "chats" && <ChatsSection />}
-        {section === "accounts" && <AccountsSection />}
+        {section === "accounts" && <AccountsSection initialFilter={accountsInitialFilter} />}
         {section === "moderation" && <ModerationSection onApproveSportRequest={handleApproveSportRequest} />}
         {section === "clubapprovals" && <ClubApprovalsSection />}
         {section === "sports" && (
@@ -369,7 +375,7 @@ function StatCard({ label, value, icon, color, onPress }: { label: string; value
   );
 }
 
-function OverviewSection({ setSection }: { setSection: (s: Section) => void }) {
+function OverviewSection({ setSection, onBannedAccounts }: { setSection: (s: Section) => void; onBannedAccounts?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { adverts, conversations, accounts, bannedEmails, profileImages, pendingHighlightLinks, pendingSportRequests, reports } = useSportsConnect();
@@ -393,7 +399,7 @@ function OverviewSection({ setSection }: { setSection: (s: Section) => void }) {
         <StatCard label="Closed adverts" value={closedAdverts} icon="archive" color="#6B7280" onPress={() => setSection("adverts")} />
         <StatCard label="Conversations" value={conversations.length} icon="message-circle" color="#3B82F6" onPress={() => setSection("chats")} />
         <StatCard label="Accounts" value={accounts.length} icon="users" color="#8B5CF6" onPress={() => setSection("accounts")} />
-        <StatCard label="Banned accounts" value={bannedAccounts} icon="user-x" color="#EF4444" onPress={() => setSection("accounts")} />
+        <StatCard label="Banned accounts" value={bannedAccounts} icon="user-x" color="#EF4444" onPress={onBannedAccounts ?? (() => setSection("accounts"))} />
         <StatCard label="Banned emails" value={bannedEmails.length} icon="slash" color="#DC2626" onPress={() => setSection("settings")} />
       </View>
 
@@ -1047,17 +1053,24 @@ function ChatsSection() {
   );
 }
 
-function AccountsSection() {
+function AccountsSection({ initialFilter }: { initialFilter?: AccountRole | "banned" }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { accounts, bannedEmails, adminSetAccountStatus, adminApproveClub, adminRejectClub, adminGrantPremium, unblockCoachAffiliate } = useSportsConnect();
   const { approveClubs, isFullAdmin } = useDashboardPermissions();
-  const [role, setRole] = useState<AccountRole>("player");
+  const [filter, setFilter] = useState<AccountRole | "banned">(initialFilter ?? "player");
   const [editing, setEditing] = useState<UserAccount | null>(null);
   const [toastError, setToastError] = useState<string | null>(null);
   const [pendingPremium, setPendingPremium] = useState<string | null>(null);
 
-  const list = useMemo(() => accounts.filter((a) => a.role === role).sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1)), [accounts, role]);
+  const list = useMemo(() => {
+    if (filter === "banned") {
+      return accounts
+        .filter((a) => a.status === "banned" || a.status === "closed")
+        .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+    }
+    return accounts.filter((a) => a.role === filter).sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+  }, [accounts, filter]);
   const foundingClubCount = useMemo(() => accounts.filter((a) => a.role === "club" && a.promotionalPremium).length, [accounts]);
 
   const displayName = (acc: UserAccount) => acc.clubName || acc.fullName || acc.playerName || acc.email;
@@ -1103,15 +1116,23 @@ function AccountsSection() {
           </View>
         ) : null}
 
-        <SectionTitle title="Accounts" action={`${list.length} ${getRoleLabel(role, undefined)}`} />
+        <SectionTitle
+          title="Accounts"
+          action={filter === "banned" ? `${list.length} banned / closed` : `${list.length} ${getRoleLabel(filter as AccountRole, undefined)}`}
+        />
         <View style={styles.pillRow}>
           {(["player", "guardian", "coach", "club"] as AccountRole[]).map((r) => (
-            <Pill key={r} label={getRoleLabel(r, undefined)} active={role === r} onPress={() => setRole(r)} />
+            <Pill key={r} label={getRoleLabel(r, undefined)} active={filter === r} onPress={() => setFilter(r)} />
           ))}
+          <Pill label="Banned / Closed" active={filter === "banned"} onPress={() => setFilter("banned")} />
         </View>
 
         {list.length === 0 ? (
-          <EmptyState icon="users" title={`No ${getRoleLabel(role, undefined).toLowerCase()} accounts`} text="No accounts in this category yet." />
+          <EmptyState
+            icon="users"
+            title={filter === "banned" ? "No banned or closed accounts" : `No ${getRoleLabel(filter as AccountRole, undefined).toLowerCase()} accounts`}
+            text={filter === "banned" ? "Banned and closed accounts will appear here." : "No accounts in this category yet."}
+          />
         ) : (
           list.map((acc) => {
             const status = acc.status ?? "active";
@@ -1505,6 +1526,7 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
   const pendingHighlights = pendingHighlightLinks.filter((l) => l.status === "pending");
   const pendingSports = pendingSportRequests.filter((r) => r.status === "pending");
   const [fullSizeUri, setFullSizeUri] = useState<string | null>(null);
+  const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
 
   return (
     <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
@@ -1618,6 +1640,12 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
         const target = accounts.find((a) => a.id === report.targetAccountId);
         const reporter = accounts.find((a) => a.id === report.reporterAccountId);
         const isPending = report.status === "pending";
+        const isExpanded = expandedReportId === report.id;
+        const targetStatus = target?.status ?? "unknown";
+        const statusBadge = targetStatus === "banned" ? { bg: "#FEE2E2", fg: "#991B1B" }
+          : targetStatus === "closed" ? { bg: "#F3F4F6", fg: "#374151" }
+          : targetStatus === "review" ? { bg: "#FEF3C7", fg: "#92400E" }
+          : { bg: "#D1FAE5", fg: "#065F46" };
         return (
           <View key={report.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={styles.itemHeader}>
@@ -1629,18 +1657,6 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
               </View>
             </View>
             <View style={styles.metaRow}>
-              <Feather name="user" size={12} color={colors.mutedForeground} />
-              <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                Role: {target ? (target.role === "club" ? "Club" : target.role === "guardian" ? "Parent/Guardian" : target.role === "coach" ? "Coach" : "Player") : "Unknown"}
-              </Text>
-            </View>
-            {target?.dateOfBirth ? (
-              <View style={styles.metaRow}>
-                <Feather name="calendar" size={12} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>DOB: {target.dateOfBirth}</Text>
-              </View>
-            ) : null}
-            <View style={styles.metaRow}>
               <Feather name="flag" size={12} color={colors.mutedForeground} />
               <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{report.reason}</Text>
             </View>
@@ -1650,6 +1666,56 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
                 Reported {new Date(report.createdAt).toLocaleDateString()} by {reporter ? (reporter.role === "club" ? reporter.clubName || "Club" : reporter.fullName || reporter.playerName || "User") : "Unknown"}
               </Text>
             </View>
+
+            {/* Expandable account detail panel */}
+            <Pressable
+              onPress={() => setExpandedReportId(isExpanded ? null : report.id)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}
+            >
+              <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={13} color={colors.primary} />
+              <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>
+                {isExpanded ? "Hide account details" : "View account details"}
+              </Text>
+            </Pressable>
+
+            {isExpanded && (
+              <View style={{ marginTop: 8, backgroundColor: colors.secondary, borderRadius: 10, padding: 10, gap: 5 }}>
+                <View style={styles.metaRow}>
+                  <Feather name="user" size={12} color={colors.mutedForeground} />
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                    Role: {target ? (target.role === "club" ? "Club" : target.role === "guardian" ? "Parent/Guardian" : target.role === "coach" ? "Coach" : "Player") : "Unknown"}
+                  </Text>
+                  <View style={[styles.badge, { backgroundColor: statusBadge.bg, marginLeft: 6 }]}>
+                    <Text style={[styles.badgeText, { color: statusBadge.fg }]}>{targetStatus[0].toUpperCase() + targetStatus.slice(1)}</Text>
+                  </View>
+                </View>
+                {target?.email ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="mail" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>{target.email}</Text>
+                  </View>
+                ) : null}
+                {target?.dateOfBirth ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>DOB: {target.dateOfBirth}</Text>
+                  </View>
+                ) : null}
+                {target?.location ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>{target.location}</Text>
+                  </View>
+                ) : null}
+                {target?.statusReason ? (
+                  <View style={styles.metaRow}>
+                    <Feather name="info" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={2}>{target.statusReason}</Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
+
             {isPending ? (
               <View style={styles.actionRow}>
                 <ActionButton icon="check" label="Reviewed OK" color="#10B981" onPress={() => resolveReport(report.id, "ok")} />

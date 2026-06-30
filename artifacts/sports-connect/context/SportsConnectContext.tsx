@@ -1404,7 +1404,14 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     try {
       // The server atomically creates the report AND sets the target account
       // status to "review", so we don't need a separate updateAccount call.
-      await api.createReport({ reporterAccountId, targetAccountId, reason });
+      const created = await api.createReport({ reporterAccountId, targetAccountId, reason });
+      // Sync the server-assigned publicId back into local state so that
+      // resolveReport can call the correct URL (e.g. /reports/<publicId>/resolve).
+      if (created?.id) {
+        setReports((current) =>
+          current.map((r) => r.id === newReport.id ? { ...r, id: created.id } : r)
+        );
+      }
     } catch (err) {
       console.warn("[createReport] API sync failed:", err);
     }
