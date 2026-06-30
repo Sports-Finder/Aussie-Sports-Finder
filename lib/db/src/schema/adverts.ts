@@ -44,6 +44,18 @@ export const advertsTable = pgTable("adverts", {
   teamGender: text("team_gender"),
   playerGender: text("player_gender"),
   affiliatedClubId: text("affiliated_club_id"),
+  friendlySubType: text("friendly_sub_type"),
+  preferredOpponents: jsonb("preferred_opponents").$type<string[]>(),
+  preferredTeamLevel: text("preferred_team_level"),
+  groundAvailable: boolean("ground_available"),
+  venueSuburb: text("venue_suburb"),
+  venuePostcode: text("venue_postcode"),
+  venueState: text("venue_state"),
+  refereeType: text("referee_type"),
+  friendlyInfo: text("friendly_info"),
+  friendlySuburb: text("friendly_suburb"),
+  friendlyPostcode: text("friendly_postcode"),
+  friendlyState: text("friendly_state"),
   status: text("status").notNull().default("active"),
   closedAt: timestamp("closed_at", { withTimezone: true }),
   closedReason: text("closed_reason"),
@@ -64,6 +76,55 @@ export const insertAdvertSchema = createInsertSchema(advertsTable)
     trialSlots: z
       .array(z.object({ date: z.string(), timeFrom: z.string(), timeTo: z.string() }))
       .optional(),
+    friendlySubType: z.enum(["available", "wanted"]).optional(),
+    preferredOpponents: z.array(z.string()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type !== "club-friendly") return;
+
+    if (!data.friendlySubType) {
+      ctx.addIssue({ code: "custom", path: ["friendlySubType"], message: "Friendly type (available or wanted) is required for club-friendly adverts" });
+    }
+
+    if (!data.preferredOpponents || data.preferredOpponents.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["preferredOpponents"], message: "At least one preferred opponent must be selected" });
+    }
+
+    if (!data.preferredTeamLevel || data.preferredTeamLevel.trim().length === 0) {
+      ctx.addIssue({ code: "custom", path: ["preferredTeamLevel"], message: "Preferred team level is required" });
+    }
+
+    const hasDate = Array.isArray(data.trialSlots) && data.trialSlots.length > 0 && data.trialSlots[0].date.trim().length > 0;
+    if (!hasDate) {
+      ctx.addIssue({ code: "custom", path: ["trialSlots"], message: "At least one friendly date is required" });
+    }
+
+    if (data.friendlySubType === "available" && data.groundAvailable) {
+      if (!data.venueSuburb || data.venueSuburb.trim().length === 0) {
+        ctx.addIssue({ code: "custom", path: ["venueSuburb"], message: "Venue suburb is required when ground is available" });
+      }
+      if (!data.venuePostcode || data.venuePostcode.trim().length === 0) {
+        ctx.addIssue({ code: "custom", path: ["venuePostcode"], message: "Venue postcode is required when ground is available" });
+      }
+      if (!data.venueState || data.venueState.trim().length === 0) {
+        ctx.addIssue({ code: "custom", path: ["venueState"], message: "Venue state is required when ground is available" });
+      }
+      if (!data.refereeType || data.refereeType.trim().length === 0) {
+        ctx.addIssue({ code: "custom", path: ["refereeType"], message: "Referee type is required when ground is available" });
+      }
+    }
+
+    if (data.friendlySubType === "wanted") {
+      if (!data.friendlySuburb || data.friendlySuburb.trim().length === 0) {
+        ctx.addIssue({ code: "custom", path: ["friendlySuburb"], message: "Club suburb is required for wanted friendly adverts" });
+      }
+      if (!data.friendlyPostcode || data.friendlyPostcode.trim().length === 0) {
+        ctx.addIssue({ code: "custom", path: ["friendlyPostcode"], message: "Club postcode is required for wanted friendly adverts" });
+      }
+      if (!data.friendlyState || data.friendlyState.trim().length === 0) {
+        ctx.addIssue({ code: "custom", path: ["friendlyState"], message: "Club state is required for wanted friendly adverts" });
+      }
+    }
   });
 
 export type InsertAdvert = z.infer<typeof insertAdvertSchema>;

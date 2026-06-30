@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq, gt, lt, isNotNull, sql } from "drizzle-orm";
-import { db, advertsTable, accountsTable, conversationsTable, messagesTable, type InsertAdvert } from "@workspace/db";
+import { db, advertsTable, accountsTable, conversationsTable, messagesTable, insertAdvertSchema } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapAdvert } from "../lib/mapDbToApi";
 import { normalizeDates } from "../lib/normalizeDates";
@@ -165,7 +165,20 @@ router.post("/adverts", async (req, res) => {
       }
     }
 
-    const [created] = await db.insert(advertsTable).values(body as unknown as InsertAdvert).returning();
+    const normalizedBody = normalizeDates(body, [
+      "closedAt",
+      "bumpedAt",
+      "expiresAt",
+      "originalExpiresAt",
+    ]);
+
+    const parsed = insertAdvertSchema.safeParse(normalizedBody);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid advert data", details: parsed.error.issues });
+      return;
+    }
+
+    const [created] = await db.insert(advertsTable).values(parsed.data).returning();
     res.status(201).json(mapAdvert(created as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to create advert");
