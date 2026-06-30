@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
-import { Advert, AccountRole, useSportsConnect } from "@/context/SportsConnectContext";
+import { Advert, AccountRole, Conversation, useSportsConnect } from "@/context/SportsConnectContext";
 import { getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
 import { useIsPremium } from "@/hooks/useIsPremium";
@@ -25,8 +25,8 @@ import SubscriptionPaywall from "@/components/SubscriptionPaywall";
 
 import { AgeGroup, AGE_GROUPS, getFriendlyOpponentOptions } from "@/constants/ageGroups";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
-import { coachSubRoleLabel } from "@/constants/coachSubRoles";
-import { formatTrialDateInput, parseTrialDate } from "@/utils/dateUtils";
+import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
+import { formatTrialDateInput, parseTrialDate, parseDobAge } from "@/utils/dateUtils";
 
 type TrialSlot = { date: string; timeFrom: string; timeTo: string };
 
@@ -165,13 +165,35 @@ function advertTypeLabel(type: Advert["type"], coachSubRole?: string | null) {
     : "Players Wanted for Team";
 }
 
+function requesterTypeLabel(type?: AccountRole, coachSubRole?: string | null, count = 1): string {
+  const base = type === "club" ? "Club" : type === "coach" ? coachSubRoleLabel(coachSubRole) : "Player";
+  return count === 1 ? base : `${base}s`;
+}
+
+function convGroupLabel(convs: Pick<Conversation, "requesterType" | "requesterCoachSubRole">[], singular = "Person", plural = "People"): string {
+  if (convs.length === 0) return plural;
+  const types = [...new Set(convs.map((c) => c.requesterType))];
+  const first = convs[0];
+  return types.length === 1 ? requesterTypeLabel(types[0], first?.requesterCoachSubRole, convs.length) : convs.length === 1 ? singular : plural;
+}
+
 function MyAdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }) {
   const colors = useColors();
-  const { approvedSports } = useSportsConnect();
+  const { approvedSports, conversations } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert);
+  const pendingCount = conversations.filter((c) => c.advertId === advert.id && c.status === "pending").length;
+  const hasPending = pendingCount > 0;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [localStyles.myCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [localStyles.myCard, { backgroundColor: hasPending ? "#FFFBEB" : colors.card, borderColor: hasPending ? "#FDE68A" : colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 }]}>
+      {hasPending ? (
+        <View style={[localStyles.expiryRow, { backgroundColor: "#FEF3C7", marginBottom: 4 }]}>
+          <Feather name="bell" size={12} color="#D97706" />
+          <Text style={[localStyles.expiryText, { color: "#92400E" }]}>
+            {pendingCount} connection request{pendingCount === 1 ? "" : "s"} awaiting your response
+          </Text>
+        </View>
+      ) : null}
       {advert.possibleDuplicate ? (
         <View style={[localStyles.expiryRow, { backgroundColor: "#FFFBEB", marginBottom: 4 }]}>
           <Feather name="alert-triangle" size={12} color="#D97706" />
@@ -193,7 +215,7 @@ function MyAdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void
       {advert.focusArea ? <Text style={[localStyles.cardText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.focusArea}</Text> : advert.ageGroup ? <Text style={[localStyles.cardText, { color: colors.mutedForeground, marginTop: 2 }]}>{advert.ageGroup}</Text> : null}
       <View style={localStyles.cardFooter}>
         <Feather name="eye" size={13} color={colors.mutedForeground} />
-        <Text style={[localStyles.cardFooterText, { color: colors.mutedForeground }]}>Tap to view, edit or delete</Text>
+        <Text style={[localStyles.cardFooterText, { color: colors.mutedForeground }]}>{hasPending ? "Tap to respond to requests" : "Tap to view, edit or delete"}</Text>
       </View>
     </Pressable>
   );
@@ -209,10 +231,14 @@ function MyAdvertDetail({
   onEdit: () => void;
 }) {
   const colors = useColors();
-  const { approvedSports, deleteAdvert, currentAccount } = useSportsConnect();
+  const { approvedSports, deleteAdvert, currentAccount, conversations, acceptConnection, denyConnection, accounts } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const advertConvs = conversations.filter((c) => c.advertId === advert.id);
+  const pendingConvs = advertConvs.filter((c) => c.status === "pending");
+  const connectedConvs = advertConvs.filter((c) => c.status === "connected");
 
   const isPaidPlayerCoach =
     currentAccount?.subscriptionStatus === "active" &&
@@ -339,6 +365,140 @@ function MyAdvertDetail({
 
             <View style={{ height: 20 }} />
 
+            {/* ── Connection Requests ── */}
+            {advertConvs.length > 0 || pendingConvs.length > 0 ? (
+              <View style={{ gap: 10, marginBottom: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: colors.foreground + "22" }} />
+                  <Text style={{ fontWeight: "800", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.7, color: colors.mutedForeground }}>Connection Requests</Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: colors.foreground + "22" }} />
+                </View>
+
+                {connectedConvs.length > 0 ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 16, backgroundColor: colors.pitchSoft }}>
+                    <Feather name="check-circle" color={colors.primary} size={16} />
+                    <Text style={{ fontWeight: "600", fontSize: 13, color: colors.primary, flex: 1 }}>
+                      {`Connected to ${connectedConvs.length} ${convGroupLabel(connectedConvs)} — message in the Messages tab`}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {pendingConvs.length > 0 ? (
+                  <Text style={{ fontWeight: "700", fontSize: 14, color: colors.foreground }}>
+                    {`${pendingConvs.length} ${convGroupLabel(pendingConvs, "Connection", "Connection")} Request${pendingConvs.length === 1 ? "" : "s"} pending`}
+                  </Text>
+                ) : null}
+
+                {pendingConvs.map((conv) => {
+                  const req = accounts.find((a) => a.id === conv.initiatorAccountId);
+                  const isCoachReq = req?.role === "coach";
+                  const isAffiliatedCoachReq = isCoachReq && !!req?.affiliatedClubId;
+                  const location = conv.requesterLocation ?? "an unknown location";
+                  const coachLabel = req?.coachSubRole ? coachSubRoleLabel(req.coachSubRole) : "Coach";
+                  const headerText = isAffiliatedCoachReq
+                    ? `A ${coachLabel} from a Club in ${location} wants to connect privately. Agree to connect?`
+                    : req?.role === "guardian" && req.parentGuardianName
+                    ? `Parent/Guardian ${req.parentGuardianName} on behalf of ${req.playerName ?? "a player"} from ${location} wants to connect privately. Agree to connect?`
+                    : `A ${requesterTypeLabel(conv.requesterType, req?.coachSubRole)} from ${location} wants to connect privately. Agree to connect?`;
+
+                  const age = req ? parseDobAge(req.dateOfBirth) : null;
+                  const coachSubRoleLabel2 = COACH_SUB_ROLES.find((r) => r.value === req?.coachSubRole)?.label;
+                  const coachLevelLabel = COACH_EXPERIENCE_LEVELS.find((l) => l.value === req?.coachCurrentLevel)?.label;
+
+                  let facts: { label: string; value: string }[] = [];
+                  let sectionLabel = "About this requester";
+
+                  if (req) {
+                    if (isAffiliatedCoachReq) {
+                      const clubAccount = accounts.find((a) => a.id === req.affiliatedClubId);
+                      const affiliation = clubAccount?.coachAffiliates?.find((a) => a.coachAccountId === req.id);
+                      sectionLabel = "About this coach";
+                      facts = [
+                        req.gender ? { label: "Gender", value: req.gender } : null,
+                        age !== null ? { label: "Age", value: String(age) } : null,
+                        coachSubRoleLabel2 ? { label: "Coaching role", value: coachSubRoleLabel2 } : null,
+                        coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
+                        affiliation?.ageGroup ? { label: "Club team age group", value: affiliation.ageGroup } : null,
+                      ].filter(Boolean) as { label: string; value: string }[];
+                    } else if (isCoachReq) {
+                      sectionLabel = "About this coach";
+                      facts = [
+                        req.gender ? { label: "Gender", value: req.gender } : null,
+                        age !== null ? { label: "Age", value: String(age) } : null,
+                        coachSubRoleLabel2 ? { label: "Coaching role", value: coachSubRoleLabel2 } : null,
+                        coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
+                      ].filter(Boolean) as { label: string; value: string }[];
+                    } else if (req.role === "guardian") {
+                      sectionLabel = "About this guardian & player";
+                      facts = [
+                        req.gender ? { label: "Gender", value: req.gender } : null,
+                        req.dateOfBirth ? { label: "Player DOB", value: `${req.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` } : null,
+                        req.location ? { label: "Location", value: req.location } : null,
+                        (req.playerPositions ?? []).length > 0 ? { label: "Position/s", value: (req.playerPositions ?? []).join(", ") } : null,
+                        req.playerCurrentLevel ? { label: "Playing level", value: req.playerCurrentLevel } : null,
+                        req.playerCurrentAgeGroup ? { label: "Age group", value: req.playerCurrentAgeGroup } : null,
+                        req.playerCurrentClub ? { label: "Current / prev club", value: req.playerCurrentClub } : null,
+                        req.parentGuardianName ? { label: "Guardian", value: req.parentGuardianName } : null,
+                      ].filter(Boolean) as { label: string; value: string }[];
+                    } else {
+                      sectionLabel = req.role === "club" ? "About this club" : "About this player";
+                      facts = [
+                        req.gender ? { label: "Gender", value: req.gender } : null,
+                        req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` · Age ${age}` : ""}` } : null,
+                        req.location ? { label: "Location", value: req.location } : null,
+                        (req.playerPositions ?? []).length > 0 ? { label: "Position/s", value: (req.playerPositions ?? []).join(", ") } : null,
+                        req.playerCurrentLevel ? { label: "Playing level", value: req.playerCurrentLevel } : null,
+                        req.playerCurrentAgeGroup ? { label: "Age group", value: req.playerCurrentAgeGroup } : null,
+                        req.playerCurrentClub ? { label: "Current / prev club", value: req.playerCurrentClub } : null,
+                      ].filter(Boolean) as { label: string; value: string }[];
+                    }
+                  }
+
+                  return (
+                    <View key={conv.id} style={{ borderRadius: 18, borderWidth: 1.5, borderColor: "#F59E0B", backgroundColor: colors.amberSoft, padding: 16, gap: 14 }}>
+                      <Text style={{ fontWeight: "600", fontSize: 14, lineHeight: 20, color: colors.foreground }}>{headerText}</Text>
+                      {facts.length > 0 ? (
+                        <View style={{ borderTopWidth: 1, borderTopColor: "#F59E0B44", paddingTop: 10, gap: 6 }}>
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: colors.mutedForeground, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 }}>
+                            {sectionLabel}
+                          </Text>
+                          {facts.map((f) => (
+                            <View key={f.label} style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                              <Text style={{ fontSize: 12, fontWeight: "600", color: colors.mutedForeground, minWidth: 100 }}>{f.label}:</Text>
+                              <Text style={{ fontSize: 12, color: colors.foreground, flex: 1, flexShrink: 1 }}>{f.value}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      ) : null}
+                      <View style={{ flexDirection: "row", gap: 12 }}>
+                        <Pressable
+                          onPress={() => acceptConnection(conv.id)}
+                          style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#22C55E", borderRadius: 14, paddingVertical: 12 }, { opacity: pressed ? 0.8 : 1 }]}
+                        >
+                          <Feather name="check" color="#FFFFFF" size={20} />
+                          <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 15 }}>Accept</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => denyConnection(conv.id)}
+                          style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#EF4444", borderRadius: 14, paddingVertical: 12 }, { opacity: pressed ? 0.8 : 1 }]}
+                        >
+                          <Feather name="x" color="#FFFFFF" size={20} />
+                          <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 15 }}>Deny</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {pendingConvs.length === 0 && connectedConvs.length === 0 && advertConvs.length > 0 ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 16, backgroundColor: colors.secondary }}>
+                    <Feather name="inbox" color={colors.mutedForeground} size={16} />
+                    <Text style={{ fontWeight: "600", fontSize: 13, color: colors.mutedForeground, flex: 1 }}>No pending connection requests</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
             <Pressable onPress={onEdit} style={({ pressed }) => [localStyles.editButton, { opacity: pressed ? 0.8 : 1, overflow: "hidden" }]}>
               <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[localStyles.editButton, { flex: 1 }]}>
                 <Feather name="edit-2" color="#FFFFFF" size={16} />
@@ -391,7 +551,8 @@ export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount } = useSportsConnect();
+  const [myAdvertsY, setMyAdvertsY] = useState(0);
+  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount, conversations } = useSportsConnect();
   const isPremium = useIsPremium();
   const accountRole = currentAccount?.role ?? activeProfile;
 
@@ -1119,6 +1280,44 @@ export default function PostScreen() {
           </View>
         </View>
 
+        {/* ── Active adverts summary button ── */}
+        {myAdverts.length > 0 ? (() => {
+          const totalPendingRequests = conversations.filter((c) => myAdverts.some((a) => a.id === c.advertId) && c.status === "pending").length;
+          const expiringCount = myAdverts.filter((a) => {
+            const ei = getExpiryInfo(a);
+            return !ei.expired && ei.days === 0;
+          }).length;
+          const hasPendingRequests = totalPendingRequests > 0;
+          return (
+            <Pressable
+              onPress={() => scrollRef.current?.scrollTo({ y: myAdvertsY, animated: true })}
+              style={({ pressed }) => [{
+                flexDirection: "row", alignItems: "center", gap: 12,
+                borderRadius: 20, borderWidth: 1.5,
+                borderColor: hasPendingRequests ? "#FDE68A" : colors.foreground,
+                backgroundColor: hasPendingRequests ? "#FFFBEB" : colors.card,
+                padding: 14, opacity: pressed ? 0.8 : 1,
+              }]}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: hasPendingRequests ? "#FEF3C7" : colors.pitchSoft, alignItems: "center", justifyContent: "center" }}>
+                <Feather name={hasPendingRequests ? "bell" : "layers"} size={18} color={hasPendingRequests ? "#D97706" : colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: "700", fontSize: 14, color: hasPendingRequests ? "#92400E" : colors.foreground }}>
+                  {`You have ${myAdverts.length} active advert${myAdverts.length === 1 ? "" : "s"}`}
+                  {hasPendingRequests ? ` · ${totalPendingRequests} request${totalPendingRequests === 1 ? "" : "s"} pending` : ""}
+                </Text>
+                {expiringCount > 0 ? (
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#D97706", marginTop: 2 }}>
+                    {`${expiringCount} will close in under 24 hours`}
+                  </Text>
+                ) : null}
+              </View>
+              <Feather name="chevron-down" size={18} color={hasPendingRequests ? "#D97706" : colors.mutedForeground} />
+            </Pressable>
+          );
+        })() : null}
+
         {/* ── Duplicate / cooldown error banners ── */}
         {duplicateError?.code === "DUPLICATE_ACTIVE" ? (
           <View style={[localStyles.dupBanner, { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}>
@@ -1805,7 +2004,7 @@ export default function PostScreen() {
         ) : null}
 
         {myAdverts.length > 0 ? (
-          <>
+          <View onLayout={(e) => setMyAdvertsY(e.nativeEvent.layout.y)}>
             <SectionTitle title="My adverts" action={`${myAdverts.length} live`} />
             <FlatList
               data={myAdverts}
@@ -1815,7 +2014,7 @@ export default function PostScreen() {
                 <MyAdvertCard advert={item} onPress={() => setSelectedMyAdvert(item)} />
               )}
             />
-          </>
+          </View>
         ) : null}
       </ScrollView>
 
