@@ -1517,6 +1517,15 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
   );
 }
 
+function getBanLabel(reason: string): string {
+  const r = reason.toLowerCase();
+  if (r.includes("underage")) return "Underage confirmed";
+  if (r.includes("spam") || r.includes("fake")) return "Spam / fake confirmed";
+  if (r.includes("inappropriate") || r.includes("behaviour") || r.includes("behavior")) return "Inappropriate behaviour confirmed";
+  if (r.includes("harassment") || r.includes("harass")) return "Harassment confirmed";
+  return "Report confirmed — Ban";
+}
+
 function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: (name: string) => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -1718,8 +1727,13 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
 
             {isPending ? (
               <View style={styles.actionRow}>
-                <ActionButton icon="check" label="Reviewed OK" color="#10B981" onPress={() => resolveReport(report.id, "ok")} />
-                <ActionButton icon="x" label="Underage confirmed" color="#EF4444" onPress={() => resolveReport(report.id, "underage")} />
+                <ActionButton icon="check" label="Reviewed OK" color="#10B981" onPress={() => resolveReport(report.id, "ok", "Reviewed — Account OK")} />
+                <ActionButton
+                  icon="user-x"
+                  label={getBanLabel(report.reason)}
+                  color="#EF4444"
+                  onPress={() => resolveReport(report.id, "underage", `${getBanLabel(report.reason)} — Account banned`)}
+                />
               </View>
             ) : (
               <View style={[styles.metaRow, { marginTop: 4 }]}>

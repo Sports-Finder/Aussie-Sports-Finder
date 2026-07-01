@@ -94,8 +94,8 @@ export const api = {
 
   createReport: (body: any) => apiFetch("/reports", { method: "POST", body: JSON.stringify({ targetAccountId: body.targetAccountId, reason: body.reason }) }),
   getReports: () => apiFetch("/reports") as Promise<any[]>,
-  resolveReport: (publicId: string, resolution: "ok" | "underage") =>
-    apiFetch(`/reports/${publicId}/resolve`, { method: "POST", body: JSON.stringify({ resolution }) }),
+  resolveReport: (publicId: string, resolution: "ok" | "underage", resolutionNote?: string) =>
+    apiFetch(`/reports/${publicId}/resolve`, { method: "POST", body: JSON.stringify({ resolution, resolutionNote }) }),
 
   /**
    * Register this device's Expo push token so the server can deliver

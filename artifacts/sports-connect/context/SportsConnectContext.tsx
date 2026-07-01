@@ -398,7 +398,7 @@ type SportsConnectState = {
   unblockCoachAffiliate: (clubAccountId: string, coachAccountId: string) => void;
   reports: Report[];
   createReport: (targetAccountId: string, reason: string, advertId?: string) => Promise<void>;
-  resolveReport: (reportId: string, resolution: "ok" | "underage") => Promise<void>;
+  resolveReport: (reportId: string, resolution: "ok" | "underage", resolutionNote?: string) => Promise<void>;
   reportedAdvertIds: string[];
   hasReportedAdvert: (advertId: string) => boolean;
 };
@@ -1419,16 +1419,25 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
 
   const hasReportedAdvert = (advertId: string) => reportedAdvertIds.includes(advertId);
 
-  const resolveReport = async (reportId: string, resolution: "ok" | "underage") => {
+  const resolveReport = async (reportId: string, resolution: "ok" | "underage", resolutionNote?: string) => {
     const report = reports.find((r) => r.id === reportId);
     if (!report) return;
     const targetAccountId = report.targetAccountId;
     const newStatus: AccountStatus = resolution === "ok" ? "active" : "banned";
-    const newReason = resolution === "ok" ? "Reviewed — Account OK" : "Underage confirmed — Account closed";
-    setReports((current) => current.map((r) => r.id === reportId ? { ...r, status: "resolved", resolvedAt: now(), resolution: newReason } : r));
-    setAccounts((current) => current.map((acc) => acc.id === targetAccountId ? { ...acc, status: newStatus, statusChangedAt: now(), statusReason: newReason } : acc));
+    const defaultNote = resolution === "ok" ? "Reviewed — Account OK" : "Report confirmed — Account banned";
+    const storedNote = resolutionNote ?? defaultNote;
+    setReports((current) => current.map((r) => r.id === reportId ? { ...r, status: "resolved", resolvedAt: now(), resolution: storedNote } : r));
+    setAccounts((current) => current.map((acc) => acc.id === targetAccountId ? { ...acc, status: newStatus, statusChangedAt: now(), statusReason: storedNote } : acc));
+    if (resolution !== "ok") {
+      const target = accounts.find((a) => a.id === targetAccountId);
+      if (target?.email) {
+        const email = target.email.toLowerCase().trim();
+        setBannedEmails((current) => current.map((e) => e.toLowerCase()).includes(email) ? current : [...current, target.email.trim()]);
+        api.banEmail(target.email.trim()).catch(() => undefined);
+      }
+    }
     try {
-      await api.resolveReport(reportId, resolution);
+      await api.resolveReport(reportId, resolution, storedNote);
     } catch (_) { /* silent */ }
   };
 

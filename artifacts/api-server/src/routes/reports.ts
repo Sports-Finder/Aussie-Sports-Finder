@@ -103,7 +103,7 @@ router.post("/reports/:publicId/resolve", async (req, res) => {
     return;
   }
   try {
-    const { resolution } = req.body as { resolution?: string };
+    const { resolution, resolutionNote } = req.body as { resolution?: string; resolutionNote?: string };
     if (!resolution || (resolution !== "ok" && resolution !== "underage")) {
       res.status(400).json({ error: "Invalid resolution. Must be 'ok' or 'underage'." });
       return;
@@ -118,6 +118,8 @@ router.post("/reports/:publicId/resolve", async (req, res) => {
     }
     const now = new Date();
     const auth = getAuth(req);
+    const defaultNote = resolution === "ok" ? "Reviewed — Account OK" : "Report confirmed — Account banned";
+    const storedNote = (typeof resolutionNote === "string" && resolutionNote.trim()) ? resolutionNote.trim() : defaultNote;
     await db.transaction(async (tx) => {
       await tx
         .update(reportsTable)
@@ -125,13 +127,13 @@ router.post("/reports/:publicId/resolve", async (req, res) => {
           status: "resolved",
           resolvedAt: now,
           resolvedBy: auth.userId ?? undefined,
-          resolution: resolution === "ok" ? "Reviewed — Account OK" : "Underage confirmed — Account closed",
+          resolution: storedNote,
         })
         .where(eq(reportsTable.publicId, req.params.publicId));
       if (resolution === "underage") {
         await tx
           .update(accountsTable)
-          .set({ status: "banned", statusReason: "Underage confirmed via report", statusChangedAt: now })
+          .set({ status: "banned", statusReason: storedNote, statusChangedAt: now })
           .where(eq(accountsTable.publicId, report.targetAccountId));
       } else {
         await tx
