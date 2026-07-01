@@ -103,7 +103,7 @@ export function AccountSetupGate() {
   const { signOut } = useAuth();
   const { user } = useUser();
 
-  const { bannedEmails, createAccount, approvedSports, pickAccountImage, clearProfileImage, getImageUri, getImageStatus } = useSportsConnect();
+  const { bannedEmails, createAccount, approvedSports, pickAccountImage, clearProfileImage, getImageUri, getImageStatus, accounts, isHydrated, autoRestoreSession } = useSportsConnect();
 
   // Derive identity from Clerk
   const email = user?.primaryEmailAddress?.emailAddress ?? "";
@@ -361,6 +361,100 @@ export function AccountSetupGate() {
       );
     }
   };
+
+  // After hydration, if an active account already exists for this Clerk email, show a
+  // "Welcome back" screen instead of the setup form. This replaces the silent
+  // auto-restore that previously happened in _layout.tsx and makes the transition explicit.
+  const existingAccount = isHydrated
+    ? accounts.find(
+        (a) =>
+          a.email.toLowerCase() === email.toLowerCase() &&
+          a.status !== "banned" &&
+          a.status !== "closed",
+      )
+    : undefined;
+
+  if (existingAccount) {
+    const displayName =
+      existingAccount.role === "club"
+        ? existingAccount.clubName
+        : existingAccount.role === "guardian"
+          ? existingAccount.playerName || existingAccount.fullName
+          : existingAccount.fullName;
+    const roleLabel =
+      existingAccount.role === "club"
+        ? "Club"
+        : existingAccount.role === "guardian"
+          ? "Parent / Guardian"
+          : existingAccount.role === "coach"
+            ? "Coach"
+            : "Player";
+    return (
+      <KeyboardAvoidingView behavior="padding" style={[styles.shell, { backgroundColor: colors.background }]}>
+        <Image
+          source={require("../assets/images/wood-texture.jpg")}
+          style={[StyleSheet.absoluteFill, { opacity: 0.2 }]}
+          resizeMode="cover"
+        />
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 34, alignItems: "center" },
+          ]}
+        >
+          <View style={styles.brand}>
+            <Image source={logo} style={styles.logo} contentFit="contain" />
+            <Text style={[styles.brandTitle, { color: colors.foreground }]}>Aussie Sports Club Finder</Text>
+          </View>
+          <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card, width: "100%", alignItems: "center", gap: 10, marginTop: 12 }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground, textAlign: "center", fontSize: 20 }]}>
+              Welcome back{displayName ? `, ${displayName}` : ""}!
+            </Text>
+            <View style={[styles.choice, { backgroundColor: colors.primary + "22" }]}>
+              <Text style={[styles.choiceText, { color: colors.primary }]}>{roleLabel}</Text>
+            </View>
+            <Text style={[styles.brandText, { color: colors.mutedForeground }]}>
+              Your existing account was found. Tap below to continue.
+            </Text>
+            <Pressable
+              onPress={() => autoRestoreSession(email, authMethod, socialId)}
+              style={({ pressed }) => [
+                styles.roleCard,
+                {
+                  backgroundColor: colors.primary,
+                  opacity: pressed ? 0.8 : 1,
+                  width: "100%",
+                  alignItems: "center",
+                  borderRadius: 16,
+                  marginTop: 4,
+                },
+              ]}
+            >
+              <Text style={[styles.roleTitle, { color: colors.primaryForeground, fontSize: 16 }]}>
+                Continue to app
+              </Text>
+            </Pressable>
+          </View>
+          <Pressable
+            onPress={() => {
+              Alert.alert(
+                "Sign out",
+                "Are you sure you want to sign out?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Sign out", style: "destructive", onPress: () => { void signOut(); } },
+                ],
+              );
+            }}
+            style={({ pressed }) => [styles.signOutLink, { opacity: pressed ? 0.6 : 1, marginTop: 16 }]}
+          >
+            <Feather name="log-out" size={13} color={colors.mutedForeground} />
+            <Text style={[styles.signOutText, { color: colors.mutedForeground }]}>Sign out</Text>
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView behavior="padding" style={[styles.shell, { backgroundColor: colors.background }]}>

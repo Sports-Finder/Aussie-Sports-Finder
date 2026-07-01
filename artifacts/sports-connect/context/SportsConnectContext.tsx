@@ -979,6 +979,16 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       return false;
     }
+    // If an active account already exists locally for this email, restore it instead of
+    // creating a duplicate. This guards against re-running account setup after a reinstall
+    // or AsyncStorage wipe when server accounts are still present.
+    const existingLocal = accounts.find(
+      (a) => a.email.toLowerCase() === normalizedEmail && a.status !== "banned" && a.status !== "closed",
+    );
+    if (existingLocal) {
+      autoRestoreSession(normalizedEmail, draft.authMethod ?? "email", draft.socialId);
+      return true;
+    }
     const publicId = makeId();
     const { socialId, ...rest } = draft;
     const account: UserAccount = {
@@ -1029,6 +1039,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     // Background sync to API
     api.createAccount({ ...account, publicId }).catch((e: unknown) => {
       const status = (e as { status?: number } | null)?.status;
+      if (status === 409) {
+        // Server already has an account for this email — not an error, just a race condition
+        // between the client-side check and the sync. The local state is already correct.
+        console.info("[createAccount] Server-side duplicate detected — account already existed in DB");
+        return;
+      }
       console.warn("[createAccount] API sync failed — status:", status ?? e);
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);

@@ -135,7 +135,7 @@ function NotificationDeepLink() {
 function AppContent() {
   const { isSignedIn, isLoaded, getToken, signOut } = useAuth();
   const { user } = useUser();
-  const { currentAccount, isHydrated, bannedEmails, autoRestoreSession, signOut: localSignOut } = useSportsConnect();
+  const { currentAccount, isHydrated, bannedEmails, signOut: localSignOut } = useSportsConnect();
 
   // Keep a ref to the latest getToken to avoid stale closures across renders,
   // hot-reloads, and sign-in state transitions. Updating a ref during render
@@ -175,20 +175,6 @@ function AppContent() {
   // localSignOut is stable (referentially stable from useSportsConnect).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, isHydrated]);
-
-  // Returning user: Clerk is authenticated but currentAccount was cleared by signOut.
-  // Search the accounts list by email and restore the session without showing setup form.
-  useEffect(() => {
-    if (!isSignedIn || !isHydrated || currentAccount || !user) return;
-    const email = user.primaryEmailAddress?.emailAddress ?? user.emailAddresses?.[0]?.emailAddress;
-    if (!email) return;
-    const externalAccount = user.externalAccounts?.[0];
-    const authMethod = externalAccount?.provider === "google" ? "google"
-      : externalAccount?.provider === "apple" ? "apple"
-      : "email";
-    const socialId = externalAccount?.providerUserId ?? undefined;
-    autoRestoreSession(email, authMethod, socialId);
-  }, [isSignedIn, isHydrated, currentAccount, user, autoRestoreSession]);
 
   // Detect returning users whose email was banned after account creation
   useEffect(() => {

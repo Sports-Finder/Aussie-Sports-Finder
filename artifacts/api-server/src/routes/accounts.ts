@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, accountsTable, coachAffiliatesTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapAccount, mapAccountAdmin, mapCoachAffiliate } from "../lib/mapDbToApi";
@@ -76,6 +76,19 @@ router.post("/accounts", async (req, res) => {
     // cannot be forged or reassigned by the client.
     const auth = getAuth(req);
     const derivedClerkUserId = auth.userId ?? undefined;
+    // Duplicate-email guard: reject if an account already exists with the same email (case-insensitive).
+    const emailValue = typeof body.email === "string" ? body.email.toLowerCase().trim() : undefined;
+    if (emailValue) {
+      const [existing] = await db
+        .select({ publicId: accountsTable.publicId })
+        .from(accountsTable)
+        .where(eq(sql`lower(${accountsTable.email})`, emailValue))
+        .limit(1);
+      if (existing) {
+        res.status(409).json({ error: "account_exists", publicId: existing.publicId });
+        return;
+      }
+    }
     const [created] = await db.insert(accountsTable).values({
       ...body,
       clerkUserId: derivedClerkUserId,
