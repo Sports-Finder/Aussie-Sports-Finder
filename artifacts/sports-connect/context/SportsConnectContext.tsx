@@ -1038,11 +1038,51 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     }
     // Background sync to API
     api.createAccount({ ...account, publicId }).catch((e: unknown) => {
-      const status = (e as { status?: number } | null)?.status;
+      const err = e as { status?: number; body?: Record<string, unknown> } | null;
+      const status = err?.status;
       if (status === 409) {
-        // Server already has an account for this email — not an error, just a race condition
-        // between the client-side check and the sync. The local state is already correct.
-        console.info("[createAccount] Server-side duplicate detected — account already existed in DB");
+        // Server already has an account for this email — roll back the locally-created
+        // ghost and restore the canonical server account so the local and server states
+        // stay in sync. This is a race-condition guard; the existingLocal check above
+        // handles the common case.
+        setAccounts((prev) => prev.filter((a) => a.id !== publicId));
+        setCurrentAccount(undefined);
+        // The .catch() closure captures `accounts` from the pre-ghost render snapshot.
+        // The server's canonical account is already in that list (fetched during hydration).
+        const existingPublicId = typeof err?.body?.publicId === "string" ? err.body.publicId : undefined;
+        const canonical = existingPublicId
+          ? accounts.find((a) => a.id === existingPublicId)
+          : accounts.find((a) => a.email.toLowerCase() === normalizedEmail && a.status !== "banned" && a.status !== "closed");
+        if (canonical) {
+          setCurrentAccount(canonical);
+          setSelectedSport(canonical.defaultSport);
+          setActiveProfile(canonical.role === "club" ? "club" : "player");
+          if (canonical.role === "club") {
+            setClubProfile((current) => ({
+              ...current,
+              name: canonical.clubName || current.name,
+              sport: canonical.defaultSport,
+              location: canonical.location || current.location,
+              mapAddress: canonical.clubAddress || current.mapAddress,
+              imageId: canonical.profileImageId,
+            }));
+          } else {
+            setPlayerProfile((current) => ({
+              ...current,
+              name: canonical.role === "guardian"
+                ? canonical.playerName || current.name
+                : canonical.fullName || canonical.playerName || current.name,
+              sports: canonical.sports.join(", "),
+              location: canonical.location || current.location,
+              imageId: canonical.profileImageId,
+            }));
+          }
+          console.info("[createAccount] 409 — ghost rolled back, restored canonical account");
+        } else {
+          // Canonical account not in local list — AccountSetupGate will show "Welcome back"
+          // screen which will re-find the account by email once visible.
+          console.info("[createAccount] 409 — ghost rolled back, canonical account not in local list; AccountSetupGate will handle restore");
+        }
         return;
       }
       console.warn("[createAccount] API sync failed — status:", status ?? e);
