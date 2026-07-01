@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc } from "drizzle-orm";
-import { db, reportsTable, accountsTable } from "@workspace/db";
+import { db, reportsTable, accountsTable, bannedEmailsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapReport } from "../lib/mapDbToApi";
 import { getAuth } from "@clerk/express";
@@ -120,6 +120,11 @@ router.post("/reports/:publicId/resolve", async (req, res) => {
     const auth = getAuth(req);
     const defaultNote = resolution === "ok" ? "Reviewed — Account OK" : "Report confirmed — Account banned";
     const storedNote = (typeof resolutionNote === "string" && resolutionNote.trim()) ? resolutionNote.trim() : defaultNote;
+    // Look up target account email before the transaction so we can ban it atomically.
+    const [targetAccount] = await db
+      .select({ email: accountsTable.email })
+      .from(accountsTable)
+      .where(eq(accountsTable.publicId, report.targetAccountId));
     await db.transaction(async (tx) => {
       await tx
         .update(reportsTable)
@@ -135,6 +140,13 @@ router.post("/reports/:publicId/resolve", async (req, res) => {
           .update(accountsTable)
           .set({ status: "banned", statusReason: storedNote, statusChangedAt: now })
           .where(eq(accountsTable.publicId, report.targetAccountId));
+        // Also ban the email so the user cannot re-register after being banned.
+        if (targetAccount?.email) {
+          await tx
+            .insert(bannedEmailsTable)
+            .values({ email: targetAccount.email.toLowerCase().trim(), reason: storedNote })
+            .onConflictDoNothing();
+        }
       } else {
         await tx
           .update(accountsTable)
