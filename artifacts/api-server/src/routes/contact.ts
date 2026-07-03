@@ -45,7 +45,9 @@ router.get("/contact/status", async (req, res) => {
     .limit(1);
 
   if (!account) {
-    res.status(404).json({ error: "Account not found" });
+    // Account not yet linked to this Clerk user (e.g. first-sync race or stale dev data).
+    // Return safe defaults so the Contact Us form still loads rather than showing a hard error.
+    res.json({ contactUsDisabled: false, cooldownUntil: null });
     return;
   }
 
