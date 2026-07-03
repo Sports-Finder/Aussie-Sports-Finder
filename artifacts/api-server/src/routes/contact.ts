@@ -80,9 +80,9 @@ router.post("/contact", async (req, res) => {
     return;
   }
 
-  const wordCount = message.trim().split(/\s+/).filter(Boolean).length;
-  if (wordCount > 50) {
-    res.status(400).json({ error: "Message exceeds 50 words" });
+  const trimmed = message.trim();
+  if (trimmed.length > 250) {
+    res.status(400).json({ error: "Message exceeds 250 characters" });
     return;
   }
 

@@ -75,8 +75,8 @@ export default function ContactAdminModal({
   const remaining = useCountdown(cooldownUntil);
   const isCoolingDown = remaining > 0;
 
-  const wordCount = message.trim() === "" ? 0 : message.trim().split(/\s+/).filter(Boolean).length;
-  const canSubmit = !submitting && !isCoolingDown && !isDisabled && !!topic && message.trim().length > 0 && wordCount <= 50;
+  const charCount = message.length;
+  const canSubmit = !submitting && !isCoolingDown && !isDisabled && !!topic && message.trim().length > 0 && charCount <= 250;
 
   useEffect(() => {
     if (!visible) return;
@@ -220,8 +220,8 @@ export default function ContactAdminModal({
 
               <View style={styles.labelRow}>
                 <Text style={[styles.label, { color: colors.foreground }]}>Message *</Text>
-                <Text style={[styles.wordCount, { color: wordCount > 50 ? "#EF4444" : colors.mutedForeground }]}>
-                  {wordCount}/50 words
+                <Text style={[styles.wordCount, { color: charCount > 250 ? "#EF4444" : colors.mutedForeground }]}>
+                  {charCount}/250
                 </Text>
               </View>
               <TextInput
@@ -236,12 +236,12 @@ export default function ContactAdminModal({
                   {
                     color: colors.foreground,
                     backgroundColor: isCoolingDown ? colors.secondary : colors.card,
-                    borderColor: wordCount > 50 ? "#EF4444" : colors.border,
+                    borderColor: charCount > 250 ? "#EF4444" : colors.border,
                   },
                 ]}
               />
-              {wordCount > 50 ? (
-                <Text style={styles.overLimitText}>Message must be 50 words or fewer</Text>
+              {charCount > 250 ? (
+                <Text style={styles.overLimitText}>Message must be 250 characters or fewer</Text>
               ) : null}
 
               {isCoolingDown ? (
