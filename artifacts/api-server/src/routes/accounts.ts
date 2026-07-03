@@ -71,6 +71,7 @@ router.post("/accounts", async (req, res) => {
       "trialExpiresAt",
       "subscriptionExpiresAt",
       "lastAdvertClosedAt",
+      "ageAttestedAt",
     ]);
     // Derive the Clerk user ID from the authenticated session so the binding
     // cannot be forged or reassigned by the client.
