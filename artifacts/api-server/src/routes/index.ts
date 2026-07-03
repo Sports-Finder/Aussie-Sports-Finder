@@ -13,6 +13,7 @@ import moderatorSessionsRouter from "./moderatorSessions";
 import flaggedConversationsRouter from "./flaggedConversations";
 import reportsRouter from "./reports";
 import adminPushTokensRouter from "./adminPushTokens";
+import contactRouter from "./contact";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -40,5 +41,6 @@ router.use(coachAffiliatesRouter);
 router.use(adminEntitlementsRouter);
 router.use(moderatorSessionsRouter);
 router.use(reportsRouter);
+router.use(contactRouter);
 
 export default router;

@@ -60,6 +60,8 @@ export const accountsTable = pgTable("accounts", {
   ageAttested: boolean("age_attested"),
   ageAttestedAt: timestamp("age_attested_at", { withTimezone: true }),
   password: text("password"),
+  contactUsDisabled: boolean("contact_us_disabled").notNull().default(false),
+  contactLastSentAt: timestamp("contact_last_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

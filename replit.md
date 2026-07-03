@@ -23,6 +23,11 @@ Account onboarding is local-first in the Expo app. `components/OnboardingGate.ts
 - **Build**: esbuild (CJS bundle)
 - **Mobile artifact**: Expo app at `artifacts/sports-connect`
 
+## Required Secrets
+
+- `CONTACT_EMAIL_USER` — Gmail address used as the sender for Contact Us emails (e.g. `aussiesportsclubfinder@gmail.com`)
+- `CONTACT_EMAIL_PASS` — Gmail App Password for that account (not the account password). If absent, the `/api/contact` endpoint returns 500 and logs a clear error; no emails are sent.
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

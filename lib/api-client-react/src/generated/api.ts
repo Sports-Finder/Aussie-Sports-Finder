@@ -5,18 +5,29 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  AdminContactUsToggleRequest,
+  AdminContactUsToggleResponse,
+  ContactMessageRequest,
+  ContactMessageResponse,
+  ContactRateLimitResponse,
+  ErrorEnvelope,
+  HealthStatus,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +110,183 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Rate-limited to one message per 24 hours per user. Returns 429 if within cooldown, 403 if disabled for this account.
+ * @summary Send a contact message to admin
+ */
+export const getSendContactMessageUrl = () => {
+  return `/api/contact`;
+};
+
+export const sendContactMessage = async (
+  contactMessageRequest: ContactMessageRequest,
+  options?: RequestInit,
+): Promise<ContactMessageResponse> => {
+  return customFetch<ContactMessageResponse>(getSendContactMessageUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(contactMessageRequest),
+  });
+};
+
+export const getSendContactMessageMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | ContactRateLimitResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendContactMessage>>,
+    TError,
+    { data: BodyType<ContactMessageRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendContactMessage>>,
+  TError,
+  { data: BodyType<ContactMessageRequest> },
+  TContext
+> => {
+  const mutationKey = ["sendContactMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendContactMessage>>,
+    { data: BodyType<ContactMessageRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendContactMessage(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendContactMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendContactMessage>>
+>;
+export type SendContactMessageMutationBody = BodyType<ContactMessageRequest>;
+export type SendContactMessageMutationError = ErrorType<
+  ErrorEnvelope | ContactRateLimitResponse
+>;
+
+/**
+ * @summary Send a contact message to admin
+ */
+export const useSendContactMessage = <
+  TError = ErrorType<ErrorEnvelope | ContactRateLimitResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendContactMessage>>,
+    TError,
+    { data: BodyType<ContactMessageRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendContactMessage>>,
+  TError,
+  { data: BodyType<ContactMessageRequest> },
+  TContext
+> => {
+  return useMutation(getSendContactMessageMutationOptions(options));
+};
+
+/**
+ * @summary Enable or disable Contact Us for an account
+ */
+export const getAdminSetContactUsDisabledUrl = (accountPublicId: string) => {
+  return `/api/admin/accounts/${accountPublicId}/contact-us`;
+};
+
+export const adminSetContactUsDisabled = async (
+  accountPublicId: string,
+  adminContactUsToggleRequest: AdminContactUsToggleRequest,
+  options?: RequestInit,
+): Promise<AdminContactUsToggleResponse> => {
+  return customFetch<AdminContactUsToggleResponse>(
+    getAdminSetContactUsDisabledUrl(accountPublicId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminContactUsToggleRequest),
+    },
+  );
+};
+
+export const getAdminSetContactUsDisabledMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminSetContactUsDisabled>>,
+    TError,
+    { accountPublicId: string; data: BodyType<AdminContactUsToggleRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminSetContactUsDisabled>>,
+  TError,
+  { accountPublicId: string; data: BodyType<AdminContactUsToggleRequest> },
+  TContext
+> => {
+  const mutationKey = ["adminSetContactUsDisabled"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminSetContactUsDisabled>>,
+    { accountPublicId: string; data: BodyType<AdminContactUsToggleRequest> }
+  > = (props) => {
+    const { accountPublicId, data } = props ?? {};
+
+    return adminSetContactUsDisabled(accountPublicId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminSetContactUsDisabledMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminSetContactUsDisabled>>
+>;
+export type AdminSetContactUsDisabledMutationBody =
+  BodyType<AdminContactUsToggleRequest>;
+export type AdminSetContactUsDisabledMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Enable or disable Contact Us for an account
+ */
+export const useAdminSetContactUsDisabled = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminSetContactUsDisabled>>,
+    TError,
+    { accountPublicId: string; data: BodyType<AdminContactUsToggleRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminSetContactUsDisabled>>,
+  TError,
+  { accountPublicId: string; data: BodyType<AdminContactUsToggleRequest> },
+  TContext
+> => {
+  return useMutation(getAdminSetContactUsDisabledMutationOptions(options));
+};

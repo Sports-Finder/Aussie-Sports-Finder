@@ -14,3 +14,32 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Rate-limited to one message per 24 hours per user. Returns 429 if within cooldown, 403 if disabled for this account.
+ * @summary Send a contact message to admin
+ */
+export const SendContactMessageBody = zod.object({
+  topic: zod.string(),
+  message: zod.string(),
+});
+
+export const SendContactMessageResponse = zod.object({
+  ok: zod.boolean(),
+  cooldownUntil: zod.string(),
+});
+
+/**
+ * @summary Enable or disable Contact Us for an account
+ */
+export const AdminSetContactUsDisabledParams = zod.object({
+  accountPublicId: zod.coerce.string(),
+});
+
+export const AdminSetContactUsDisabledBody = zod.object({
+  disabled: zod.boolean(),
+});
+
+export const AdminSetContactUsDisabledResponse = zod.object({
+  ok: zod.boolean(),
+});

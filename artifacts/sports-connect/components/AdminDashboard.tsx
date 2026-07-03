@@ -1313,6 +1313,8 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
   const insets = useSafeAreaInsets();
   const { adminUpdateAccount, adminSetAccountStatus, adminApproveClub, adminRejectClub } = useSportsConnect();
   const { approveClubs, isFullAdmin } = useDashboardPermissions();
+  const [contactUsTogglePending, setContactUsTogglePending] = useState(false);
+  const [contactUsDisabled, setContactUsDisabled] = useState(account.contactUsDisabled ?? false);
 
   const [fullName, setFullName] = useState(account.fullName ?? "");
   const [playerName, setPlayerName] = useState(account.playerName ?? "");
@@ -1494,6 +1496,38 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
               </View>
             </View>
           )}
+
+          <View style={[styles.dangerZone, { borderColor: colors.border }]}>
+            <Text style={[styles.dangerTitle, { color: colors.foreground }]}>Contact Us</Text>
+            <Text style={[styles.dangerText, { color: colors.mutedForeground }]}>
+              When disabled, this account cannot submit messages via the Contact Us form. The form will show a permanent "disabled" message instead.
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
+              <Switch
+                value={contactUsDisabled}
+                onValueChange={async (val) => {
+                  if (contactUsTogglePending) return;
+                  setContactUsTogglePending(true);
+                  try {
+                    const { api } = await import("@/utils/apiClient");
+                    await api.adminSetContactUsDisabled(account.id, val);
+                    setContactUsDisabled(val);
+                    adminUpdateAccount(account.id, { contactUsDisabled: val });
+                  } catch {
+                    Alert.alert("Error", "Failed to update Contact Us setting. Please try again.");
+                  } finally {
+                    setContactUsTogglePending(false);
+                  }
+                }}
+                disabled={contactUsTogglePending}
+                trackColor={{ false: "#D1D5DB", true: "#EF4444" }}
+                thumbColor="#FFF"
+              />
+              <Text style={{ fontSize: 13, fontWeight: "700", color: contactUsDisabled ? "#DC2626" : colors.mutedForeground }}>
+                {contactUsTogglePending ? "Updating…" : contactUsDisabled ? "Contact Us DISABLED" : "Contact Us enabled"}
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.dangerZone}>
             <Text style={[styles.dangerTitle, { color: colors.foreground }]}>Account status</Text>

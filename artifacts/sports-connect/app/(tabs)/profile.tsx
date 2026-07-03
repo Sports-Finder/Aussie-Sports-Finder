@@ -24,6 +24,7 @@ import { useColors } from "@/hooks/useColors";
 import { openMapApp } from "@/utils/mapLinks";
 import { detectContactInfo } from "@/utils/contactDetection";
 import CoachAffiliatesPage from "@/components/CoachAffiliatesPage";
+import ContactAdminModal from "@/components/ContactAdminModal";
 import { useSubscription } from "@/lib/revenuecat";
 import { useIsPremium } from "@/hooks/useIsPremium";
 import SubscriptionPaywall from "@/components/SubscriptionPaywall";
@@ -120,6 +121,7 @@ export default function ProfileScreen() {
   const [mode, setMode] = useState<Mode>("view");
   const [showCoachAffiliates, setShowCoachAffiliates] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [draftDob, setDraftDob] = useState("");
   const [pendingSubRole, setPendingSubRole] = useState<string | null>(null);
@@ -379,9 +381,31 @@ export default function ProfileScreen() {
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 116 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View>
-          <Text style={[styles.kicker, { color: colors.primary }]}>My profile</Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>Your Profile</Text>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <View>
+            <Text style={[styles.kicker, { color: colors.primary }]}>My profile</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>Your Profile</Text>
+          </View>
+          {currentAccount ? (
+            <Pressable
+              onPress={() => setShowContactModal(true)}
+              style={({ pressed }) => ({
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                alignItems: "center" as const,
+                justifyContent: "center" as const,
+                backgroundColor: colors.card,
+                borderWidth: 1.5,
+                borderColor: colors.border,
+                opacity: pressed ? 0.7 : 1,
+                marginTop: 4,
+              })}
+              accessibilityLabel="Contact admin"
+            >
+              <Feather name="mail" size={20} color={colors.primary} />
+            </Pressable>
+          ) : null}
         </View>
 
         {currentAccount ? (
@@ -997,6 +1021,10 @@ export default function ProfileScreen() {
       <SubscriptionPaywall
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
+      />
+      <ContactAdminModal
+        visible={showContactModal}
+        onClose={() => setShowContactModal(false)}
       />
     </KeyboardAvoidingView>
   );

@@ -81,6 +81,8 @@ function _mapAccount(
     ageAttested: (row.ageAttested as boolean) ?? undefined,
     ageAttestedAt: row.ageAttestedAt ? new Date(row.ageAttestedAt as string).toISOString() : undefined,
     password: row.password as string | undefined,
+    contactUsDisabled: (row.contactUsDisabled as boolean) ?? false,
+    contactLastSentAt: row.contactLastSentAt ? new Date(row.contactLastSentAt as string).toISOString() : undefined,
     coachAffiliates: affiliates,
     createdAt: new Date(row.createdAt as string).toISOString(),
     updatedAt: new Date(row.updatedAt as string).toISOString(),

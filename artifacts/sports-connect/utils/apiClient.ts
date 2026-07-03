@@ -97,6 +97,15 @@ export const api = {
   resolveReport: (publicId: string, resolution: "ok" | "underage", resolutionNote?: string) =>
     apiFetch(`/reports/${publicId}/resolve`, { method: "POST", body: JSON.stringify({ resolution, resolutionNote }) }),
 
+  getContactStatus: () =>
+    apiFetch("/contact/status") as Promise<{ contactUsDisabled: boolean; cooldownUntil: string | null }>,
+
+  sendContactMessage: (body: { topic: string; message: string }) =>
+    apiFetch("/contact", { method: "POST", body: JSON.stringify(body) }) as Promise<{ ok: true; cooldownUntil: string }>,
+
+  adminSetContactUsDisabled: (accountPublicId: string, disabled: boolean) =>
+    apiFetch(`/admin/accounts/${accountPublicId}/contact-us`, { method: "PATCH", body: JSON.stringify({ disabled }) }) as Promise<{ ok: true }>,
+
   /**
    * Register this device's Expo push token so the server can deliver
    * HIGH-severity flag notifications immediately (without polling).

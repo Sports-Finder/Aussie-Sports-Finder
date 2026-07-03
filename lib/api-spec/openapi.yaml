@@ -24,6 +24,73 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /contact:
+    post:
+      operationId: sendContactMessage
+      tags: [contact]
+      summary: Send a contact message to admin
+      description: Rate-limited to one message per 24 hours per user. Returns 429 if within cooldown, 403 if disabled for this account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactMessageRequest"
+      responses:
+        "200":
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactMessageResponse"
+        "403":
+          description: Contact Us has been disabled for this account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Rate limited — one message per 24 hours
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactRateLimitResponse"
+  /admin/accounts/{accountPublicId}/contact-us:
+    patch:
+      operationId: adminSetContactUsDisabled
+      tags: [admin]
+      summary: Enable or disable Contact Us for an account
+      parameters:
+        - name: accountPublicId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminContactUsToggleRequest"
+      responses:
+        "200":
+          description: Toggle applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminContactUsToggleResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
     HealthStatus:
@@ -39,3 +106,39 @@ components:
       properties:
         error:
           type: string
+    ContactMessageRequest:
+      type: object
+      required: [topic, message]
+      properties:
+        topic:
+          type: string
+        message:
+          type: string
+    ContactMessageResponse:
+      type: object
+      required: [ok, cooldownUntil]
+      properties:
+        ok:
+          type: boolean
+        cooldownUntil:
+          type: string
+    ContactRateLimitResponse:
+      type: object
+      required: [error, cooldownUntil]
+      properties:
+        error:
+          type: string
+        cooldownUntil:
+          type: string
+    AdminContactUsToggleRequest:
+      type: object
+      required: [disabled]
+      properties:
+        disabled:
+          type: boolean
+    AdminContactUsToggleResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean

@@ -12,3 +12,26 @@ export interface HealthStatus {
 export interface ErrorEnvelope {
   error: string;
 }
+
+export interface ContactMessageRequest {
+  topic: string;
+  message: string;
+}
+
+export interface ContactMessageResponse {
+  ok: boolean;
+  cooldownUntil: string;
+}
+
+export interface ContactRateLimitResponse {
+  error: string;
+  cooldownUntil: string;
+}
+
+export interface AdminContactUsToggleRequest {
+  disabled: boolean;
+}
+
+export interface AdminContactUsToggleResponse {
+  ok: boolean;
+}
