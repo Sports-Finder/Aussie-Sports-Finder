@@ -352,7 +352,11 @@ export function AccountSetupGate() {
           : "player";
 
     if (role === "club") {
-      Alert.alert("Account created", "Your club account has been submitted and is awaiting approval.");
+      Alert.alert(
+        "Account submitted",
+        "Your club account has been submitted and is awaiting admin approval. You can check your approval status anytime in the Profile tab.",
+        [{ text: "View Profile", onPress: () => router.push("/(tabs)/profile") }],
+      );
     } else {
       Alert.alert(
         "Account created",
@@ -416,6 +420,15 @@ export function AccountSetupGate() {
             <Text style={[styles.brandText, { color: colors.mutedForeground }]}>
               Your existing account was found. Tap below to continue.
             </Text>
+            {existingAccount.role === "club" && existingAccount.clubApprovalStatus !== "approved" && (
+              <View style={{ backgroundColor: existingAccount.clubApprovalStatus === "rejected" ? "#FEF2F2" : "#FFFBEB", borderColor: existingAccount.clubApprovalStatus === "rejected" ? "#FECACA" : "#FDE68A", borderWidth: 1, borderRadius: 10, padding: 10, width: "100%" }}>
+                <Text style={{ fontSize: 12, color: existingAccount.clubApprovalStatus === "rejected" ? "#DC2626" : "#92400E", fontWeight: "600", textAlign: "center" }}>
+                  {existingAccount.clubApprovalStatus === "rejected"
+                    ? "Your club application was not approved. See your Profile for details."
+                    : "Your club account is still awaiting admin approval. Check your Profile tab for status updates."}
+                </Text>
+              </View>
+            )}
             <Pressable
               onPress={() => autoRestoreSession(email, authMethod, socialId)}
               style={({ pressed }) => [
