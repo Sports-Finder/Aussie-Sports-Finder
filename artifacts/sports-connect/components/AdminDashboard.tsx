@@ -2268,7 +2268,7 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
           <ActionButton icon="trash-2" label="Wipe all data" color="#EF4444" onPress={() => {
             Alert.alert("Wipe everything?", "This deletes all database records, local cache, and resets the app to a clean state. It cannot be undone.", [
               { text: "Cancel", style: "cancel" },
-              { text: "Wipe all data", style: "destructive", onPress: () => { clearAllData(); onClose?.(); } },
+              { text: "Wipe all data", style: "destructive", onPress: async () => { try { await clearAllData(); onClose?.(); } catch { /* clearAllData already shows the error alert */ } } },
             ]);
           }} />
         </View>

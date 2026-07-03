@@ -1102,8 +1102,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const clearAllData = async () => {
     try {
       await api.wipeAll();
-    } catch (_) {
-      // Silent: DB may already be empty
+    } catch (err) {
+      Alert.alert("Wipe failed", "Could not clear the server database. Please try again later.");
+      throw err;
     }
     await AsyncStorage.removeItem(storageKey);
     await AsyncStorage.removeItem(adminStorageKey);
