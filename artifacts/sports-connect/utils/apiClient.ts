@@ -100,7 +100,7 @@ export const api = {
   getContactStatus: () =>
     apiFetch("/contact/status") as Promise<{ contactUsDisabled: boolean; cooldownUntil: string | null }>,
 
-  sendContactMessage: (body: { topic: string; message: string }) =>
+  sendContactMessage: (body: { topic: string; message: string; senderName?: string; senderEmail?: string }) =>
     apiFetch("/contact", { method: "POST", body: JSON.stringify(body) }) as Promise<{ ok: true; cooldownUntil: string }>,
 
   adminSetContactUsDisabled: (accountPublicId: string, disabled: boolean) =>

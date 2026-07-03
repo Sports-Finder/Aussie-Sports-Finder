@@ -114,7 +114,12 @@ export default function ContactAdminModal({
     if (!canSubmit || !topic) return;
     setSubmitting(true);
     try {
-      const result = await api.sendContactMessage({ topic, message: message.trim() });
+      const result = await api.sendContactMessage({
+        topic,
+        message: message.trim(),
+        senderName: senderName || undefined,
+        senderEmail: senderEmail || undefined,
+      });
       setCooldownUntil(result.cooldownUntil);
       setTopic(null);
       setMessage("");

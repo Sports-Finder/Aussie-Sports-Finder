@@ -69,7 +69,17 @@ router.post("/contact", async (req, res) => {
     return;
   }
 
-  const { topic, message } = req.body as { topic?: string; message?: string };
+  const {
+    topic,
+    message,
+    senderName: bodySenderName,
+    senderEmail: bodySenderEmail,
+  } = req.body as {
+    topic?: string;
+    message?: string;
+    senderName?: string;
+    senderEmail?: string;
+  };
 
   if (!topic || !TOPICS.includes(topic)) {
     res.status(400).json({ error: "Invalid topic" });
@@ -92,30 +102,36 @@ router.post("/contact", async (req, res) => {
     .where(eq(accountsTable.clerkUserId, auth.userId))
     .limit(1);
 
-  if (!account) {
-    res.status(404).json({ error: "Account not found" });
-    return;
-  }
+  let senderName: string;
+  let senderEmail: string;
+  let shouldUpdateDb = false;
 
-  if (account.contactUsDisabled) {
-    res.status(403).json({ error: "Contact Us has been disabled for your account" });
-    return;
-  }
-
-  if (account.contactLastSentAt) {
-    const elapsed = Date.now() - new Date(account.contactLastSentAt).getTime();
-    if (elapsed < COOLDOWN_MS) {
-      const cooldownUntil = new Date(new Date(account.contactLastSentAt).getTime() + COOLDOWN_MS).toISOString();
-      res.status(429).json({ error: "Rate limited — one message per 24 hours", cooldownUntil });
+  if (account) {
+    if (account.contactUsDisabled) {
+      res.status(403).json({ error: "Contact Us has been disabled for your account" });
       return;
     }
+    if (account.contactLastSentAt) {
+      const elapsed = Date.now() - new Date(account.contactLastSentAt).getTime();
+      if (elapsed < COOLDOWN_MS) {
+        const cooldownUntil = new Date(new Date(account.contactLastSentAt).getTime() + COOLDOWN_MS).toISOString();
+        res.status(429).json({ error: "Rate limited — one message per 24 hours", cooldownUntil });
+        return;
+      }
+    }
+    senderName =
+      account.clubName ||
+      account.fullName ||
+      account.parentGuardianName ||
+      account.email;
+    senderEmail = account.email;
+    shouldUpdateDb = true;
+  } else {
+    // Account hasn't synced to the server yet (e.g. after a wipe, first install, or offline gap).
+    // Accept sender details from the client so the form still works.
+    senderName = bodySenderName?.trim() || "Unknown";
+    senderEmail = bodySenderEmail?.trim() || "unknown@example.com";
   }
-
-  const senderName =
-    account.clubName ||
-    account.fullName ||
-    account.parentGuardianName ||
-    account.email;
 
   const transporter = createTransporter();
   if (!transporter) {
@@ -155,10 +171,12 @@ router.post("/contact", async (req, res) => {
   }
 
   const now = new Date();
-  await db
-    .update(accountsTable)
-    .set({ contactLastSentAt: now, updatedAt: now })
-    .where(eq(accountsTable.clerkUserId, auth.userId));
+  if (shouldUpdateDb) {
+    await db
+      .update(accountsTable)
+      .set({ contactLastSentAt: now, updatedAt: now })
+      .where(eq(accountsTable.clerkUserId, auth.userId));
+  }
 
   const cooldownUntil = new Date(now.getTime() + COOLDOWN_MS).toISOString();
   res.json({ ok: true, cooldownUntil });
