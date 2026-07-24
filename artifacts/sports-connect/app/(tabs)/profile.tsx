@@ -125,6 +125,7 @@ export default function ProfileScreen() {
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [draftDob, setDraftDob] = useState("");
   const [pendingSubRole, setPendingSubRole] = useState<string | null>(null);
+  const [affiliationBannerDismissed, setAffiliationBannerDismissed] = useState(false);
 
   const [playerBio, setPlayerBio] = useState(playerProfile.bio ?? "");
   const [guardianBio, setGuardianBio] = useState(currentAccount?.role === "guardian" ? currentAccount.bio ?? "" : "");
@@ -493,7 +494,7 @@ export default function ProfileScreen() {
           </Pressable>
         ) : null}
 
-        {isCoach && (!currentAccount?.coachSubRole || currentAccount?.coachSubRole === "coach") && (() => {
+        {isCoach && !affiliationBannerDismissed && (!currentAccount?.coachSubRole || currentAccount?.coachSubRole === "coach") && (() => {
           const pending = accounts
             .filter((a) => a.role === "club" && a.clubApprovalStatus === "approved")
             .flatMap((club) => (club.coachAffiliates ?? [])
@@ -504,7 +505,14 @@ export default function ProfileScreen() {
             <View style={[styles.card, { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" }]}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <Feather name="bell" size={18} color="#D97706" />
-                <Text style={{ fontWeight: "700", fontSize: 15, color: "#92400E" }}>Affiliation Request</Text>
+                <Text style={{ fontWeight: "700", fontSize: 15, color: "#92400E", flex: 1 }}>Affiliation Request</Text>
+                <Pressable
+                  onPress={() => setAffiliationBannerDismissed(true)}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, padding: 4 })}
+                  accessibilityLabel="Dismiss affiliation request notification"
+                >
+                  <Feather name="x" size={18} color="#B45309" />
+                </Pressable>
               </View>
               {pending.map(({ club, affiliate }) => (
                 <View key={club.id} style={{ gap: 8, marginBottom: 8 }}>
@@ -1007,6 +1015,35 @@ export default function ProfileScreen() {
             ) : null}
           </View>
         )}
+
+        {isCoach && mode === "view" && currentAccount?.affiliatedClubId ? (() => {
+          const affiliatedClub = accounts.find((a) => a.id === currentAccount.affiliatedClubId);
+          const clubName = currentAccount.affiliatedClubName || affiliatedClub?.clubName || "Affiliated Club";
+          const clubImageUri = affiliatedClub?.profileImageId ? getImageUri(affiliatedClub.profileImageId) : undefined;
+          const initials = clubName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
+          return (
+            <View style={[styles.card, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+                {clubImageUri ? (
+                  <Image
+                    source={{ uri: clubImageUri }}
+                    style={{ width: 52, height: 52, borderRadius: 16, borderWidth: 1.5, borderColor: "#BBF7D0" }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: "#16A34A22", alignItems: "center", justifyContent: "center" }}>
+                    <Text style={{ color: "#16A34A", fontWeight: "800", fontSize: 18 }}>{initials}</Text>
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: "700", fontSize: 12, color: "#15803D", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 3 }}>Affiliated Club</Text>
+                  <Text style={{ fontWeight: "800", fontSize: 16, color: "#14532D" }}>{clubName}</Text>
+                </View>
+                <Feather name="shield" size={18} color="#16A34A" />
+              </View>
+            </View>
+          );
+        })() : null}
 
         {mode === "edit" ? <PrimaryButton label="Save profile" icon="check" onPress={save} disabled={!!(detectContactInfo(isClub ? clubBio : isCoach ? coachBio : isGuardian ? guardianBio : playerBio))} /> : null}
 

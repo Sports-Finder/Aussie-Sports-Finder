@@ -1126,6 +1126,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setShowMemberStats(false);
     setShowSportRequestField(true);
     setIsAdmin(false);
+    setModerators([]);
+    setForbiddenConnections([]);
     setSignOutResetToken((t) => t + 1);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
@@ -2219,8 +2221,18 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     if (!club || club.role !== "club") return;
     const affiliate = club.coachAffiliates?.find((a) => a.coachAccountId === currentAccount?.id);
     if (!affiliate || affiliate.status !== "pending") return;
+    if (!currentAccount) return;
 
     if (accept) {
+      // Guard: a coach can only be affiliated with one club at a time.
+      if (currentAccount.affiliatedClubId && currentAccount.affiliatedClubId !== clubAccountId) {
+        const existingName = currentAccount.affiliatedClubName || "another club";
+        Alert.alert(
+          "Already affiliated",
+          `You are already affiliated with ${existingName}. Create a new account to affiliate with a second club.`
+        );
+        return;
+      }
       const nextAffiliate: CoachAffiliate = { ...affiliate, status: "active" };
       setAccounts((current) => current.map((acc) => {
         if (acc.id === clubAccountId) {
