@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, conversationsTable, messagesTable, accountsTable, adminPushTokensTable } from "@workspace/db";
+import { db, conversationsTable, messagesTable, accountsTable, adminPushTokensTable, insertConversationSchema } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapConversation, mapMessage } from "../lib/mapDbToApi";
 import { normalizeDates } from "../lib/normalizeDates";
@@ -50,7 +50,19 @@ router.get("/conversations", async (req, res) => {
 
 router.post("/conversations", async (req, res) => {
   try {
-    const [created] = await db.insert(conversationsTable).values(req.body).returning();
+    // Parse through the insert schema so the client-supplied string `id` (local
+    // alphanumeric ID) is stripped before Drizzle sees it — passing it would
+    // crash the serial integer primary key with "value out of range".
+    const parsed = insertConversationSchema.safeParse({
+      // Generate a publicId server-side when the client omits it.
+      publicId: crypto.randomUUID().replace(/-/g, ""),
+      ...req.body,
+    });
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid conversation data", details: parsed.error.issues });
+      return;
+    }
+    const [created] = await db.insert(conversationsTable).values(parsed.data).returning();
     res.status(201).json(mapConversation(created));
   } catch (err) {
     logger.error({ err }, "Failed to create conversation");
