@@ -691,16 +691,179 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
   );
 }
 
+type NotificationPanelProps = {
+  open: boolean;
+  onClose: () => void;
+  nearCount: number;
+  pendingConvs: Conversation[];
+  unreadConvCount: number;
+  notificationSettings: { enabled: boolean; radiusKm: number; locationLabel: string };
+  onToggleNotifications: () => Promise<void>;
+  onSetRadius: (km: number) => void;
+  onGoToMessages: () => void;
+  onGoToDiscover: () => void;
+  onSelectAdvert: (advertId: string) => void;
+};
+
+function NotificationPanel({
+  open, onClose, nearCount, pendingConvs, unreadConvCount,
+  notificationSettings, onToggleNotifications, onSetRadius,
+  onGoToMessages, onGoToDiscover, onSelectAdvert,
+}: NotificationPanelProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const isEmpty = nearCount === 0 && pendingConvs.length === 0 && unreadConvCount === 0;
+
+  return (
+    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1 }}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }} onPress={onClose} />
+        <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: insets.bottom + 24, maxHeight: "85%" }}>
+          {/* Drag handle */}
+          <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border }} />
+          </View>
+          {/* Header */}
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 12 }}>
+            <Text style={{ fontWeight: "800", fontSize: 20, color: colors.foreground, letterSpacing: -0.4 }}>Notifications</Text>
+            <Pressable onPress={onClose} hitSlop={12}>
+              <Feather name="x" size={22} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12, gap: 10 }}>
+            {isEmpty ? (
+              <View style={{ alignItems: "center", paddingVertical: 32, gap: 10 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" }}>
+                  <Feather name="check-circle" size={26} color={colors.primary} />
+                </View>
+                <Text style={{ fontWeight: "700", fontSize: 16, color: colors.foreground }}>You're all caught up</Text>
+                <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: "center", lineHeight: 19 }}>No pending requests or unread messages right now.</Text>
+              </View>
+            ) : (
+              <>
+                {/* Nearby adverts row */}
+                {nearCount > 0 ? (
+                  <Pressable
+                    onPress={onGoToDiscover}
+                    style={({ pressed }) => ({ backgroundColor: colors.card, borderRadius: 16, padding: 14, flexDirection: "row" as const, alignItems: "center" as const, gap: 12, opacity: pressed ? 0.8 : 1, borderWidth: 1, borderColor: colors.border })}
+                  >
+                    <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center" }}>
+                      <Feather name="map-pin" size={17} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: "700", fontSize: 14, color: colors.foreground }}>{nearCount} advert{nearCount === 1 ? "" : "s"} nearby</Text>
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>Within your {notificationSettings.radiusKm} km radius</Text>
+                    </View>
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                  </Pressable>
+                ) : null}
+
+                {/* One row per pending connection request */}
+                {pendingConvs.map((conv) => {
+                  const typeLabel =
+                    conv.requesterType === "coach" ? "Coach" :
+                    conv.requesterType === "guardian" ? "Parent / Guardian" :
+                    conv.requesterType === "club" ? "Club" : "Player";
+                  const rawTitle = conv.advertTitle ?? "your advert";
+                  const title = rawTitle.length > 38 ? rawTitle.slice(0, 38) + "…" : rawTitle;
+                  return (
+                    <Pressable
+                      key={conv.id}
+                      onPress={() => onSelectAdvert(conv.advertId)}
+                      style={({ pressed }) => ({ backgroundColor: "#FFFBEB", borderRadius: 16, padding: 14, flexDirection: "row" as const, alignItems: "center" as const, gap: 12, opacity: pressed ? 0.8 : 1, borderWidth: 1, borderColor: "#FDE68A" })}
+                    >
+                      <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "#FEF3C7", alignItems: "center", justifyContent: "center" }}>
+                        <Feather name="user-check" size={17} color="#D97706" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: "700", fontSize: 14, color: "#92400E" }}>Connection request</Text>
+                        <Text style={{ fontSize: 12, color: "#B45309", marginTop: 2 }} numberOfLines={2}>{typeLabel} requested to connect to '{title}'</Text>
+                      </View>
+                      <Feather name="chevron-right" size={16} color="#D97706" />
+                    </Pressable>
+                  );
+                })}
+
+                {/* Unread messages row */}
+                {unreadConvCount > 0 ? (
+                  <Pressable
+                    onPress={onGoToMessages}
+                    style={({ pressed }) => ({ backgroundColor: "#EFF6FF", borderRadius: 16, padding: 14, flexDirection: "row" as const, alignItems: "center" as const, gap: 12, opacity: pressed ? 0.8 : 1, borderWidth: 1, borderColor: "#BFDBFE" })}
+                  >
+                    <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center" }}>
+                      <Feather name="message-circle" size={17} color="#2563EB" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: "700", fontSize: 14, color: "#1E40AF" }}>Unread messages</Text>
+                      <Text style={{ fontSize: 12, color: "#3B82F6", marginTop: 2 }}>
+                        {unreadConvCount} unread message{unreadConvCount === 1 ? "" : "s"} across {unreadConvCount} chat{unreadConvCount === 1 ? "" : "s"}
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={16} color="#3B82F6" />
+                  </Pressable>
+                ) : null}
+              </>
+            )}
+
+            {/* ── Nearby alert settings ─────────────────────────────── */}
+            <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
+            <Text style={{ fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.7, color: colors.mutedForeground }}>Nearby alert settings</Text>
+            <View style={{ backgroundColor: colors.navy, borderRadius: 18, padding: 16, flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 15 }}>
+                  {notificationSettings.enabled ? "Nearby advert alerts are on" : "Turn on nearby advert alerts"}
+                </Text>
+                <Text style={{ color: "#BFD4CD", fontWeight: "500", fontSize: 12, marginTop: 3 }}>
+                  {nearCount} advert{nearCount === 1 ? "" : "s"} within {notificationSettings.radiusKm} km of {notificationSettings.locationLabel}
+                </Text>
+              </View>
+              <Switch
+                value={notificationSettings.enabled}
+                onValueChange={onToggleNotifications}
+                trackColor={{ false: "#3E554E", true: colors.primary }}
+                thumbColor={notificationSettings.enabled ? colors.accent : "#FFFFFF"}
+              />
+            </View>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              {[10, 25, 50].map((radius) => (
+                <Pill key={radius} label={`${radius} km`} active={notificationSettings.radiusKm === radius} onPress={() => onSetRadius(radius)} />
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function DiscoverScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { adverts, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport, currentAccount, isAdmin, accounts, showMemberStats, showSportRequestField } = useSportsConnect();
+  const router = useRouter();
+  const { adverts, conversations, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport, currentAccount, isAdmin, accounts, showMemberStats, showSportRequestField } = useSportsConnect();
   const [filter, setFilter] = useState<Filter>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [stateFilter, setStateFilter] = useState<AustralianStateFilter>("All");
   const [selected, setSelected] = useState<Advert | null>(null);
   const [sportRequest, setSportRequest] = useState("");
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   const activeTheme = selectedSport === allSportsFilterName ? null : getSportTheme(selectedSport, approvedSports);
+
+  // Pending connection requests on adverts the current user owns.
+  const pendingConvs = useMemo(
+    () => conversations.filter((c) => c.status === "pending" && c.ownerAccountId === currentAccount?.id),
+    [conversations, currentAccount]
+  );
+
+  // Conversations with unread messages that involve the current user.
+  const unreadConvCount = useMemo(
+    () => conversations.filter(
+      (c) => !!c.hasUnread && (c.ownerAccountId === currentAccount?.id || c.initiatorAccountId === currentAccount?.id)
+    ).length,
+    [conversations, currentAccount]
+  );
+
+  const totalBadgeCount = pendingConvs.length + unreadConvCount;
 
   const profileSports = currentAccount?.sports ?? [];
   const visibleSportChips = approvedSports.filter(
@@ -789,7 +952,14 @@ export default function DiscoverScreen() {
             <Text style={[styles.kicker, { color: colors.primary }]}>Aussie Sports Club Finder</Text>
             <Text style={[styles.title, { color: colors.foreground }]}>Find your Next Club, Coach or Player</Text>
           </View>
-          <IconButton icon="bell" label="Notifications" onPress={toggleNotifications} />
+          <Pressable onPress={() => setNotifPanelOpen(true)} style={{ position: "relative", width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>
+            <Feather name="bell" size={22} color={colors.foreground} />
+            {totalBadgeCount > 0 ? (
+              <View style={{ position: "absolute", top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#EF4444", alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}>
+                <Text style={{ color: "#FFF", fontWeight: "800", fontSize: 10 }}>{totalBadgeCount > 9 ? "9+" : totalBadgeCount}</Text>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
 
         <View style={[styles.sportPanel, { backgroundColor: activeTheme?.background ?? colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
@@ -849,18 +1019,6 @@ export default function DiscoverScreen() {
           </View>
         </ImageBackground>
 
-        <View style={[styles.alertCard, { backgroundColor: colors.navy, borderColor: colors.foreground, borderWidth: 2 }]}>
-          <View style={styles.alertTextWrap}>
-            <Text style={styles.alertTitle}>{notificationSettings.enabled ? "Nearby advert alerts are on" : "Turn on nearby advert alerts"}</Text>
-            <Text style={styles.alertText}>{nearCount} adverts are within {notificationSettings.radiusKm} km of {notificationSettings.locationLabel}.</Text>
-          </View>
-          <Switch value={notificationSettings.enabled} onValueChange={toggleNotifications} trackColor={{ false: "#3E554E", true: colors.primary }} thumbColor={notificationSettings.enabled ? colors.accent : "#FFFFFF"} />
-        </View>
-
-        <View style={styles.radiusRow}>
-          {[10, 25, 50].map((radius) => <Pill key={radius} label={`${radius} km`} active={notificationSettings.radiusKm === radius} onPress={() => setNotificationRadius(radius)} />)}
-        </View>
-
         <SectionTitle title={`${selectedSport === allSportsFilterName ? "All sports" : selectedSport} adverts`} action={`${filtered.length} live`} />
         <View style={styles.filterRow}>
           <Pill label="All" active={filter === "all"} onPress={() => setFilter("all")} />
@@ -901,6 +1059,22 @@ export default function DiscoverScreen() {
           </View>
         ) : null}
       </ScrollView>
+      <NotificationPanel
+        open={notifPanelOpen}
+        onClose={() => setNotifPanelOpen(false)}
+        nearCount={nearCount}
+        pendingConvs={pendingConvs}
+        unreadConvCount={unreadConvCount}
+        notificationSettings={notificationSettings}
+        onToggleNotifications={toggleNotifications}
+        onSetRadius={setNotificationRadius}
+        onGoToMessages={() => { setNotifPanelOpen(false); router.push("/(tabs)/messages"); }}
+        onGoToDiscover={() => setNotifPanelOpen(false)}
+        onSelectAdvert={(advertId) => {
+          const advert = adverts.find((a) => a.id === advertId);
+          if (advert) { setNotifPanelOpen(false); setSelected(advert); }
+        }}
+      />
       {selected ? <AdvertDetail advert={selected} onClose={() => setSelected(null)} /> : null}
     </ScreenShell>
   );
