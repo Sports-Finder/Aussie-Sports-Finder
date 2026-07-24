@@ -518,8 +518,9 @@ export default function ProfileScreen() {
                 <View key={club.id} style={{ gap: 8, marginBottom: 8 }}>
                   <Text style={{ fontWeight: "600", fontSize: 13, color: "#78350F" }}>
                     {club.clubName || "A club"} wants to affiliate with you as a coach.
-                    {affiliate.teamName ? `\nTeam: ${affiliate.teamName}` : ""}
-                    {affiliate.ageGroup ? ` · Age: ${affiliate.ageGroup}` : ""}
+                    {(affiliate.teams ?? []).length > 0
+                      ? "\nTeams: " + (affiliate.teams ?? []).map((t) => (t.gender === "girls" ? "Girls" : t.gender === "boys" ? "Boys" : "Mixed") + " " + t.ageGroup).join(", ")
+                      : ""}
                   </Text>
                   <View style={{ flexDirection: "row", gap: 10 }}>
                     <Pressable onPress={() => respondToAffiliationRequest(club.id, true)} style={({ pressed }) => [styles.mapBtn, { flex: 1, backgroundColor: "#16A34A", opacity: pressed ? 0.75 : 1 }]}>

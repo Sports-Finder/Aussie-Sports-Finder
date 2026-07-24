@@ -418,7 +418,7 @@ function MyAdvertDetail({
                         age !== null ? { label: "Age", value: String(age) } : null,
                         coachSubRoleLabel2 ? { label: "Coaching role", value: coachSubRoleLabel2 } : null,
                         coachLevelLabel ? { label: "Coaching level", value: coachLevelLabel } : null,
-                        affiliation?.ageGroup ? { label: "Club team age group", value: affiliation.ageGroup } : null,
+                        affiliation?.teams?.[0]?.ageGroup ? { label: "Club team age group", value: ((t) => `${t.gender === "girls" ? "Girls" : t.gender === "boys" ? "Boys" : "Mixed"} ${t.ageGroup}`)(affiliation.teams[0]) } : null,
                       ].filter(Boolean) as { label: string; value: string }[];
                     } else if (isCoachReq) {
                       sectionLabel = "About this coach";
@@ -557,7 +557,7 @@ export default function PostScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const [myAdvertsY, setMyAdvertsY] = useState(0);
-  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount, conversations } = useSportsConnect();
+  const { createAdvert, updateAdvert, adverts, activeProfile, clubProfile, playerProfile, approvedSports, sportsRegistry, selectedSport, setSelectedSport, currentAccount, conversations, accounts } = useSportsConnect();
   const isPremium = useIsPremium();
   const accountRole = currentAccount?.role ?? activeProfile;
 
@@ -866,8 +866,16 @@ export default function PostScreen() {
   const isAffiliatedCoach = isPureCoach && Boolean(currentAccount?.affiliatedClubId);
   const coachClubName = currentAccount?.affiliatedClubName;
   const ownerName = activeProfile === "club" ? clubProfile.name : playerProfile.name;
+  const coachFirstTeam = (() => {
+    if (!isAffiliatedCoach) return undefined;
+    const clubAcc = accounts.find((a) => a.id === currentAccount?.affiliatedClubId);
+    const aff = clubAcc?.coachAffiliates?.find((a) => a.coachAccountId === currentAccount?.id);
+    return aff?.teams?.[0];
+  })();
   const postedByName = isAffiliatedCoach && (type === "players-wanted" || type === "club-trials" || type === "club-friendly")
-    ? `${playerProfile.name} (Affiliated Coach \u2013 ${coachClubName})`
+    ? coachFirstTeam
+      ? `${playerProfile.name} (Affiliated Coach \u2013 ${coachClubName} \u00b7 ${coachFirstTeam.gender === "girls" ? "Girls" : coachFirstTeam.gender === "boys" ? "Boys" : "Mixed"} ${coachFirstTeam.ageGroup})`
+      : `${playerProfile.name} (Affiliated Coach \u2013 ${coachClubName})`
     : ownerName;
   const isClub = accountRole === "club";
   const myAdverts = adverts.filter((a) =>

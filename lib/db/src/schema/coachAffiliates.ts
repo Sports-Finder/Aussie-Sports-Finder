@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -7,8 +7,11 @@ export const coachAffiliatesTable = pgTable("coach_affiliates", {
   publicId: text("public_id").notNull().unique(),
   clubAccountId: text("club_account_id").notNull(),
   coachAccountId: text("coach_account_id").notNull(),
+  /** @deprecated superseded by teams */
   teamName: text("team_name"),
+  /** @deprecated superseded by teams */
   ageGroup: text("age_group"),
+  teams: jsonb("teams").default([]),
   status: text("status").notNull().default("pending"),
   rejectionCount: integer("rejection_count").notNull().default(0),
   rejectedAt: timestamp("rejected_at", { withTimezone: true }),

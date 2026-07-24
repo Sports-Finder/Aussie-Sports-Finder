@@ -54,10 +54,18 @@ export type Report = {
   resolution?: string;
 };
 
+export type CoachAffiliateTeam = {
+  gender: "girls" | "boys" | "mixed";
+  ageGroup: string;
+};
+
 export type CoachAffiliate = {
   id?: string;
   coachAccountId: string;
+  teams?: CoachAffiliateTeam[];
+  /** @deprecated use teams */
   teamName?: string;
+  /** @deprecated use teams */
   ageGroup?: string;
   status: CoachAffiliateStatus;
   rejectionCount: number;
@@ -302,6 +310,22 @@ const normalizeAdvertType = (type: Advert["type"]): Advert["type"] => {
   return type;
 };
 
+/** Migrate old single teamName/ageGroup fields on CoachAffiliate entries to the new teams[] shape. */
+function migrateAccountAffiliates(acc: any): any {
+  if (!acc.coachAffiliates?.length) return acc;
+  return {
+    ...acc,
+    coachAffiliates: acc.coachAffiliates.map((aff: any) => {
+      if (aff.teams?.length) return aff; // already migrated
+      const legacyAgeGroup = aff.ageGroup || aff.teamName;
+      return {
+        ...aff,
+        teams: legacyAgeGroup ? [{ gender: "mixed" as const, ageGroup: legacyAgeGroup }] : [],
+      };
+    }),
+  };
+}
+
 type SportsConnectState = {
   adverts: Advert[];
   conversations: Conversation[];
@@ -393,10 +417,11 @@ type SportsConnectState = {
   moderateHighlightLink: (linkId: string, status: ImageStatus) => void;
   getImageUri: (imageId?: string, includePending?: boolean) => string | undefined;
   getImageStatus: (imageId?: string) => ImageStatus | undefined;
-  requestCoachAffiliation: (coachAccountId: string, teamName?: string, ageGroup?: string) => void;
+  requestCoachAffiliation: (coachAccountId: string) => void;
   respondToAffiliationRequest: (clubAccountId: string, accept: boolean) => void;
   removeCoachAffiliate: (coachAccountId: string) => void;
-  updateCoachAffiliateDetails: (coachAccountId: string, teamName?: string, ageGroup?: string) => void;
+  addCoachAffiliateTeam: (coachAccountId: string, team: CoachAffiliateTeam) => void;
+  removeCoachAffiliateTeam: (coachAccountId: string, teamIdx: number) => void;
   unblockCoachAffiliate: (clubAccountId: string, coachAccountId: string) => void;
   reports: Report[];
   createReport: (targetAccountId: string, reason: string, advertId?: string) => Promise<void>;
@@ -405,7 +430,7 @@ type SportsConnectState = {
   hasReportedAdvert: (advertId: string) => boolean;
 };
 
-const storageKey = "sports-connect-state-v11-api-migration";
+const storageKey = "sports-connect-state-v12";
 const adminStorageKey = "sports-connect-admin-v1";
 const sportsRegistryKey = "sports-connect-registry-v1";
 const defaultAdminPasscode = "admin6969";
@@ -713,7 +738,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         setProfileImages(fetchedProfileImages);
         setPendingSportRequests(fetchedSportRequests);
         setBannedEmails(fetchedBannedEmails);
-        setAccounts(fetchedAccounts);
+        setAccounts(fetchedAccounts.map(migrateAccountAffiliates));
         setReports(fetchedReports);
         // Restore lightweight local-only preferences from AsyncStorage
         try {
@@ -2161,7 +2186,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return image?.status;
   };
 
-  const requestCoachAffiliation = (coachAccountId: string, teamName?: string, ageGroup?: string) => {
+  const requestCoachAffiliation = (coachAccountId: string) => {
     if (!currentAccount || currentAccount.role !== "club") return;
     const coach = accounts.find((a) => a.id === coachAccountId);
     if (!coach || coach.role !== "coach") return;
@@ -2183,8 +2208,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     const affiliate: CoachAffiliate = {
       id: publicId,
       coachAccountId,
-      teamName,
-      ageGroup,
+      teams: [],
       status: "pending",
       rejectionCount: existing?.rejectionCount ?? 0,
       requestedAt: now(),
@@ -2207,8 +2231,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       publicId,
       clubAccountId: currentAccount.id,
       coachAccountId,
-      teamName,
-      ageGroup,
+      teams: [],
       status: "pending",
       rejectionCount: affiliate.rejectionCount,
       requestedAt: affiliate.requestedAt,
@@ -2317,21 +2340,68 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
-  const updateCoachAffiliateDetails = (coachAccountId: string, teamName?: string, ageGroup?: string) => {
+  const addCoachAffiliateTeam = (coachAccountId: string, team: CoachAffiliateTeam) => {
     if (!currentAccount || currentAccount.role !== "club") return;
     const affiliate = currentAccount.coachAffiliates?.find((a) => a.coachAccountId === coachAccountId);
+    const prevTeams = affiliate?.teams ?? [];
+    const newTeams = [...prevTeams, team];
+    const applyTeams = (teams: CoachAffiliateTeam[]) => (a: CoachAffiliate) =>
+      a.coachAccountId === coachAccountId ? { ...a, teams } : a;
+    // Optimistic update
     setAccounts((current) => current.map((acc) => {
       if (acc.id !== currentAccount.id) return acc;
-      const prev = acc.coachAffiliates ?? [];
-      return { ...acc, coachAffiliates: prev.map((a) => a.coachAccountId === coachAccountId ? { ...a, teamName, ageGroup } : a) };
+      return { ...acc, coachAffiliates: (acc.coachAffiliates ?? []).map(applyTeams(newTeams)) };
     }));
     setCurrentAccount((c) => {
       if (!c) return c;
-      const prev = c.coachAffiliates ?? [];
-      return { ...c, coachAffiliates: prev.map((a) => a.coachAccountId === coachAccountId ? { ...a, teamName, ageGroup } : a) };
+      return { ...c, coachAffiliates: (c.coachAffiliates ?? []).map(applyTeams(newTeams)) };
     });
     if (affiliate?.id) {
-      api.updateCoachAffiliate(affiliate.id, { teamName, ageGroup }).catch(() => undefined);
+      api.updateCoachAffiliate(affiliate.id, { teams: newTeams }).catch(() => {
+        // Rollback on failure
+        setAccounts((current) => current.map((acc) => {
+          if (acc.id !== currentAccount.id) return acc;
+          return { ...acc, coachAffiliates: (acc.coachAffiliates ?? []).map(applyTeams(prevTeams)) };
+        }));
+        setCurrentAccount((c) => {
+          if (!c) return c;
+          return { ...c, coachAffiliates: (c.coachAffiliates ?? []).map(applyTeams(prevTeams)) };
+        });
+        Alert.alert("Couldn't save team", "The team was not saved. Please check your connection and try again.");
+      });
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  };
+
+  const removeCoachAffiliateTeam = (coachAccountId: string, teamIdx: number) => {
+    if (!currentAccount || currentAccount.role !== "club") return;
+    const affiliate = currentAccount.coachAffiliates?.find((a) => a.coachAccountId === coachAccountId);
+    const prevTeams = affiliate?.teams ?? [];
+    const newTeams = prevTeams.filter((_, i) => i !== teamIdx);
+    const applyTeams = (teams: CoachAffiliateTeam[]) => (a: CoachAffiliate) =>
+      a.coachAccountId === coachAccountId ? { ...a, teams } : a;
+    // Optimistic update
+    setAccounts((current) => current.map((acc) => {
+      if (acc.id !== currentAccount.id) return acc;
+      return { ...acc, coachAffiliates: (acc.coachAffiliates ?? []).map(applyTeams(newTeams)) };
+    }));
+    setCurrentAccount((c) => {
+      if (!c) return c;
+      return { ...c, coachAffiliates: (c.coachAffiliates ?? []).map(applyTeams(newTeams)) };
+    });
+    if (affiliate?.id) {
+      api.updateCoachAffiliate(affiliate.id, { teams: newTeams }).catch(() => {
+        // Rollback on failure
+        setAccounts((current) => current.map((acc) => {
+          if (acc.id !== currentAccount.id) return acc;
+          return { ...acc, coachAffiliates: (acc.coachAffiliates ?? []).map(applyTeams(prevTeams)) };
+        }));
+        setCurrentAccount((c) => {
+          if (!c) return c;
+          return { ...c, coachAffiliates: (c.coachAffiliates ?? []).map(applyTeams(prevTeams)) };
+        });
+        Alert.alert("Couldn't remove team", "The change was not saved. Please check your connection and try again.");
+      });
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
@@ -2462,7 +2532,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     requestCoachAffiliation,
     respondToAffiliationRequest,
     removeCoachAffiliate,
-    updateCoachAffiliateDetails,
+    addCoachAffiliateTeam,
+    removeCoachAffiliateTeam,
     unblockCoachAffiliate,
     reports,
     createReport,

@@ -1,9 +1,16 @@
 export function mapCoachAffiliate(row: Record<string, unknown>) {
+  // Migrate legacy teamName/ageGroup to teams[] if teams column is empty/null
+  let teams = (row.teams as { gender: string; ageGroup: string }[] | null) ?? [];
+  if (teams.length === 0) {
+    const legacyAgeGroup = (row.ageGroup as string | undefined) || (row.teamName as string | undefined);
+    if (legacyAgeGroup) {
+      teams = [{ gender: "mixed", ageGroup: legacyAgeGroup }];
+    }
+  }
   return {
     id: row.publicId as string,
     coachAccountId: row.coachAccountId as string,
-    teamName: row.teamName as string | undefined,
-    ageGroup: row.ageGroup as string | undefined,
+    teams,
     status: row.status as string,
     rejectionCount: (row.rejectionCount as number) ?? 0,
     rejectedAt: row.rejectedAt ? new Date(row.rejectedAt as string).toISOString() : undefined,

@@ -1,13 +1,16 @@
 import { Feather } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import React, { useState, useMemo } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
-import { CoachAffiliate, UserAccount, useSportsConnect } from "@/context/SportsConnectContext";
+import { CoachAffiliate, CoachAffiliateTeam, UserAccount, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { useColors } from "@/hooks/useColors";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function coachName(account?: UserAccount) {
   return account?.fullName || "Coach";
@@ -18,60 +21,260 @@ function coachAvatarUri(account?: UserAccount, getImageUri?: (id?: string, inclu
   return getImageUri?.(account.profileImageId, true);
 }
 
+const GENDER_COLORS: Record<CoachAffiliateTeam["gender"], { bg: string; text: string }> = {
+  girls: { bg: "#FBCFE8", text: "#9D174D" },  // pink
+  boys:  { bg: "#BFDBFE", text: "#1E40AF" },  // blue
+  mixed: { bg: "#DDD6FE", text: "#5B21B6" },  // purple
+};
+
+function genderLabel(g: CoachAffiliateTeam["gender"]) {
+  return g === "girls" ? "Girls" : g === "boys" ? "Boys" : "Mixed";
+}
+
+// ---------------------------------------------------------------------------
+// TeamChip — one coloured chip per team assignment
+// ---------------------------------------------------------------------------
+
+function TeamChip({
+  team,
+  onRemove,
+}: {
+  team: CoachAffiliateTeam;
+  onRemove?: () => void;
+}) {
+  const { bg, text } = GENDER_COLORS[team.gender];
+  return (
+    <View style={[chipStyles.chip, { backgroundColor: bg }]}>
+      <Text style={[chipStyles.label, { color: text }]}>
+        {genderLabel(team.gender)} {team.ageGroup}
+      </Text>
+      {onRemove ? (
+        <Pressable onPress={onRemove} style={({ pressed }) => [chipStyles.x, { opacity: pressed ? 0.6 : 1 }]}>
+          <Feather name="x" size={12} color={text} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+const chipStyles = StyleSheet.create({
+  chip: { flexDirection: "row", alignItems: "center", borderRadius: 20, paddingVertical: 5, paddingLeft: 12, paddingRight: 8, gap: 4 },
+  label: { fontWeight: "700", fontSize: 12 },
+  x: { width: 18, height: 18, alignItems: "center", justifyContent: "center" },
+});
+
+// ---------------------------------------------------------------------------
+// AddTeamInlineForm — shown below the chip list when the club taps "+ Add team"
+// ---------------------------------------------------------------------------
+
+const GENDERS: CoachAffiliateTeam["gender"][] = ["girls", "boys", "mixed"];
+
+function AddTeamInlineForm({
+  onAdd,
+  onCancel,
+}: {
+  onAdd: (team: CoachAffiliateTeam) => void;
+  onCancel: () => void;
+}) {
+  const colors = useColors();
+  const [gender, setGender] = useState<CoachAffiliateTeam["gender"]>("mixed");
+  const [ageGroup, setAgeGroup] = useState("");
+
+  const handleAdd = () => {
+    const ag = ageGroup.trim();
+    if (!ag) {
+      Alert.alert("Age group required", "Please enter an age group (e.g. U13, 15s, Open).");
+      return;
+    }
+    onAdd({ gender, ageGroup: ag });
+    setAgeGroup("");
+    setGender("mixed");
+  };
+
+  return (
+    <View style={[formStyles.shell, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <Text style={[formStyles.heading, { color: colors.foreground }]}>Add a team</Text>
+
+      {/* Gender picker */}
+      <View style={formStyles.genderRow}>
+        {GENDERS.map((g) => {
+          const selected = g === gender;
+          const { bg, text } = GENDER_COLORS[g];
+          return (
+            <Pressable
+              key={g}
+              onPress={() => setGender(g)}
+              style={({ pressed }) => [
+                formStyles.genderBtn,
+                { backgroundColor: selected ? bg : colors.secondary, borderColor: selected ? text : colors.border, borderWidth: 2, opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <Text style={[formStyles.genderBtnText, { color: selected ? text : colors.mutedForeground }]}>
+                {genderLabel(g)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {/* Age group input */}
+      <TextInput
+        value={ageGroup}
+        onChangeText={setAgeGroup}
+        placeholder="Age group  (e.g. U13, 15s, Open)"
+        placeholderTextColor={colors.mutedForeground}
+        style={[formStyles.input, { backgroundColor: colors.background, borderColor: colors.foreground, color: colors.foreground }]}
+        returnKeyType="done"
+        onSubmitEditing={handleAdd}
+      />
+
+      {/* Actions */}
+      <View style={formStyles.actions}>
+        <Pressable onPress={onCancel} style={({ pressed }) => [formStyles.btn, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>
+          <Text style={[formStyles.btnText, { color: colors.secondaryForeground }]}>Cancel</Text>
+        </Pressable>
+        <Pressable onPress={handleAdd} style={({ pressed }) => [formStyles.btn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
+          <Text style={[formStyles.btnText, { color: colors.primaryForeground }]}>Add</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const formStyles = StyleSheet.create({
+  shell: { borderWidth: 1, borderRadius: 18, padding: 16, gap: 12, marginLeft: 62 },
+  heading: { fontWeight: "800", fontSize: 14 },
+  genderRow: { flexDirection: "row", gap: 8 },
+  genderBtn: { flex: 1, borderRadius: 12, paddingVertical: 8, alignItems: "center" },
+  genderBtnText: { fontWeight: "700", fontSize: 13 },
+  input: { borderWidth: 2, borderRadius: 12, minHeight: 44, paddingHorizontal: 14, fontWeight: "600", fontSize: 14 },
+  actions: { flexDirection: "row", gap: 10 },
+  btn: { flex: 1, minHeight: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  btnText: { fontWeight: "700", fontSize: 14 },
+});
+
+// ---------------------------------------------------------------------------
+// CoachAffiliateRow — card + teams section for each affiliate
+// ---------------------------------------------------------------------------
+
 function CoachAffiliateRow({
   affiliate,
   coach,
   onRemove,
   onTap,
+  onAddTeam,
+  onRemoveTeam,
 }: {
   affiliate: CoachAffiliate;
   coach?: UserAccount;
   onRemove: () => void;
   onTap: () => void;
+  onAddTeam: (team: CoachAffiliateTeam) => void;
+  onRemoveTeam: (idx: number) => void;
 }) {
   const colors = useColors();
   const { getImageUri } = useSportsConnect();
+  const [showAddForm, setShowAddForm] = useState(false);
+
   const uri = coachAvatarUri(coach, getImageUri);
   const fallback = getDefaultAvatar("coach", coach?.gender);
   const name = coachName(coach);
-  const detail = [affiliate.teamName, affiliate.ageGroup].filter(Boolean).join(" · ");
+  const teams = affiliate.teams ?? [];
   const statusColor = affiliate.status === "active" ? "#16A34A" : affiliate.status === "pending" ? "#D97706" : "#DC2626";
+  const isActive = affiliate.status === "active";
 
   return (
-    <Pressable
-      onPress={onTap}
-      style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.85 : 1 },
-      ]}
-    >
-      <ProfileAvatar uri={uri} fallback={fallback} size={48} />
-      <View style={styles.rowCopy}>
-        <Text style={[styles.rowName, { color: colors.foreground }]}>{name}</Text>
-        {detail ? <Text style={[styles.rowDetail, { color: colors.mutedForeground }]}>{detail}</Text> : null}
-        <View style={[styles.statusBadge, { backgroundColor: statusColor + "22" }]}>
-          <Text style={[styles.statusText, { color: statusColor }]}>{affiliate.status.toUpperCase()}</Text>
-        </View>
-      </View>
+    <View style={{ gap: 6 }}>
+      {/* Main row */}
       <Pressable
-        onPress={(e) => {
-          e.stopPropagation();
-          Alert.alert(
-            "Remove affiliate",
-            `Removing ${name} will close all active adverts and chats tied to this affiliation. This cannot be undone.`,
-            [
-              { text: "Cancel", style: "cancel" },
-              { text: "Remove", style: "destructive", onPress: onRemove },
-            ]
-          );
-        }}
-        style={({ pressed }) => [styles.removeBtn, { opacity: pressed ? 0.7 : 1 }]}
+        onPress={onTap}
+        style={({ pressed }) => [
+          rowStyles.row,
+          { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.85 : 1 },
+        ]}
       >
-        <Feather name="trash-2" size={16} color="#DC2626" />
+        <ProfileAvatar uri={uri} fallback={fallback} size={48} />
+        <View style={rowStyles.copy}>
+          <Text style={[rowStyles.name, { color: colors.foreground }]}>{name}</Text>
+          <View style={[rowStyles.statusBadge, { backgroundColor: statusColor + "22" }]}>
+            <Text style={[rowStyles.statusText, { color: statusColor }]}>{affiliate.status.toUpperCase()}</Text>
+          </View>
+        </View>
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation();
+            Alert.alert(
+              "Remove affiliate",
+              `Removing ${name} will close all active adverts and chats tied to this affiliation. This cannot be undone.`,
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Remove", style: "destructive", onPress: onRemove },
+              ]
+            );
+          }}
+          style={({ pressed }) => [rowStyles.removeBtn, { opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Feather name="trash-2" size={16} color="#DC2626" />
+        </Pressable>
       </Pressable>
-    </Pressable>
+
+      {/* Team chips — only for active affiliates */}
+      {isActive && (
+        <View style={[rowStyles.teamsBlock, { marginLeft: 62 }]}>
+          {teams.length === 0 && !showAddForm ? (
+            <Text style={[rowStyles.noTeams, { color: colors.mutedForeground }]}>No teams assigned</Text>
+          ) : (
+            <View style={rowStyles.chipWrap}>
+              {teams.map((t, i) => (
+                <TeamChip
+                  key={i}
+                  team={t}
+                  onRemove={() => onRemoveTeam(i)}
+                />
+              ))}
+            </View>
+          )}
+
+          {showAddForm ? (
+            <AddTeamInlineForm
+              onAdd={(team) => {
+                onAddTeam(team);
+                setShowAddForm(false);
+              }}
+              onCancel={() => setShowAddForm(false)}
+            />
+          ) : (
+            <Pressable
+              onPress={() => setShowAddForm(true)}
+              style={({ pressed }) => [rowStyles.addTeamBtn, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <Feather name="plus" size={13} color={colors.primary} />
+              <Text style={[rowStyles.addTeamText, { color: colors.primary }]}>Add team</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+    </View>
   );
 }
+
+const rowStyles = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 18, padding: 14 },
+  copy: { flex: 1, gap: 4 },
+  name: { fontWeight: "700", fontSize: 15 },
+  statusBadge: { alignSelf: "flex-start", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  statusText: { fontWeight: "700", fontSize: 10 },
+  removeBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  teamsBlock: { gap: 8, marginBottom: 8 },
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  noTeams: { fontWeight: "500", fontSize: 12, fontStyle: "italic" },
+  addTeamBtn: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
+  addTeamText: { fontWeight: "700", fontSize: 12 },
+});
+
+// ---------------------------------------------------------------------------
+// CoachSearchPopup
+// ---------------------------------------------------------------------------
 
 function CoachSearchPopup({
   visible,
@@ -163,6 +366,10 @@ function CoachSearchPopup({
   );
 }
 
+// ---------------------------------------------------------------------------
+// CoachProfilePopup
+// ---------------------------------------------------------------------------
+
 function CoachProfilePopup({
   visible,
   onClose,
@@ -192,7 +399,7 @@ function CoachProfilePopup({
         <ScrollView contentContainerStyle={[styles.popupList, { paddingBottom: insets.bottom + 20 }]}>
           <View style={{ alignItems: "center", gap: 12, marginBottom: 20 }}>
             <ProfileAvatar uri={uri} fallback={fallback} size={96} />
-            <Text style={[styles.rowName, { color: colors.foreground, fontSize: 22 }]}>{coachName(coach)}</Text>
+            <Text style={[styles.searchName, { color: colors.foreground, fontSize: 22 }]}>{coachName(coach)}</Text>
           </View>
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             {[
@@ -215,16 +422,17 @@ function CoachProfilePopup({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 export default function CoachAffiliatesPage({ onBack }: { onBack: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { currentAccount, accounts, requestCoachAffiliation, removeCoachAffiliate, updateCoachAffiliateDetails } = useSportsConnect();
+  const { currentAccount, accounts, requestCoachAffiliation, removeCoachAffiliate, addCoachAffiliateTeam, removeCoachAffiliateTeam } = useSportsConnect();
   const [showSearch, setShowSearch] = useState(false);
   const [selectedCoach, setSelectedCoach] = useState<UserAccount | undefined>();
   const [showCoachProfile, setShowCoachProfile] = useState(false);
-  const [editingAffiliate, setEditingAffiliate] = useState<CoachAffiliate | null>(null);
-  const [editTeamName, setEditTeamName] = useState("");
-  const [editAgeGroup, setEditAgeGroup] = useState("");
 
   const affiliates = currentAccount?.coachAffiliates ?? [];
   const clubSport = currentAccount?.defaultSport ?? "";
@@ -234,26 +442,10 @@ export default function CoachAffiliatesPage({ onBack }: { onBack: () => void }) 
     setShowSearch(false);
   };
 
-  const handleRemove = (coachId: string) => {
-    removeCoachAffiliate(coachId);
-  };
-
   const handleTap = (affiliate: CoachAffiliate) => {
     const coach = accounts.find((a) => a.id === affiliate.coachAccountId);
     setSelectedCoach(coach);
     setShowCoachProfile(true);
-  };
-
-  const startEdit = (affiliate: CoachAffiliate) => {
-    setEditingAffiliate(affiliate);
-    setEditTeamName(affiliate.teamName ?? "");
-    setEditAgeGroup(affiliate.ageGroup ?? "");
-  };
-
-  const saveEdit = () => {
-    if (!editingAffiliate) return;
-    updateCoachAffiliateDetails(editingAffiliate.coachAccountId, editTeamName.trim() || undefined, editAgeGroup.trim() || undefined);
-    setEditingAffiliate(null);
   };
 
   return (
@@ -276,23 +468,15 @@ export default function CoachAffiliatesPage({ onBack }: { onBack: () => void }) 
           affiliates.map((affiliate) => {
             const coach = accounts.find((a) => a.id === affiliate.coachAccountId);
             return (
-              <View key={affiliate.coachAccountId}>
-                <CoachAffiliateRow
-                  affiliate={affiliate}
-                  coach={coach}
-                  onRemove={() => handleRemove(affiliate.coachAccountId)}
-                  onTap={() => handleTap(affiliate)}
-                />
-                {affiliate.status === "active" && (
-                  <Pressable
-                    onPress={() => startEdit(affiliate)}
-                    style={({ pressed }) => [styles.editRowBtn, { opacity: pressed ? 0.7 : 1 }]}
-                  >
-                    <Feather name="edit-2" size={13} color={colors.primary} />
-                    <Text style={[styles.editRowText, { color: colors.primary }]}>Edit team / age group</Text>
-                  </Pressable>
-                )}
-              </View>
+              <CoachAffiliateRow
+                key={affiliate.coachAccountId}
+                affiliate={affiliate}
+                coach={coach}
+                onRemove={() => removeCoachAffiliate(affiliate.coachAccountId)}
+                onTap={() => handleTap(affiliate)}
+                onAddTeam={(team) => addCoachAffiliateTeam(affiliate.coachAccountId, team)}
+                onRemoveTeam={(idx) => removeCoachAffiliateTeam(affiliate.coachAccountId, idx)}
+              />
             );
           })
         )}
@@ -312,56 +496,19 @@ export default function CoachAffiliatesPage({ onBack }: { onBack: () => void }) 
         onClose={() => setShowCoachProfile(false)}
         coach={selectedCoach}
       />
-
-      <Modal visible={editingAffiliate !== null} transparent animationType="fade" onRequestClose={() => setEditingAffiliate(null)}>
-        <View style={styles.modalScrim}>
-          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit team details</Text>
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Team name</Text>
-            <TextInput
-              value={editTeamName}
-              onChangeText={setEditTeamName}
-              placeholder="e.g. Under-12s"
-              placeholderTextColor={colors.mutedForeground}
-              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
-            />
-            <Text style={[styles.fieldLabel, { color: colors.mutedForeground, marginTop: 12 }]}>Age group</Text>
-            <TextInput
-              value={editAgeGroup}
-              onChangeText={setEditAgeGroup}
-              placeholder="e.g. Ages 12-15"
-              placeholderTextColor={colors.mutedForeground}
-              style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
-            />
-            <View style={styles.modalActions}>
-              <Pressable onPress={() => setEditingAffiliate(null)} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 }]}>
-                <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>Cancel</Text>
-              </Pressable>
-              <Pressable onPress={saveEdit} style={({ pressed }) => [styles.modalButton, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}>
-                <Text style={[styles.modalButtonText, { color: colors.primaryForeground }]}>Save</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Shared styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   shell: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1 },
   headerTitle: { fontWeight: "800", fontSize: 18, flex: 1, textAlign: "center" },
   content: { paddingHorizontal: 20, gap: 14, paddingTop: 16 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: 18, padding: 14 },
-  rowCopy: { flex: 1, gap: 3 },
-  rowName: { fontWeight: "700", fontSize: 15 },
-  rowDetail: { fontWeight: "500", fontSize: 12 },
-  statusBadge: { alignSelf: "flex-start", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4 },
-  statusText: { fontWeight: "700", fontSize: 10 },
-  removeBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  editRowBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginLeft: 62, marginTop: 4, marginBottom: 8 },
-  editRowText: { fontWeight: "600", fontSize: 12 },
   emptyText: { fontWeight: "500", fontSize: 14, lineHeight: 20, textAlign: "center", marginVertical: 20 },
   popupShell: { flex: 1, paddingHorizontal: 20 },
   popupHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 },
@@ -381,11 +528,4 @@ const styles = StyleSheet.create({
   infoRow: { gap: 3 },
   fieldLabel: { fontWeight: "700", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.5 },
   infoValue: { fontWeight: "600", fontSize: 15, lineHeight: 20 },
-  modalScrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 24 },
-  modalCard: { width: "100%", borderRadius: 24, borderWidth: 1, padding: 22, gap: 10 },
-  modalTitle: { fontWeight: "800", fontSize: 17, marginBottom: 6 },
-  input: { borderWidth: 1, borderRadius: 14, minHeight: 46, paddingHorizontal: 14, fontWeight: "600", fontSize: 15 },
-  modalActions: { flexDirection: "row", gap: 10, marginTop: 10 },
-  modalButton: { flex: 1, minHeight: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  modalButtonText: { fontWeight: "700", fontSize: 15 },
 });

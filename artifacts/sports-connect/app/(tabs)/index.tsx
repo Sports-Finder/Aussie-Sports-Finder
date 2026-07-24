@@ -565,7 +565,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                         // Look up the age group the club assigned to this coach's affiliation
                         const clubAccount = accounts.find((a) => a.id === req.affiliatedClubId);
                         const affiliation = clubAccount?.coachAffiliates?.find((a) => a.coachAccountId === req.id);
-                        const teamAgeGroup = affiliation?.ageGroup;
+                        const teamAgeGroup = affiliation?.teams?.[0]?.ageGroup;
                         facts = [
                           req.gender ? { label: "Gender", value: req.gender } : null,
                           age !== null ? { label: "Age", value: String(age) } : null,
