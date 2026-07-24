@@ -943,7 +943,7 @@ function ChatsSection() {
               )}
             </View>
             <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2, marginBottom: 4, lineHeight: 17 }}>
-              These conversations matched predatory language patterns and require review.
+              These conversations matched language patterns that require review.
             </Text>
             {flaggedConvs.map((conv) => (
               <FlaggedChatCard

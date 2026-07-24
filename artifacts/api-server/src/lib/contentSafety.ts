@@ -178,6 +178,48 @@ const PATTERN_LIBRARY: PatternEntry[] = [
     ],
   },
 
+  // ── Profanity / abusive language ─────────────────────────────────────────
+  // Medium severity — admins can review and act, but the 48-hour auto-close
+  // threshold applies (not the 24-hour high-severity threshold).
+  // Normalisation strips punctuation, so f**k → f k and sh!t → sh t both
+  // collapse to non-word-char-separated roots that still match \b boundaries.
+  {
+    category: "Profanity / abusive language",
+    severity: "medium",
+    patterns: [
+      /\bfuck(ing|ed|er|ers|s)?\b/,
+      /\bshit(ty|head|s)?\b/,
+      /\bsh t(ty|head|s)?\b/,          // normalised "sh!t"
+      /\bf k(ing|ed|er|ers|s)?\b/,     // normalised "f**k"
+      /\bcunt(s)?\b/,
+      /\bbastard(s)?\b/,
+      /\barsehole(s)?\b/,
+      /\basshole(s)?\b/,
+      /\bwanker(s)?\b/,
+      /\bdickhead(s)?\b/,
+      /\bprick(s)?\b/,
+      /\bslut(s|ty)?\b/,
+      /\bwhore(s)?\b/,
+      /\bbitch(es|y)?\b/,
+      /\bcrap(py)?\b/,
+      /\bdamn(ed)?\b/,
+      /\barse(hole)?\b/,
+      /\btwat(s)?\b/,
+      /\bcockhead(s)?\b/,
+      /\bfuckwit(s)?\b/,
+      /\bfuckhead(s)?\b/,
+      /\bspastic(s)?\b/,
+      /\bretard(ed|s)?\b/,
+      /\bmoron(s)?\b/,
+      /\bidiot(s|ic)?\b/,
+      /\bstupid\b/,
+      /\bwog(s)?\b/,
+      /\bcoon(s)?\b/,
+      /\bnigger(s)?\b/,
+      /\bfaggot(s)?\b/,
+    ],
+  },
+
   // ── Grooming / coercive language ─────────────────────────────────────────
   {
     category: "Grooming / coercion",
