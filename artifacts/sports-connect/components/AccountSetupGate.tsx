@@ -370,13 +370,20 @@ export function AccountSetupGate() {
     }
   };
 
-  // After hydration, if an active account already exists for this Clerk email, show a
+  // After hydration, if an active account already exists for this Clerk user, show a
   // "Welcome back" screen instead of the setup form. This replaces the silent
   // auto-restore that previously happened in _layout.tsx and makes the transition explicit.
-  const existingAccount = isHydrated
+  //
+  // clerkUserId is the authoritative match — it survives password resets and email
+  // casing differences. Email is the fallback for legacy accounts that pre-date the
+  // clerkUserId binding.
+  const existingAccount = isHydrated && (email || user?.id)
     ? accounts.find(
         (a) =>
-          a.email.toLowerCase() === email.toLowerCase() &&
+          (
+            (user?.id && a.clerkUserId === user.id) ||
+            (email && a.email.toLowerCase() === email.toLowerCase())
+          ) &&
           a.status !== "banned" &&
           a.status !== "closed",
       )

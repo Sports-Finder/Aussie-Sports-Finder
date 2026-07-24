@@ -77,16 +77,34 @@ router.post("/accounts", async (req, res) => {
     // cannot be forged or reassigned by the client.
     const auth = getAuth(req);
     const derivedClerkUserId = auth.userId ?? undefined;
-    // Duplicate-email guard: reject if an account already exists with the same email (case-insensitive).
+    // Duplicate-clerkUserId guard: the strongest identity signal — if this Clerk
+    // user already has any account (active, closed, or banned), return 409 with
+    // its publicId so the client can restore the session rather than creating a
+    // duplicate. This check runs before the email guard because clerkUserId is
+    // server-derived and cannot be spoofed by the client.
+    if (derivedClerkUserId) {
+      const [existingByClerk] = await db
+        .select({ publicId: accountsTable.publicId, status: accountsTable.status })
+        .from(accountsTable)
+        .where(eq(accountsTable.clerkUserId, derivedClerkUserId))
+        .limit(1);
+      if (existingByClerk) {
+        res.status(409).json({ error: "account_exists", publicId: existingByClerk.publicId, status: existingByClerk.status });
+        return;
+      }
+    }
+    // Duplicate-email guard: secondary check — reject if an account already exists
+    // with the same email (case-insensitive). Catches legacy accounts that pre-date
+    // the clerkUserId binding, or accounts created via a different Clerk identity.
     const emailValue = typeof body.email === "string" ? body.email.toLowerCase().trim() : undefined;
     if (emailValue) {
       const [existing] = await db
-        .select({ publicId: accountsTable.publicId })
+        .select({ publicId: accountsTable.publicId, status: accountsTable.status })
         .from(accountsTable)
         .where(eq(sql`lower(${accountsTable.email})`, emailValue))
         .limit(1);
       if (existing) {
-        res.status(409).json({ error: "account_exists", publicId: existing.publicId });
+        res.status(409).json({ error: "account_exists", publicId: existing.publicId, status: existing.status });
         return;
       }
     }

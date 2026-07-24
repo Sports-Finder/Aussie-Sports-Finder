@@ -1007,11 +1007,18 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
       return false;
     }
-    // If an active account already exists locally for this email, restore it instead of
-    // creating a duplicate. This guards against re-running account setup after a reinstall
-    // or AsyncStorage wipe when server accounts are still present.
+    // If an active account already exists locally for this Clerk user or email, restore
+    // it instead of creating a duplicate. clerkUserId is the authoritative match —
+    // it survives password resets and email casing differences. Email is the fallback
+    // for legacy accounts that pre-date the clerkUserId binding.
     const existingLocal = accounts.find(
-      (a) => a.email.toLowerCase() === normalizedEmail && a.status !== "banned" && a.status !== "closed",
+      (a) =>
+        (
+          (draft.clerkUserId && a.clerkUserId === draft.clerkUserId) ||
+          a.email.toLowerCase() === normalizedEmail
+        ) &&
+        a.status !== "banned" &&
+        a.status !== "closed",
     );
     if (existingLocal) {
       autoRestoreSession(normalizedEmail, draft.authMethod ?? "email", draft.socialId);
@@ -1069,19 +1076,34 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       const err = e as { status?: number; body?: Record<string, unknown> } | null;
       const status = err?.status;
       if (status === 409) {
-        // Server already has an account for this email — roll back the locally-created
-        // ghost and restore the canonical server account so the local and server states
-        // stay in sync. This is a race-condition guard; the existingLocal check above
-        // handles the common case.
-        setAccounts((prev) => prev.filter((a) => a.id !== publicId));
-        setCurrentAccount(undefined);
+        // Server already has an account for this Clerk user or email — roll back the
+        // locally-created ghost and restore the canonical server account atomically so
+        // there is no intermediate flash of AccountSetupGate.
+        //
         // The .catch() closure captures `accounts` from the pre-ghost render snapshot.
-        // The server's canonical account is already in that list (fetched during hydration).
+        // The canonical account is already in that list (fetched during hydration).
         const existingPublicId = typeof err?.body?.publicId === "string" ? err.body.publicId : undefined;
+        const existingStatus = typeof err?.body?.status === "string" ? err.body.status : undefined;
         const canonical = existingPublicId
           ? accounts.find((a) => a.id === existingPublicId)
-          : accounts.find((a) => a.email.toLowerCase() === normalizedEmail && a.status !== "banned" && a.status !== "closed");
+          : accounts.find((a) => a.email.toLowerCase() === normalizedEmail);
+
+        if (canonical?.status === "banned" || canonical?.status === "closed" || existingStatus === "banned" || existingStatus === "closed") {
+          // The existing account is closed or banned — do not restore it silently.
+          // Remove the ghost and alert the user so they know what happened.
+          setAccounts((prev) => prev.filter((a) => a.id !== publicId));
+          setCurrentAccount(undefined);
+          Alert.alert(
+            "Account already exists",
+            "This email address is linked to a closed or banned account. Please contact support if you believe this is an error.",
+          );
+          console.info("[createAccount] 409 — ghost rolled back, existing account is closed/banned");
+          return;
+        }
+
         if (canonical) {
+          // Atomic swap: remove the ghost and set the canonical account in one render.
+          setAccounts((prev) => [...prev.filter((a) => a.id !== publicId)]);
           setCurrentAccount(canonical);
           setSelectedSport(canonical.defaultSport);
           setActiveProfile(canonical.role === "club" ? "club" : "player");
@@ -1105,11 +1127,17 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
               imageId: canonical.profileImageId,
             }));
           }
-          console.info("[createAccount] 409 — ghost rolled back, restored canonical account");
+          console.info("[createAccount] 409 — ghost swapped for canonical account atomically");
         } else {
-          // Canonical account not in local list — AccountSetupGate will show "Welcome back"
-          // screen which will re-find the account by email once visible.
-          console.info("[createAccount] 409 — ghost rolled back, canonical account not in local list; AccountSetupGate will handle restore");
+          // Canonical not in local list (rare: hydration may have failed).
+          // Remove the ghost and trigger a background re-fetch so AccountSetupGate
+          // will find the account on the next render.
+          setAccounts((prev) => prev.filter((a) => a.id !== publicId));
+          setCurrentAccount(undefined);
+          api.getAccounts().then((fetched: UserAccount[]) => {
+            setAccounts(fetched.map(migrateAccountAffiliates));
+          }).catch(() => undefined);
+          console.info("[createAccount] 409 — ghost rolled back, triggered re-fetch for canonical account");
         }
         return;
       }
