@@ -580,6 +580,9 @@ export function OnboardingGate() {
               <Pressable style={styles.linkBtn} onPress={() => signUp.verifications.sendEmailCode()}>
                 <Text style={[styles.linkBtnText, { color: colors.primary }]}>Resend code</Text>
               </Pressable>
+              <Pressable style={styles.linkBtn} onPress={() => { signUp.reset(); switchMode("signup"); }}>
+                <Text style={[styles.linkBtnText, { color: colors.mutedForeground }]}>Use a different email</Text>
+              </Pressable>
             </>
           )}
 
