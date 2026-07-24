@@ -5,6 +5,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View
 import { useSubscription } from "@/lib/revenuecat";
 import { useColors } from "@/hooks/useColors";
 import { useSportsConnect } from "@/context/SportsConnectContext";
+import { getClubLabel } from "@/constants/clubLabel";
 import type { PurchasesPackage } from "react-native-purchases";
 
 type AccountTier = "club" | "player";
@@ -147,7 +148,7 @@ export default function SubscriptionPaywall({
 
             <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
               <Text style={[styles.title, { color: colors.foreground }]}>
-                {tier === "club" ? "Unlock Club Premium" : "Unlock Player Premium"}
+                {tier === "club" ? `Unlock ${getClubLabel(currentAccount)} Premium` : "Unlock Player Premium"}
               </Text>
 
               {featureHint ? (
@@ -159,7 +160,7 @@ export default function SubscriptionPaywall({
 
               <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
                 {tier === "club"
-                  ? "Everything your club needs to find and connect with the right players and coaches."
+                  ? `Everything your ${getClubLabel(currentAccount).toLowerCase()} needs to find and connect with the right players and coaches.`
                   : "Stand out to clubs and get unlimited connections."}
               </Text>
 

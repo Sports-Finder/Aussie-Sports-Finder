@@ -82,6 +82,7 @@ function _mapAccount(
     playerCurrentLevel: row.playerCurrentLevel as string | undefined,
     playerCurrentAgeGroup: row.playerCurrentAgeGroup as string | undefined,
     playerCurrentClub: row.playerCurrentClub as string | undefined,
+    clubType: ((row.clubType as string | undefined) ?? "club") as "club" | "academy",
     coachSubRole: row.coachSubRole as string | undefined,
     coachCurrentLevel: row.coachCurrentLevel as string | undefined,
     coachCurrentClub: row.coachCurrentClub as string | undefined,

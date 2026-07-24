@@ -17,6 +17,7 @@ import {
 } from "@/context/SportsConnectContext";
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
 import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
+import { getClubLabel } from "@/constants/clubLabel";
 import { COACH_EXPERIENCE_LEVELS, TD_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 import type { ClubApprovalStatus } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
@@ -35,11 +36,11 @@ const sections: { key: Section; label: string; icon: keyof typeof Feather.glyphM
   { key: "settings", label: "Settings", icon: "settings" },
 ];
 
-function getRoleLabel(role: AccountRole, coachSubRole?: string | null): string {
+function getRoleLabel(role: AccountRole, coachSubRole?: string | null, clubType?: string): string {
   if (role === "player") return "Player (18+)";
   if (role === "guardian") return "Parent / Guardian";
   if (role === "coach") return coachSubRoleLabel(coachSubRole);
-  return "Club";
+  return clubType === "academy" ? "Academy" : "Club";
 }
 
 const roleIcons: Record<AccountRole, keyof typeof Feather.glyphMap> = {
@@ -1402,7 +1403,7 @@ function AccountEditModal({ account, onClose }: { account: UserAccount; onClose:
             <Feather name={roleIcons[account.role]} size={14} color={colors.primaryForeground} />
           </View>
           <View style={styles.headerCopy}>
-            <Text style={[styles.title, { color: colors.foreground }]}>{getRoleLabel(account.role, account.coachSubRole)} account</Text>
+            <Text style={[styles.title, { color: colors.foreground }]}>{getRoleLabel(account.role, account.coachSubRole, account.clubType)} account</Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]} numberOfLines={1}>Status: {status}{clubApproval ? ` · ${clubApproval === "approved" ? "Approved" : clubApproval === "rejected" ? "Rejected" : "Waiting Approval"}` : ""}</Text>
           </View>
           <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.secondary }]}>
@@ -1590,9 +1591,9 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
         return (
           <View key={img.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={styles.itemHeader}>
-              <Pressable onPress={() => { if (account) Alert.alert(account.role === "club" ? account.clubName || "Club" : account.fullName || account.playerName || "Player", `Role: ${account.role}\nEmail: ${account.email}\nStatus: ${account.status}`); }} style={{ flex: 1 }}>
+              <Pressable onPress={() => { if (account) Alert.alert(account.role === "club" ? account.clubName || getClubLabel(account) : account.fullName || account.playerName || "Player", `Role: ${account.role}\nEmail: ${account.email}\nStatus: ${account.status}`); }} style={{ flex: 1 }}>
                 <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
-                  {account ? `${account.role === "club" ? account.clubName || "Club" : account.fullName || account.playerName || "Player"} (${account.role === "club" ? "Club" : account.role === "guardian" ? "Parent/Guardian" : account.role === "coach" ? "Coach" : account.role === "player" ? "Player" : account.role})` : img.owner}
+                  {account ? `${account.role === "club" ? account.clubName || getClubLabel(account) : account.fullName || account.playerName || "Player"} (${account.role === "club" ? getClubLabel(account) : account.role === "guardian" ? "Parent/Guardian" : account.role === "coach" ? "Coach" : account.role === "player" ? "Player" : account.role})` : img.owner}
                 </Text>
               </Pressable>
               <View style={[styles.badge, { backgroundColor: "#FEF3C7" }]}>
@@ -1635,7 +1636,7 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
         <View key={link.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
           <View style={styles.itemHeader}>
             <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
-              {account ? `${account.role === "club" ? account.clubName || "Club" : account.fullName || account.playerName || "Player"} (${account.role === "club" ? "Club" : account.role === "guardian" ? "Parent/Guardian" : account.role === "coach" ? "Coach" : account.role === "player" ? "Player" : account.role})` : link.owner}
+              {account ? `${account.role === "club" ? account.clubName || getClubLabel(account) : account.fullName || account.playerName || "Player"} (${account.role === "club" ? getClubLabel(account) : account.role === "guardian" ? "Parent/Guardian" : account.role === "coach" ? "Coach" : account.role === "player" ? "Player" : account.role})` : link.owner}
             </Text>
             <View style={[styles.badge, { backgroundColor: "#FEF3C7" }]}>
               <Text style={[styles.badgeText, { color: "#92400E" }]}>Pending</Text>
@@ -1693,7 +1694,7 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
           <View key={report.id} style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
             <View style={styles.itemHeader}>
               <Text style={[styles.itemTitle, { color: colors.foreground }]} numberOfLines={1}>
-                {target ? (target.role === "club" ? target.clubName || "Club" : target.fullName || target.playerName || "User") : "Unknown user"}
+                {target ? (target.role === "club" ? target.clubName || getClubLabel(target) : target.fullName || target.playerName || "User") : "Unknown user"}
               </Text>
               <View style={[styles.badge, { backgroundColor: isPending ? "#FEF3C7" : "#D1FAE5" }]}>
                 <Text style={[styles.badgeText, { color: isPending ? "#92400E" : "#065F46" }]}>{isPending ? "Pending" : "Resolved"}</Text>
@@ -1706,7 +1707,7 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
             <View style={styles.metaRow}>
               <Feather name="clock" size={12} color={colors.mutedForeground} />
               <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                Reported {new Date(report.createdAt).toLocaleDateString()} by {reporter ? (reporter.role === "club" ? reporter.clubName || "Club" : reporter.fullName || reporter.playerName || "User") : "Unknown"}
+                Reported {new Date(report.createdAt).toLocaleDateString()} by {reporter ? (reporter.role === "club" ? reporter.clubName || getClubLabel(reporter) : reporter.fullName || reporter.playerName || "User") : "Unknown"}
               </Text>
             </View>
 
@@ -1726,7 +1727,7 @@ function ModerationSection({ onApproveSportRequest }: { onApproveSportRequest?: 
                 <View style={styles.metaRow}>
                   <Feather name="user" size={12} color={colors.mutedForeground} />
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                    Role: {target ? (target.role === "club" ? "Club" : target.role === "guardian" ? "Parent/Guardian" : target.role === "coach" ? "Coach" : "Player") : "Unknown"}
+                    Role: {target ? (target.role === "club" ? getClubLabel(target) : target.role === "guardian" ? "Parent/Guardian" : target.role === "coach" ? "Coach" : "Player") : "Unknown"}
                   </Text>
                   <View style={[styles.badge, { backgroundColor: statusBadge.bg, marginLeft: 6 }]}>
                     <Text style={[styles.badgeText, { color: statusBadge.fg }]}>{targetStatus[0].toUpperCase() + targetStatus.slice(1)}</Text>

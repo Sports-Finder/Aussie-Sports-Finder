@@ -19,6 +19,7 @@ import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
+import { getClubLabel } from "@/constants/clubLabel";
 import { defaultSportThemes, getSportTheme } from "@/constants/sports";
 import { COACH_EXPERIENCE_LEVELS, TD_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
@@ -36,7 +37,7 @@ const roleCopy: Record<AccountRole, { title: string; subtitle: string }> = {
   player: { title: "I am a Player (18+ only) looking for a Club.", subtitle: "Create a player profile for clubs to review after connection." },
   guardian: { title: "I am a Parent/Guardian of an underage Player (17 years and under) looking for a Club.", subtitle: "Create a player profile managed on behalf of a parent or guardian." },
   coach: { title: "I am a Coach / Assistant Coach / Trainer / TD looking for a team or club.", subtitle: "Create a coach profile for clubs to review after connection." },
-  club: { title: "I am a Club looking for Players or Coaches.", subtitle: "Create a club profile, address and contact details." },
+  club: { title: "I am a Club or Academy looking for Players or Coaches.", subtitle: "Create a club or academy profile, address and contact details." },
 };
 
 function parseDob(dateOfBirth: string) {
@@ -170,6 +171,8 @@ export function AccountSetupGate() {
   const [defaultSport, setDefaultSport] = useState("");
 
   const isClub = role === "club";
+  const [clubType, setClubType] = useState<"club" | "academy">("club");
+  const clubTypeLabel = clubType === "academy" ? "Academy" : "Club";
   const age = calculateAge(form.dateOfBirth);
 
   const socialLinksValid = useMemo(() => (
@@ -258,7 +261,7 @@ export function AccountSetupGate() {
 
   const pickImage = async () => {
     const owner = isClub
-      ? form.clubName || "Club account"
+      ? form.clubName || `${clubTypeLabel} account`
       : role === "guardian"
       ? form.playerName || "Guardian player account"
       : form.fullName || `${role} account`;
@@ -307,6 +310,7 @@ export function AccountSetupGate() {
       parentGuardianName: form.parentGuardianName,
       playerName: form.playerName,
       clubName: form.clubName,
+      clubType: isClub ? clubType : undefined,
       gender: form.gender,
       dateOfBirth: form.dateOfBirth,
       guardianDateOfBirth: role === "guardian" ? form.guardianDateOfBirth : undefined,
@@ -354,7 +358,7 @@ export function AccountSetupGate() {
     if (role === "club") {
       Alert.alert(
         "Account submitted",
-        "Your club account has been submitted and is awaiting admin approval. You can check your approval status anytime in the Profile tab.",
+        `Your ${clubTypeLabel.toLowerCase()} account has been submitted and is awaiting admin approval. You can check your approval status anytime in the Profile tab.`,
         [{ text: "View Profile", onPress: () => router.push("/(tabs)/profile") }],
       );
     } else {
@@ -387,7 +391,7 @@ export function AccountSetupGate() {
           : existingAccount.fullName;
     const roleLabel =
       existingAccount.role === "club"
-        ? "Club"
+        ? (existingAccount.clubType === "academy" ? "Academy" : "Club")
         : existingAccount.role === "guardian"
           ? "Parent / Guardian"
           : existingAccount.role === "coach"
@@ -548,7 +552,7 @@ export function AccountSetupGate() {
 
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>
               {isClub
-                ? "Club account setup"
+                ? `${clubTypeLabel} account setup`
                 : role === "guardian"
                 ? "Parent/Guardian player setup"
                 : role === "coach"
@@ -558,7 +562,27 @@ export function AccountSetupGate() {
 
             {isClub ? (
               <>
-                <Input label="Club Name (required)" value={form.clubName} onChangeText={(v) => update("clubName", v)} />
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>Are you a Club or an Academy? (required)</Text>
+                <View style={{ flexDirection: "row", gap: 10, marginBottom: 8 }}>
+                  {(["club", "academy"] as const).map((type) => {
+                    const selected = clubType === type;
+                    return (
+                      <Pressable
+                        key={type}
+                        onPress={() => setClubType(type)}
+                        style={({ pressed }) => [
+                          styles.choice,
+                          { flex: 1, justifyContent: "center", backgroundColor: selected ? colors.primary : colors.secondary, opacity: pressed ? 0.8 : 1 },
+                        ]}
+                      >
+                        <Text style={[styles.choiceText, { color: selected ? colors.primaryForeground : colors.secondaryForeground }]}>
+                          {type === "club" ? "Club" : "Academy"}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Input label={`${clubTypeLabel} Name (required)`} value={form.clubName} onChangeText={(v) => update("clubName", v)} />
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>Sport (required)</Text>
                 <SportPicker
                   selectedSports={defaultSport ? [defaultSport] : []}
@@ -567,7 +591,7 @@ export function AccountSetupGate() {
                   approvedSports={approvedSports.map((s) => s.name)}
                 />
                 <Input
-                  label="Club Street Number & Street Address (required)"
+                  label={`${clubTypeLabel} Street Number & Street Address (required)`}
                   value={form.clubAddress}
                   onChangeText={(v) => update("clubAddress", v)}
                 />
@@ -586,9 +610,9 @@ export function AccountSetupGate() {
                     {form.state}{form.clubPostcode ? ` · ${form.clubPostcode}` : ""}
                   </Text>
                 ) : null}
-                <Input label="Club Website Address (optional)" value={form.clubWebsite} onChangeText={(v) => update("clubWebsite", v)} />
+                <Input label={`${clubTypeLabel} Website Address (optional)`} value={form.clubWebsite} onChangeText={(v) => update("clubWebsite", v)} />
                 <Input
-                  label="Club Contact Email Address (required)"
+                  label={`${clubTypeLabel} Contact Email Address (required)`}
                   value={form.clubContactEmail}
                   onChangeText={(v) => update("clubContactEmail", v)}
                   keyboardType="email-address"
@@ -597,13 +621,13 @@ export function AccountSetupGate() {
                   This defaults to your sign-up email. You can change it to a different public contact address — your login email will not be affected.
                 </Text>
                 <Input
-                  label="Club Contact Mobile Number (optional)"
+                  label={`${clubTypeLabel} Contact Mobile Number (optional)`}
                   value={form.clubContactMobile}
                   onChangeText={(v) => update("clubContactMobile", v)}
                   keyboardType="phone-pad"
                 />
                 <Input
-                  label="Club Bio (optional, max 200 words)"
+                  label={`${clubTypeLabel} Bio (optional, max 200 words)`}
                   value={form.bio}
                   onChangeText={(v) => {
                     const wordCount = v.trim().split(/\s+/).filter(Boolean).length;
@@ -916,7 +940,7 @@ export function AccountSetupGate() {
               active={Boolean(form.agreed)}
               label={
                 isClub
-                  ? "All the Club information I have provided is true and accurate. If a club account is found to be false or misleading, it will be shut down immediately."
+                  ? `All the ${clubTypeLabel} information I have provided is true and accurate. If a ${clubTypeLabel.toLowerCase()} account is found to be false or misleading, it will be shut down immediately.`
                   : role === "guardian"
                   ? "All the player information I have provided is true and accurate. If a Parent/Guardian's Player account is found to be false or misleading, it will be shut down immediately."
                   : "All the player information I have provided is true and accurate. If a player account is found to be false or misleading, it will be shut down immediately."

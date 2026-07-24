@@ -106,6 +106,7 @@ export type UserAccount = {
   parentGuardianName?: string;
   playerName?: string;
   clubName?: string;
+  clubType?: "club" | "academy";
   gender?: string;
   dateOfBirth?: string;
   guardianDateOfBirth?: string;

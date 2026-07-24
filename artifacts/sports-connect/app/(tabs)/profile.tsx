@@ -15,6 +15,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
+import { getClubLabel } from "@/constants/clubLabel";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { useAuth } from "@clerk/expo";
@@ -181,7 +182,7 @@ export default function ProfileScreen() {
     : currentAccount?.fullName;
   const subRoleLabel = coachSubRoleLabel(currentAccount?.coachSubRole);
   const roleLabel = isClub
-    ? "Club account"
+    ? `${getClubLabel(currentAccount)} account`
     : isGuardian
     ? `Parent/Guardian · Managing ${currentAccount?.playerName ?? "player"}`
     : isCoach
@@ -220,7 +221,7 @@ export default function ProfileScreen() {
           setMode("view");
           Alert.alert(
             "Profile saved — Approval reset",
-            "Your club profile has been updated. Your admin approval has been reset to Pending and all active adverts and connections have been closed.\n\nYou will need to be re-approved by an admin before you can post or use messaging again."
+            `Your ${getClubLabel(currentAccount).toLowerCase()} profile has been updated. Your admin approval has been reset to Pending and all active adverts and connections have been closed.\n\nYou will need to be re-approved by an admin before you can post or use messaging again.`
           );
         } else {
           setMode("view");
@@ -230,7 +231,7 @@ export default function ProfileScreen() {
       if (isApproved) {
         Alert.alert(
           "Warning: This will reset your approval",
-          "Saving changes to your club profile will:\n\n• Reset your approval back to Pending\n• Close all your active adverts\n• Close all existing connections\n\nYou will not be able to post adverts or message players until an admin re-approves your club.\n\nDo you want to continue?",
+          `Saving changes to your ${getClubLabel(currentAccount).toLowerCase()} profile will:\n\n• Reset your approval back to Pending\n• Close all your active adverts\n• Close all existing connections\n\nYou will not be able to post adverts or message players until an admin re-approves your ${getClubLabel(currentAccount).toLowerCase()}.\n\nDo you want to continue?`,
           [
             { text: "Cancel", style: "cancel" },
             { text: "Save & Reset Approval", style: "destructive", onPress: doClubSave },
@@ -318,7 +319,7 @@ export default function ProfileScreen() {
     const link = (url: string) => url ? normaliseUrl(url) : undefined;
     if (isClub) {
       return [
-        { label: "Club name", value: currentAccount.clubName ?? "" },
+        { label: `${getClubLabel(currentAccount)} name`, value: currentAccount.clubName ?? "" },
         { label: "Sport", value: currentAccount.defaultSport ?? "" },
         { label: "Street Address", value: currentAccount.clubAddress ?? "" },
         { label: "Suburb", value: currentAccount.clubSuburb ?? "" },
@@ -548,13 +549,13 @@ export default function ProfileScreen() {
                 color={currentAccount?.clubApprovalStatus === "rejected" ? "#DC2626" : "#D97706"}
               />
               <Text style={{ fontWeight: "700", fontSize: 15, color: currentAccount?.clubApprovalStatus === "rejected" ? "#DC2626" : "#92400E" }}>
-                {currentAccount?.clubApprovalStatus === "rejected" ? "Club Application Not Approved" : "Awaiting Admin Approval"}
+                {currentAccount?.clubApprovalStatus === "rejected" ? `${getClubLabel(currentAccount)} Application Not Approved` : "Awaiting Admin Approval"}
               </Text>
             </View>
             <Text style={{ fontSize: 13, lineHeight: 20, color: currentAccount?.clubApprovalStatus === "rejected" ? "#7F1D1D" : "#78350F" }}>
               {currentAccount?.clubApprovalStatus === "rejected"
-                ? "Your club account application was not approved by an administrator. You cannot post adverts, view listings, or use messaging. Please contact support for more information."
-                : "Your club account is pending admin approval. Until approved, you cannot view adverts, post adverts, or use the messaging features. You will gain full access once an admin approves your club."}
+                ? `Your ${getClubLabel(currentAccount).toLowerCase()} account application was not approved by an administrator. You cannot post adverts, view listings, or use messaging. Please contact support for more information.`
+                : `Your ${getClubLabel(currentAccount).toLowerCase()} account is pending admin approval. Until approved, you cannot view adverts, post adverts, or use the messaging features. You will gain full access once an admin approves your ${getClubLabel(currentAccount).toLowerCase()}.`}
             </Text>
           </View>
         )}
@@ -620,10 +621,10 @@ export default function ProfileScreen() {
               />
               <View style={styles.profileCopy}>
                 <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-                  {isClub ? "Club profile" : isCoach ? `${subRoleLabel} profile` : "Player profile"}
+                  {isClub ? `${getClubLabel(currentAccount)} profile` : isCoach ? `${subRoleLabel} profile` : "Player profile"}
                 </Text>
                 <Text style={[styles.cardText, { color: colors.mutedForeground }]}>
-                  {isClub ? "Club details shown below." : isGuardian ? `${currentAccount?.parentGuardianName ?? "Parent/Guardian"} (Parent/Guardian) is managing this Player.` : "Profile details shown below."}
+                  {isClub ? `${getClubLabel(currentAccount)} details shown below.` : isGuardian ? `${currentAccount?.parentGuardianName ?? "Parent/Guardian"} (Parent/Guardian) is managing this Player.` : "Profile details shown below."}
                 </Text>
               </View>
             </View>
@@ -687,16 +688,16 @@ export default function ProfileScreen() {
               </Text>
             ) : null}
 
-            <Field label="Club name" value={currentAccount?.clubName ?? ""} onChangeText={(v) => updateAccount({ clubName: v })} />
+            <Field label={`${getClubLabel(currentAccount)} name`} value={currentAccount?.clubName ?? ""} onChangeText={(v) => updateAccount({ clubName: v })} />
 
-            <Text style={[styles.label, { color: colors.mutedForeground }]}>Club sport (required)</Text>
+            <Text style={[styles.label, { color: colors.mutedForeground }]}>{getClubLabel(currentAccount)} sport (required)</Text>
             <View style={styles.wrapRow}>
               {approvedSports.map((sport) => (
                 <Choice key={sport.name} label={sport.name} active={currentAccount?.defaultSport === sport.name} onPress={() => updateAccount({ defaultSport: sport.name, sports: [sport.name] })} />
               ))}
             </View>
 
-            <Field label="Club Street Number & Street Address" value={clubMapAddress} onChangeText={setClubMapAddress} placeholder="e.g. 123 Smith Street" />
+            <Field label={`${getClubLabel(currentAccount)} Street Number & Street Address`} value={clubMapAddress} onChangeText={setClubMapAddress} placeholder="e.g. 123 Smith Street" />
             <SuburbAutocomplete
               label="Suburb"
               value={clubSuburb}
@@ -711,14 +712,14 @@ export default function ProfileScreen() {
                 {state}{clubPostcode ? ` · ${clubPostcode}` : ""}
               </Text>
             ) : null}
-            <Field label="Club contact email" value={currentAccount?.clubContactEmail ?? ""} onChangeText={(v) => updateAccount({ clubContactEmail: v })} keyboardType="email-address" />
-            <Field label="Club contact mobile (optional)" value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
-            <Field label="Club bio" value={clubBio} onChangeText={(value) => {
+            <Field label={`${getClubLabel(currentAccount)} contact email`} value={currentAccount?.clubContactEmail ?? ""} onChangeText={(v) => updateAccount({ clubContactEmail: v })} keyboardType="email-address" />
+            <Field label={`${getClubLabel(currentAccount)} contact mobile (optional)`} value={currentAccount?.clubContactMobile ?? ""} onChangeText={(v) => updateAccount({ clubContactMobile: v })} keyboardType="phone-pad" />
+            <Field label={`${getClubLabel(currentAccount)} bio`} value={clubBio} onChangeText={(value) => {
               const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
               if (wordCount <= 200) setClubBio(value);
             }} multiline />
             {detectContactInfo(clubBio) ? <Text style={{ fontSize: 12, color: "#D9534F", marginTop: 4, marginBottom: 4 }}>{detectContactInfo(clubBio)}</Text> : null}
-            <Field label="Club website" value={currentAccount?.clubWebsite ?? ""} onChangeText={(v) => updateAccount({ clubWebsite: v })} />
+            <Field label={`${getClubLabel(currentAccount)} website`} value={currentAccount?.clubWebsite ?? ""} onChangeText={(v) => updateAccount({ clubWebsite: v })} />
 
             <Text style={[styles.label, { color: colors.mutedForeground }]}>Social links (optional)</Text>
             <Field label="Instagram link" value={socialLinks.instagram ?? ""} onChangeText={(v) => updateSocial("instagram", v)} />

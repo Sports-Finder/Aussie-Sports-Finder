@@ -17,6 +17,7 @@ import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/compone
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { Advert, AccountRole, Conversation, useSportsConnect } from "@/context/SportsConnectContext";
 import { getSportTheme } from "@/constants/sports";
+import { getClubLabel } from "@/constants/clubLabel";
 import { useColors } from "@/hooks/useColors";
 import { useIsPremium } from "@/hooks/useIsPremium";
 import { ApiError } from "@/utils/apiClient";
@@ -1266,8 +1267,8 @@ export default function PostScreen() {
           </Text>
           <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: "center", lineHeight: 22 }}>
             {clubLockStatus === "rejected"
-              ? "Your club application was not approved. You cannot post adverts. Please contact support for more information."
-              : "Your club account is awaiting admin approval. You will be able to post adverts for players and staff once an admin approves your club.\n\nVisit your Profile tab to check your approval status."}
+              ? `Your ${getClubLabel(currentAccount).toLowerCase()} application was not approved. You cannot post adverts. Please contact support for more information.`
+              : `Your ${getClubLabel(currentAccount).toLowerCase()} account is awaiting admin approval. You will be able to post adverts for players and staff once an admin approves your ${getClubLabel(currentAccount).toLowerCase()}.\n\nVisit your Profile tab to check your approval status.`}
           </Text>
         </View>
       </ScreenShell>
@@ -1510,7 +1511,7 @@ export default function PostScreen() {
           )}
 
           <FormLabel text="Sport" />
-          <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>{activeProfile === "club" ? "Clubs can only post for their single club sport." : "Only your selected sports are available here."}</Text>
+          <Text style={[localStyles.formHint, { color: colors.mutedForeground }]}>{activeProfile === "club" ? `${getClubLabel(currentAccount) === "Academy" ? "Academies" : "Clubs"} can only post for their single ${getClubLabel(currentAccount).toLowerCase()} sport.` : "Only your selected sports are available here."}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={localStyles.sportPickerScroll}>
             {sportChoices.map((item) => (
               <Pressable key={item.name} onPress={() => { setSport(item.name); setPositions([]); }} style={({ pressed }) => [localStyles.sportChip, { backgroundColor: sport === item.name ? item.button : item.soft, opacity: pressed ? 0.75 : 1 }] }>

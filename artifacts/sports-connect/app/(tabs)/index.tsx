@@ -13,6 +13,7 @@ import { getAgeBlockReason } from "@/utils/ageEligibility";
 import { parseDobAge, formatTrialDateDisplay } from "@/utils/dateUtils";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
+import { getClubLabel } from "@/constants/clubLabel";
 
 const heroImage = require("@/assets/images/training-hero.png");
 
@@ -99,8 +100,8 @@ function getConnectableAdvertTypes(role: AccountRole, affiliatedClubId?: string 
   return types;
 }
 
-function requesterTypeLabel(type?: AccountRole, coachSubRole?: string | null, count = 1): string {
-  const base = type === "club" ? "Club" : type === "coach" ? coachSubRoleLabel(coachSubRole) : "Player";
+function requesterTypeLabel(type?: AccountRole, coachSubRole?: string | null, count = 1, clubType?: string): string {
+  const base = type === "club" ? getClubLabel({ clubType }) : type === "coach" ? coachSubRoleLabel(coachSubRole) : "Player";
   return count === 1 ? base : `${base}s`;
 }
 
@@ -165,6 +166,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
   const { connectOnAdvert, acceptConnection, denyConnection, conversations, approvedSports, currentAccount, accounts, forbiddenConnections, createReport, hasReportedAdvert } = useSportsConnect();
   const theme = getSportTheme(advert.sport, approvedSports);
   const expiry = getExpiryInfo(advert);
+  const posterAccount = accounts.find((a) => a.id === advert.ownerAccountId);
   const isOwnAdvert = !!(currentAccount?.id && advert.ownerAccountId && advert.ownerAccountId === currentAccount.id);
   const isAffiliatedClubParticipant = !isOwnAdvert && !!(currentAccount?.id && advert.affiliatedClubId && advert.affiliatedClubId === currentAccount.id);
   const isAffiliatedCoachOfOwner = !isOwnAdvert && !isAffiliatedClubParticipant && !!(
@@ -195,7 +197,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
 
   const posterLabel = isConnected
     ? advert.postedBy
-    : advert.postedByType === "club" ? "A Club" : advert.postedByType === "player" ? "A Player" : "A Coach";
+    : advert.postedByType === "club" ? (posterAccount?.clubType === "academy" ? "An Academy" : "A Club") : advert.postedByType === "player" ? "A Player" : "A Coach";
 
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -217,7 +219,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
     const viewerState = extractState(currentAccount?.location ?? "");
     const advertState = extractState(advert.location);
     if (viewerState && advertState && viewerState !== advertState) {
-      const posterLabel = advert.postedByType === "club" ? "Club" : advert.postedByType === "player" ? "Player" : "Coach";
+      const posterLabel = advert.postedByType === "club" ? getClubLabel(posterAccount) : advert.postedByType === "player" ? "Player" : "Coach";
       Alert.alert(
         "Different State",
         `You are requesting to connect privately with a ${posterLabel} from a different State (${advertState}). Are you sure?`,
@@ -540,10 +542,13 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                       const isAffiliatedCoachReq = isCoachReq && !!req?.affiliatedClubId;
                       const location = firstPending.requesterLocation ?? "an unknown location";
                       const coachLabel = req?.coachSubRole ? coachSubRoleLabel(req.coachSubRole) : "Coach";
+                      const affiliatedClub = accounts.find((a) => a.id === req?.affiliatedClubId);
                       const headerText = isAffiliatedCoachReq
-                        ? `A ${coachLabel} from a Club in ${location} wants to connect privately. Agree to connect?`
+                        ? `A ${coachLabel} from ${affiliatedClub?.clubType === "academy" ? "an Academy" : "a Club"} in ${location} wants to connect privately. Agree to connect?`
                         : req?.role === "guardian" && req.parentGuardianName
                         ? `Parent/Guardian ${req.parentGuardianName} on behalf of ${req.playerName ?? "a player"} from ${location} wants to connect privately. Agree to connect?`
+                        : req?.role === "club"
+                        ? `${req.clubType === "academy" ? "An Academy" : "A Club"} from ${location} wants to connect privately. Agree to connect?`
                         : `A ${requesterTypeLabel(firstPending.requesterType, req?.coachSubRole)} from ${location} wants to connect privately. Agree to connect?`;
                       return (
                         <Text style={[styles.pendingRequestText, { color: colors.foreground }]}>{headerText}</Text>
@@ -594,7 +599,7 @@ function AdvertDetail({ advert, onClose }: { advert: Advert; onClose: () => void
                         ].filter(Boolean) as { label: string; value: string }[];
                       } else {
                         // Club or player request
-                        sectionLabel = req.role === "club" ? "About this club" : "About this player";
+                        sectionLabel = req.role === "club" ? `About this ${getClubLabel(req).toLowerCase()}` : "About this player";
                         facts = [
                           req.gender ? { label: "Gender", value: req.gender } : null,
                           req.dateOfBirth ? { label: "DOB", value: `${req.dateOfBirth}${age !== null ? ` \u00b7 Age ${age}` : ""}` } : null,
@@ -715,6 +720,7 @@ function NotificationPanel({
 }: NotificationPanelProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { accounts } = useSportsConnect();
   const isEmpty = nearCount === 0 && pendingConvs.length === 0 && unreadConvCount === 0;
 
   return (
@@ -763,10 +769,11 @@ function NotificationPanel({
 
                 {/* One row per pending connection request */}
                 {pendingConvs.map((conv) => {
+                  const reqAccount = accounts.find((a) => a.id === conv.initiatorAccountId);
                   const typeLabel =
                     conv.requesterType === "coach" ? "Coach" :
                     conv.requesterType === "guardian" ? "Parent / Guardian" :
-                    conv.requesterType === "club" ? "Club" : "Player";
+                    conv.requesterType === "club" ? getClubLabel(reqAccount) : "Player";
                   const rawTitle = conv.advertTitle ?? "your advert";
                   const title = rawTitle.length > 38 ? rawTitle.slice(0, 38) + "…" : rawTitle;
                   return (

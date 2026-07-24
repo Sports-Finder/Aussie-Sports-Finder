@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
 import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
+import { getClubLabel } from "@/constants/clubLabel";
 import {
   Alert,
   FlatList,
@@ -75,16 +76,26 @@ function anonymousLabel(
   }
 
   if (isInitiator) {
-    const ownerType = conversation.advertPostedByType === "club" ? "Club" : conversation.advertPostedByType === "coach" ? coachSubRoleLabel(conversation.advertOwnerCoachSubRole) : "Player";
-    return { title: `A ${ownerType} (${conversation.advertLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
+    const ownerAccount = accounts.find((a) => a.id === conversation.ownerAccountId);
+    const ownerLabel = conversation.advertPostedByType === "club"
+      ? (ownerAccount?.clubType === "academy" ? "An Academy" : "A Club")
+      : conversation.advertPostedByType === "coach"
+        ? `A ${coachSubRoleLabel(conversation.advertOwnerCoachSubRole)}`
+        : "A Player";
+    return { title: `${ownerLabel} (${conversation.advertLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
   }
   if (isOwner) {
     const gLabel = guardianLabel();
     if (gLabel) {
       return { title: gLabel, subtitle: `${conversation.requesterLocation ?? ""} · ${conversation.sport ?? ""}` };
     }
-    const requesterType = conversation.requesterType === "club" ? "Club" : conversation.requesterType === "coach" ? coachSubRoleLabel(conversation.requesterCoachSubRole) : "Player";
-    return { title: `A ${requesterType} (${conversation.requesterLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
+    const initiatorAccount = accounts.find((a) => a.id === conversation.initiatorAccountId);
+    const requesterLabel = conversation.requesterType === "club"
+      ? (initiatorAccount?.clubType === "academy" ? "An Academy" : "A Club")
+      : conversation.requesterType === "coach"
+        ? `A ${coachSubRoleLabel(conversation.requesterCoachSubRole)}`
+        : "A Player";
+    return { title: `${requesterLabel} (${conversation.requesterLocation ?? "Unknown location"})`, subtitle: conversation.sport ?? "" };
   }
   return { title: conversation.clubName, subtitle: `${conversation.sport ?? ""} · ${conversation.playerName}` };
 }
@@ -227,8 +238,8 @@ function ProfileViewModal({
   const isPremium = account.subscriptionStatus === "active";
   const socialLinks = account.socialLinks ?? { instagram: "", facebook: "", x: "", tiktok: "" };
 
-  const displayName = isClub ? (account.clubName ?? "Club") : isGuardian ? (account.parentGuardianName ?? "Guardian") : (account.fullName ?? "User");
-  const roleLabel = isClub ? "Club" : isCoach ? coachSubRoleLabel(account.coachSubRole) : isGuardian ? "Parent/Guardian" : "Player";
+  const displayName = isClub ? (account.clubName ?? getClubLabel(account)) : isGuardian ? (account.parentGuardianName ?? "Guardian") : (account.fullName ?? "User");
+  const roleLabel = isClub ? getClubLabel(account) : isCoach ? coachSubRoleLabel(account.coachSubRole) : isGuardian ? "Parent/Guardian" : "Player";
   const avatarColor = isClub ? "#16A34A" : isCoach ? "#7C3AED" : "#2563EB";
   const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
   const imageUri = getImageUri(account.profileImageId);
@@ -816,8 +827,8 @@ export default function MessagesScreen() {
           </Text>
           <Text style={{ fontSize: 14, color: colors.mutedForeground, textAlign: "center", lineHeight: 22 }}>
             {clubLockStatus === "rejected"
-              ? "Your club application was not approved. Messaging is not available. Please contact support for more information."
-              : "Your club account is awaiting admin approval. Messaging will be available once an admin approves your club.\n\nVisit your Profile tab to check your approval status."}
+              ? `Your ${getClubLabel(currentAccount).toLowerCase()} application was not approved. Messaging is not available. Please contact support for more information.`
+              : `Your ${getClubLabel(currentAccount).toLowerCase()} account is awaiting admin approval. Messaging will be available once an admin approves your ${getClubLabel(currentAccount).toLowerCase()}.\n\nVisit your Profile tab to check your approval status.`}
           </Text>
         </View>
       </ScreenShell>
