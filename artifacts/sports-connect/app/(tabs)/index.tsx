@@ -124,13 +124,16 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 function AdvertCard({ advert, onPress }: { advert: Advert; onPress: () => void }) {
   const colors = useColors();
-  const { accounts } = useSportsConnect();
+  const { accounts, conversations, currentAccount } = useSportsConnect();
   const expiry = getExpiryInfo(advert);
   const icon = advert.postedByType === "club" ? "shield" : "user";
   const posterAccount = accounts.find((a) => a.id === advert.ownerAccountId);
   const posterIsSubscribed = posterAccount?.subscriptionStatus === "active";
+  // Amber highlight when the viewer owns this advert and has pending requests.
+  const isOwn = !!(currentAccount?.id && advert.ownerAccountId === currentAccount.id);
+  const hasPending = isOwn && conversations.some((c) => c.advertId === advert.id && c.status === "pending");
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.adCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.adCard, { backgroundColor: hasPending ? "#FFFBEB" : colors.card, borderColor: hasPending ? "#F59E0B" : colors.foreground, borderWidth: 2, opacity: pressed ? 0.78 : 1 }]}>
       <View style={[styles.adIcon, { backgroundColor: colors.pitchSoft }]}>
         <Feather name={icon} color={colors.primary} size={20} />
       </View>

@@ -519,6 +519,11 @@ function MyAdvertDetail({
                     </View>
                   </View>
                 ) : null}
+                {pendingConvs.length > 0 ? (
+                  <Text style={[localStyles.deleteConfirmText, { color: "#92400E", marginBottom: 4 }]}>
+                    {`You have ${pendingConvs.length} pending Connection Request${pendingConvs.length === 1 ? "" : "s"}. Deleting this advert will dismiss all of them.`}
+                  </Text>
+                ) : null}
                 <Text style={localStyles.deleteConfirmText}>This cannot be undone. Permanently delete this advert?</Text>
                 <View style={localStyles.deleteConfirmRow}>
                   <Pressable onPress={() => setConfirmingDelete(false)} style={({ pressed }) => [localStyles.deleteConfirmCancel, { opacity: pressed ? 0.7 : 1, overflow: "hidden" }]}>
