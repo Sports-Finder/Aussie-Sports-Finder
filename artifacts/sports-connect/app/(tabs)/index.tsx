@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AccountRole, Advert, Conversation, useSportsConnect } from "@/context/SportsConnectContext";
 import { IconButton, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
+import { containsProfanity } from "@/utils/profanityFilter";
 import { allSportsFilterName, getSportTheme } from "@/constants/sports";
 import { useColors } from "@/hooks/useColors";
 import { getAgeBlockReason } from "@/utils/ageEligibility";
@@ -927,6 +928,10 @@ export default function DiscoverScreen() {
   const nearCount = adverts.filter((advert) => advert.distanceKm <= notificationSettings.radiusKm).length;
 
   const submitSportRequest = () => {
+    if (containsProfanity(sportRequest)) {
+      Alert.alert("Inappropriate language", "Please remove inappropriate language from the sport name.");
+      return;
+    }
     requestSport(sportRequest);
     setSportRequest("");
   };

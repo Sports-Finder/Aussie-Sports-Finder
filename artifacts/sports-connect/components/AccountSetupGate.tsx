@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
+import { checkFields } from "@/utils/profanityFilter";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { getClubLabel } from "@/constants/clubLabel";
 import { defaultSportThemes, getSportTheme } from "@/constants/sports";
@@ -300,6 +301,20 @@ export function AccountSetupGate() {
     }
     if (!requiredDetailsValid) {
       Alert.alert("Missing details", "Complete all required fields, Australian state details, sport selections and the agreement checkbox.");
+      return;
+    }
+    const badField = checkFields([
+      { label: "Name", value: form.fullName },
+      { label: "Parent/guardian name", value: form.parentGuardianName },
+      { label: "Player name", value: form.playerName },
+      { label: "Club name", value: form.clubName },
+      { label: "Bio", value: form.bio },
+      { label: "Address", value: form.clubAddress },
+      { label: "Suburb", value: form.clubSuburb },
+      { label: "Suburb", value: form.suburb },
+    ]);
+    if (badField) {
+      Alert.alert("Inappropriate language", `Please remove inappropriate language from the ${badField} field.`);
       return;
     }
     const created = createAccount({

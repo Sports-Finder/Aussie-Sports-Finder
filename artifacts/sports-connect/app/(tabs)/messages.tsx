@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { COACH_EXPERIENCE_LEVELS } from "@/constants/coachLevels";
+import { containsProfanity } from "@/utils/profanityFilter";
 import { COACH_SUB_ROLES, coachSubRoleLabel } from "@/constants/coachSubRoles";
 import { getClubLabel } from "@/constants/clubLabel";
 import {
@@ -533,6 +534,10 @@ export function ChatRoom({ conversationId, onClose, asAdmin }: { conversationId:
     if (adminMode) {
       adminSendMessage(conversationId, trimmed);
       setDraft("");
+      return;
+    }
+    if (containsProfanity(trimmed)) {
+      Alert.alert("Inappropriate language", "Please remove inappropriate language from your message before sending.");
       return;
     }
     if (isBroadcast && canBroadcast) {

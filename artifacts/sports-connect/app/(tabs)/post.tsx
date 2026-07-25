@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Field, Pill, PrimaryButton, ScreenShell, SectionTitle } from "@/components/SportsUI";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { Advert, AccountRole, Conversation, useSportsConnect } from "@/context/SportsConnectContext";
+import { checkFields } from "@/utils/profanityFilter";
 import { getSportTheme } from "@/constants/sports";
 import { getClubLabel } from "@/constants/clubLabel";
 import { useColors } from "@/hooks/useColors";
@@ -1133,6 +1134,24 @@ export default function PostScreen() {
           ? "Free clubs are limited to 1 active advert. Upgrade for unlimited."
           : "Free accounts cannot post adverts. Upgrade to post adverts and get unlimited connections."
       );
+      return;
+    }
+
+    // Profanity check
+    const badField = checkFields([
+      { label: "Title", value: title },
+      { label: "Suburb / location", value: suburb },
+      { label: "Description", value: description },
+      { label: "Player description", value: playerDescription },
+      { label: "Focus area", value: focusArea },
+      { label: "Additional info", value: friendlyInfo },
+      { label: "Venue suburb", value: venueSuburb },
+      { label: "Friendly suburb", value: friendlySuburb },
+      { label: "Previous club", value: previousClub },
+      { label: "Schedule note", value: scheduleNote },
+    ]);
+    if (badField) {
+      Alert.alert("Inappropriate language", `Please remove inappropriate language from the ${badField} field.`);
       return;
     }
 

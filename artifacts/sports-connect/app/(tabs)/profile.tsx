@@ -18,6 +18,7 @@ import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/
 import { getClubLabel } from "@/constants/clubLabel";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
+import { checkFields } from "@/utils/profanityFilter";
 import { useAuth } from "@clerk/expo";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { defaultSportThemes, getSportTheme } from "@/constants/sports";
@@ -196,6 +197,16 @@ export default function ProfileScreen() {
   };
 
   const save = () => {
+    const bioToCheck = isClub ? clubBio : isGuardian ? guardianBio : isCoach ? coachBio : playerBio;
+    const badField = checkFields([
+      { label: "Bio", value: bioToCheck },
+      { label: "Address", value: isClub ? clubMapAddress : undefined },
+      { label: "Suburb", value: isClub ? clubSuburb : undefined },
+    ]);
+    if (badField) {
+      Alert.alert("Inappropriate language", `Please remove inappropriate language from the ${badField} field.`);
+      return;
+    }
     if (isClub) {
       const isApproved = currentAccount?.clubApprovalStatus === "approved";
       const doClubSave = () => {
