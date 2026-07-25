@@ -18,6 +18,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.aussiesportsfinder",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Aussie Sports Club Finder uses your location to alert you when nearby Australian clubs or players post adverts.",
         "NSPhotoLibraryUsageDescription": "Aussie Sports Club Finder lets you submit profile images for admin moderation.",
         "LSApplicationQueriesSchemes": [
@@ -27,9 +28,10 @@
     },
     "android": {
       "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "READ_MEDIA_IMAGES"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -50,6 +52,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d7b2936a-7694-49c9-b641-d6a6b6a648e5"
+      }
     }
   }
 }
