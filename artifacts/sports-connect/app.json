@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "Aussie Sports Club Finder",
-    "slug": "sports-connect",
+    "slug": "aussie-sports-finder",
+    "owner": "aussie-sports-finder",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,6 +16,7 @@
     },
     "ios": {
       "supportsTablet": false,
+      "bundleIdentifier": "com.aussiesportsfinder",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Aussie Sports Club Finder uses your location to alert you when nearby Australian clubs or players post adverts.",
         "NSPhotoLibraryUsageDescription": "Aussie Sports Club Finder lets you submit profile images for admin moderation.",

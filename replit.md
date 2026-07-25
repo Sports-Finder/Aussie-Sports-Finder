@@ -37,3 +37,24 @@ Account onboarding is local-first in the Expo app. `components/OnboardingGate.ts
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+
+## EAS Internal Distribution Build (iOS)
+
+### One-time setup
+Before running your first build, update `artifacts/sports-connect/eas.json` — replace `YOUR_DEPLOYMENT.replit.app` in both the `internal` and `production` profiles with the real deployed API server URL (e.g. `my-project.replit.app`). Do **not** include `https://` — the app prepends it automatically.
+
+### Running a build
+From your local terminal (requires Expo CLI and an EAS account logged in as `aussie-sports-finder`):
+
+```bash
+cd artifacts/sports-connect
+eas build --profile internal --platform ios
+```
+
+EAS handles code signing automatically for Internal Distribution — no Apple Developer Portal setup needed. When the build completes you will receive a QR code / install link to share with testers.
+
+### Expo account details
+- **Owner / username:** `aussie-sports-finder`
+- **Bundle identifier:** `com.aussiesportsfinder`
+- **EAS profile for testers:** `internal`
+- **EAS profile for App Store:** `production`
