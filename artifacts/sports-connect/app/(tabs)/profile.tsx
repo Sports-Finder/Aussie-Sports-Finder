@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
 import { getClubLabel } from "@/constants/clubLabel";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { checkFields } from "@/utils/profanityFilter";
 import { useAuth } from "@clerk/expo";
@@ -708,7 +709,13 @@ export default function ProfileScreen() {
               ))}
             </View>
 
-            <Field label={`${getClubLabel(currentAccount)} Street Number & Street Address`} value={clubMapAddress} onChangeText={setClubMapAddress} placeholder="e.g. 123 Smith Street" />
+            <AddressAutocomplete
+              label={`${getClubLabel(currentAccount)} Street Number & Street Address`}
+              value={clubMapAddress}
+              onChangeText={setClubMapAddress}
+              onSelect={setClubMapAddress}
+              placeholder="Start typing a street address…"
+            />
             <SuburbAutocomplete
               label="Suburb"
               value={clubSuburb}

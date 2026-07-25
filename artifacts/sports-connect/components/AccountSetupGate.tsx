@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { checkFields } from "@/utils/profanityFilter";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
@@ -612,10 +613,12 @@ export function AccountSetupGate() {
                   single
                   approvedSports={approvedSports.map((s) => s.name)}
                 />
-                <Input
+                <AddressAutocomplete
                   label={`${clubTypeLabel} Street Number & Street Address (required)`}
                   value={form.clubAddress}
                   onChangeText={(v) => update("clubAddress", v)}
+                  onSelect={(v) => update("clubAddress", v)}
+                  placeholder="Start typing a street address…"
                 />
                 <SuburbAutocomplete
                   label="Suburb (required)"
