@@ -10,7 +10,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "YOUR_DEPLOYMENT.replit.app"
+        "EXPO_PUBLIC_DOMAIN": "aussie-sports-club-finder.replit.app"
       }
     },
     "production": {
@@ -19,7 +19,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "YOUR_DEPLOYMENT.replit.app"
+        "EXPO_PUBLIC_DOMAIN": "aussie-sports-club-finder.replit.app"
       }
     }
   }
