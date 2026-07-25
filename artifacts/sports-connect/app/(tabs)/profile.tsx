@@ -201,7 +201,7 @@ export default function ProfileScreen() {
     const badField = checkFields([
       { label: "Bio", value: bioToCheck },
       { label: "Address", value: isClub ? clubMapAddress : undefined },
-      { label: "Suburb", value: isClub ? clubSuburb : undefined },
+      { label: "Suburb", value: isClub ? clubSuburb : suburb },
     ]);
     if (badField) {
       Alert.alert("Inappropriate language", `Please remove inappropriate language from the ${badField} field.`);
