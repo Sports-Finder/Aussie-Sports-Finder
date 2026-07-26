@@ -6,15 +6,13 @@
   "submit": {
     "preview": {
       "ios": {
-        "appleId": "",
-        "ascAppId": "",
+        "appleId": "mark.nztiger@gmail.com",
         "appleTeamId": "LNHXKXTLV6"
       }
     },
     "production": {
       "ios": {
-        "appleId": "",
-        "ascAppId": "",
+        "appleId": "mark.nztiger@gmail.com",
         "appleTeamId": "LNHXKXTLV6"
       }
     }
