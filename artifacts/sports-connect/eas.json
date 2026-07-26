@@ -30,7 +30,8 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "aussie-sports-club-finder.replit.app"
+        "EXPO_PUBLIC_DOMAIN": "aussie-sports-club-finder.replit.app",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YWN0dWFsLWdlbGRpbmctNzcuY2xlcmsuYWNjb3VudHMuZGV2JA"
       }
     },
     "production": {
@@ -39,7 +40,8 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "aussie-sports-club-finder.replit.app"
+        "EXPO_PUBLIC_DOMAIN": "aussie-sports-club-finder.replit.app",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YWN0dWFsLWdlbGRpbmctNzcuY2xlcmsuYWNjb3VudHMuZGV2JA"
       }
     }
   }
