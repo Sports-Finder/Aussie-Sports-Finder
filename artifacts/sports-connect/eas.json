@@ -7,6 +7,7 @@
     "preview": {
       "ios": {
         "appleTeamId": "LNHXKXTLV6",
+        "ascAppId": "6794757934",
         "ascApiKeyPath": "./AuthKey_NF29G69YXP.p8",
         "ascApiKeyId": "NF29G69YXP",
         "ascApiKeyIssuerId": "b2beb50b-e0d1-4750-8d91-d2b994ea09f7"
@@ -15,6 +16,7 @@
     "production": {
       "ios": {
         "appleTeamId": "LNHXKXTLV6",
+        "ascAppId": "6794757934",
         "ascApiKeyPath": "./AuthKey_NF29G69YXP.p8",
         "ascApiKeyId": "NF29G69YXP",
         "ascApiKeyIssuerId": "b2beb50b-e0d1-4750-8d91-d2b994ea09f7"
