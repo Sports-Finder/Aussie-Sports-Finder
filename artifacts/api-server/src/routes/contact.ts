@@ -144,7 +144,7 @@ router.post("/contact", async (req, res) => {
     await transporter.sendMail({
       from: `"Sports Connect App" <${process.env.CONTACT_EMAIL_USER}>`,
       to: ADMIN_EMAIL,
-      subject: `[Contact Us] ${topic}`,
+      subject: `Contact Us [${topic}]`,
       text: [
         `From: ${senderName} <${account.email}>`,
         `Account ID: ${account.publicId}`,
