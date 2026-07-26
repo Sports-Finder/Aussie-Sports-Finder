@@ -3,6 +3,22 @@
     "version": ">= 16.0.0",
     "appVersionSource": "local"
   },
+  "submit": {
+    "preview": {
+      "ios": {
+        "appleId": "",
+        "ascAppId": "",
+        "appleTeamId": "LNHXKXTLV6"
+      }
+    },
+    "production": {
+      "ios": {
+        "appleId": "",
+        "ascAppId": "",
+        "appleTeamId": "LNHXKXTLV6"
+      }
+    }
+  },
   "build": {
     "preview": {
       "distribution": "store",
