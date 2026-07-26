@@ -32,6 +32,7 @@
       "env": {
         "EXPO_PUBLIC_DOMAIN": "aussie-sports-club-finder.replit.app",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YWN0dWFsLWdlbGRpbmctNzcuY2xlcmsuYWNjb3VudHMuZGV2JA",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "https://aussie-sports-club-finder.replit.app/api/__clerk",
         "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_ZqGFQkixHXCFkEgcxRyOeqeJrXG",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_WGVIlPawNQKnPgfmehtfItVbLlg",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_BoqRwUjdezWCiWoowmRFwhZlsWV"
@@ -45,6 +46,7 @@
       "env": {
         "EXPO_PUBLIC_DOMAIN": "aussie-sports-club-finder.replit.app",
         "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YWN0dWFsLWdlbGRpbmctNzcuY2xlcmsuYWNjb3VudHMuZGV2JA",
+        "EXPO_PUBLIC_CLERK_PROXY_URL": "https://aussie-sports-club-finder.replit.app/api/__clerk",
         "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY": "test_ZqGFQkixHXCFkEgcxRyOeqeJrXG",
         "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY": "appl_WGVIlPawNQKnPgfmehtfItVbLlg",
         "EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY": "goog_BoqRwUjdezWCiWoowmRFwhZlsWV"

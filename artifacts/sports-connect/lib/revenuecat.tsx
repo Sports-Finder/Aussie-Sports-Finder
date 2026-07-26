@@ -149,6 +149,7 @@ function useSubscriptionContext() {
     isSubscribed,
     userIdentified,
     isLoading: !queriesEnabled || customerInfoQuery.isLoading || offeringsQuery.isLoading,
+    offeringsError: offeringsQuery.error,
     purchase: purchaseMutation.mutateAsync,
     restore: restoreMutation.mutateAsync,
     isPurchasing: purchaseMutation.isPending,

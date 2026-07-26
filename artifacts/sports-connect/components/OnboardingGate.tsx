@@ -149,6 +149,7 @@ export function OnboardingGate() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
   const [bannedEmailError, setBannedEmailError] = useState(false);
+  const [existingAccountRole, setExistingAccountRole] = useState<string | null | undefined>(undefined);
   const [showSignInPwd, setShowSignInPwd] = useState(false);
   const [showSignUpPwd, setShowSignUpPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
@@ -190,8 +191,30 @@ export function OnboardingGate() {
       setBannedEmailError(true);
       return;
     }
+    setExistingAccountRole(undefined);
     const { error } = await signUp.password({ emailAddress: email, password });
-    if (error) return;
+    if (error) {
+      // If the email is already taken, look up what kind of account exists
+      // so we can show a helpful "sign in instead" message.
+      const emailErr = suErrors.fields.emailAddress;
+      const isTaken = emailErr && (
+        emailErr.code === "form_identifier_exists" ||
+        emailErr.message?.toLowerCase().includes("taken") ||
+        emailErr.message?.toLowerCase().includes("already")
+      );
+      if (isTaken) {
+        try {
+          const domain = process.env.EXPO_PUBLIC_DOMAIN;
+          const base = domain ? `https://${domain}` : "";
+          const resp = await fetch(`${base}/api/accounts/lookup-role?email=${encodeURIComponent(normalized)}`);
+          const data = await resp.json() as { role?: string | null };
+          setExistingAccountRole(data.role ?? null);
+        } catch {
+          setExistingAccountRole(null);
+        }
+      }
+      return;
+    }
     await signUp.verifications.sendEmailCode();
   };
 
@@ -211,6 +234,13 @@ export function OnboardingGate() {
     setConfirmPassword("");
     setPasswordMismatch(false);
     setBannedEmailError(false);
+    setExistingAccountRole(undefined);
+  };
+
+  const roleLabel = (role: string | null | undefined): string => {
+    if (!role) return "an";
+    const map: Record<string, string> = { player: "a Player", coach: "a Coach", club: "a Club", academy: "an Academy" };
+    return map[role] ?? "an";
   };
 
   const handleForgotPassword = async () => {
@@ -520,6 +550,15 @@ export function OnboardingGate() {
               />
               {bannedEmailError ? (
                 <Text style={styles.error}>{BANNED_EMAIL_MSG}</Text>
+              ) : existingAccountRole !== undefined && suErrors.fields.emailAddress ? (
+                <View style={styles.takenBox}>
+                  <Text style={styles.takenMsg}>
+                    You already have {roleLabel(existingAccountRole)} account registered under this email address.
+                  </Text>
+                  <Pressable onPress={() => switchMode("signin")} style={styles.takenBtn}>
+                    <Text style={styles.takenBtnText}>Sign in instead</Text>
+                  </Pressable>
+                </View>
               ) : suErrors.fields.emailAddress ? (
                 <Text style={styles.error}>{suErrors.fields.emailAddress.message}</Text>
               ) : null}
@@ -699,6 +738,10 @@ const styles = StyleSheet.create({
   linkBtn: { alignItems: "center", paddingVertical: 2 },
   linkBtnText: { fontWeight: "600", fontSize: 13, textDecorationLine: "underline" },
   error: { color: "#EF4444", fontWeight: "600", fontSize: 12 },
+  takenBox: { backgroundColor: "#FEF9C3", borderRadius: 12, padding: 14, gap: 10 },
+  takenMsg: { color: "#92400E", fontWeight: "600", fontSize: 13, lineHeight: 19 },
+  takenBtn: { backgroundColor: "#D97706", borderRadius: 10, paddingVertical: 9, paddingHorizontal: 16, alignSelf: "flex-start" },
+  takenBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
   adminLink: { alignItems: "center", paddingVertical: 4 },
   adminLinkText: { fontWeight: "600", fontSize: 12, textDecorationLine: "underline" },
   modalScrim: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center", padding: 24 },

@@ -603,18 +603,16 @@ export default function ProfileScreen() {
                   if (!isPremium) { setShowPaywall(true); return; }
                   setShowCoachAffiliates(true);
                 }}
-                style={({ pressed }) => [styles.mapBtn, { opacity: pressed ? 0.75 : 1, flex: 0, minWidth: 90, overflow: "hidden", paddingHorizontal: 14 }]}
+                style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1, flex: 0, minWidth: 90, borderRadius: 16, overflow: "hidden" })}
               >
                 {isPremium ? (
-                  <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1, paddingHorizontal: 14 }]}>
+                  <LinearGradient colors={[colors.primary, lighten(colors.primary)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { paddingHorizontal: 14 }]}>
                     <Text style={styles.mapBtnText}>View/Edit</Text>
                   </LinearGradient>
                 ) : (
-                  <LinearGradient colors={["#FDE68A", "#FEF08A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { flex: 1, paddingHorizontal: 14 }]}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Feather name="lock" size={13} color="#92400E" />
-                      <Text style={[styles.mapBtnText, { color: "#92400E" }]}>Upgrade</Text>
-                    </View>
+                  <LinearGradient colors={["#FDE68A", "#FEF08A"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.mapBtn, { paddingHorizontal: 14 }]}>
+                    <Feather name="lock" size={13} color="#92400E" />
+                    <Text style={[styles.mapBtnText, { color: "#92400E" }]}>Upgrade</Text>
                   </LinearGradient>
                 )}
               </Pressable>

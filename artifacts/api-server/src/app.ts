@@ -2,9 +2,11 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
+import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
+  getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -38,11 +40,17 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// clerkMiddleware() reads CLERK_SECRET_KEY and CLERK_PUBLISHABLE_KEY from the
-// environment automatically. The dynamic-callback form was previously used here
-// but it silently dropped secretKey, causing all JWT verification to fail in
-// production (userId always null → every authenticated endpoint returned 401).
-app.use(clerkMiddleware());
+// Resolve the publishable key from the incoming request host so the proxy can
+// serve both dev (pk_test_) and production (pk_live_) Clerk environments from
+// the same codebase. Falls back to CLERK_PUBLISHABLE_KEY env var in dev.
+app.use(
+  clerkMiddleware((req) => ({
+    publishableKey: publishableKeyFromHost(
+      getClerkProxyHost(req) ?? "",
+      process.env.CLERK_PUBLISHABLE_KEY,
+    ),
+  })),
+);
 
 app.use("/api", router);
 

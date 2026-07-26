@@ -87,6 +87,7 @@ export default function SubscriptionPaywall({
     isPurchasing,
     isRestoring,
     isLoading,
+    offeringsError,
   } = useSubscription();
 
   const tier: AccountTier = currentAccount?.role === "club" ? "club" : "player";
@@ -126,7 +127,9 @@ export default function SubscriptionPaywall({
     setErrorMsg(null);
     try {
       await restore();
-      onClose();
+      // If still not showing as subscribed after restore, let the user know
+      setErrorMsg("No active purchases found to restore.");
+      setTimeout(onClose, 2000);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Restore failed");
     }
@@ -175,6 +178,13 @@ export default function SubscriptionPaywall({
 
               {isLoading ? (
                 <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />
+              ) : offeringsError || (!monthlyPkg && !annualPkg) ? (
+                <View style={[styles.unavailableBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  <Feather name="alert-circle" size={20} color={colors.mutedForeground} />
+                  <Text style={[styles.unavailableText, { color: colors.mutedForeground }]}>
+                    Subscriptions aren't available right now — please try again later.
+                  </Text>
+                </View>
               ) : (
                 <View style={styles.packages}>
                   <PackageOption
@@ -198,22 +208,24 @@ export default function SubscriptionPaywall({
                 <Text style={styles.errorText}>{errorMsg}</Text>
               ) : null}
 
-              <Pressable
-                onPress={handleSubscribe}
-                disabled={isPurchasing || isRestoring || !activePkg}
-                style={({ pressed }) => [
-                  styles.subscribeBtn,
-                  { backgroundColor: colors.primary, opacity: pressed || isPurchasing ? 0.8 : 1 },
-                ]}
-              >
-                {isPurchasing ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Text style={styles.subscribeBtnText}>
-                    Subscribe {activePkg ? `· ${activePkg.product.priceString}` : ""}
-                  </Text>
-                )}
-              </Pressable>
+              {!isLoading && (monthlyPkg || annualPkg) ? (
+                <Pressable
+                  onPress={handleSubscribe}
+                  disabled={isPurchasing || isRestoring || !activePkg}
+                  style={({ pressed }) => [
+                    styles.subscribeBtn,
+                    { backgroundColor: colors.primary, opacity: pressed || isPurchasing ? 0.8 : 1 },
+                  ]}
+                >
+                  {isPurchasing ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Text style={styles.subscribeBtnText}>
+                      Subscribe {activePkg ? `· ${activePkg.product.priceString}` : ""}
+                    </Text>
+                  )}
+                </Pressable>
+              ) : null}
 
               <Pressable
                 onPress={handleRestore}
@@ -271,6 +283,8 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, lineHeight: 21, fontWeight: "500" },
   hintBadge: { flexDirection: "row", alignItems: "center", gap: 7, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7, alignSelf: "flex-start" },
   hintText: { fontWeight: "600", fontSize: 13 },
+  unavailableBox: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 10, flexDirection: "row", alignItems: "flex-start" },
+  unavailableText: { fontWeight: "500", fontSize: 14, lineHeight: 20, flex: 1 },
   featureList: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 10 },
   featureRow: { flexDirection: "row", alignItems: "flex-start", gap: 9 },
   featureText: { fontWeight: "500", fontSize: 14, lineHeight: 20, flex: 1 },

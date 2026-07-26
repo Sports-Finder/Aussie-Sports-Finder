@@ -55,6 +55,23 @@ router.get("/admin/accounts", requireAdmin, async (_req, res) => {
   }
 });
 
+/** Unauthenticated — returns only the role for a given email, used by the
+ *  sign-up flow to show a helpful "you already have a [Role] account" message. */
+router.get("/accounts/lookup-role", async (req, res) => {
+  const email = typeof req.query.email === "string" ? req.query.email.toLowerCase().trim() : null;
+  if (!email) { res.json({ role: null }); return; }
+  try {
+    const [account] = await db
+      .select({ role: accountsTable.role })
+      .from(accountsTable)
+      .where(eq(sql`lower(${accountsTable.email})`, email))
+      .limit(1);
+    res.json({ role: account?.role ?? null });
+  } catch {
+    res.json({ role: null });
+  }
+});
+
 router.post("/accounts", async (req, res) => {
   try {
     // Strip client-side id (local string id, not a DB serial) and passwordHash
