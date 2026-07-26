@@ -369,6 +369,7 @@ type SportsConnectState = {
   loginWithEmail: (email: string, password: string) => boolean;
   loginWithSocial: (authMethod: AuthMethod, socialId: string) => boolean;
   autoRestoreSession: (email: string, authMethod: AuthMethod, socialId?: string) => boolean;
+  restoreAccountByClerkId: (clerkUserId: string, fallbackEmail?: string) => boolean;
   createAccount: (draft: DraftAccount) => boolean;
   signOut: () => void;
   signOutResetToken: number;
@@ -1300,6 +1301,39 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         sport: match.defaultSport,
         location: match.location || current.location,
         mapAddress: match.clubAddress || current.mapAddress,
+        imageId: match.profileImageId,
+      }));
+    } else {
+      setPlayerProfile((current) => ({
+        ...current,
+        name: match.role === "guardian" ? match.playerName || current.name : match.fullName || match.playerName || current.name,
+        sports: match.sports.join(", "),
+        location: match.location || current.location,
+        imageId: match.profileImageId,
+      }));
+    }
+    return true;
+  };
+
+  const restoreAccountByClerkId = (clerkUserId: string, fallbackEmail?: string): boolean => {
+    const match = accounts.find(
+      (a) =>
+        (a.clerkUserId === clerkUserId ||
+          (fallbackEmail && a.email.toLowerCase() === fallbackEmail.toLowerCase())) &&
+        a.status !== "banned" &&
+        a.status !== "closed",
+    );
+    if (!match) return false;
+    setCurrentAccount(match);
+    setSelectedSport(match.defaultSport);
+    setActiveProfile(match.role === "club" ? "club" : "player");
+    if (match.role === "club") {
+      setClubProfile((current) => ({
+        ...current,
+        name: match.clubName || current.name,
+        sport: match.defaultSport,
+        location: match.location || current.location,
+        mapAddress: [match.clubAddress, [match.clubSuburb, match.clubPostcode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || current.mapAddress,
         imageId: match.profileImageId,
       }));
     } else {
@@ -2503,6 +2537,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     loginWithEmail,
     loginWithSocial,
     autoRestoreSession,
+    restoreAccountByClerkId,
     createAccount,
     signOut,
     signOutResetToken,
