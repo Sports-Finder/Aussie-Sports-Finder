@@ -6,14 +6,18 @@
   "submit": {
     "preview": {
       "ios": {
-        "appleId": "mark.nztiger@gmail.com",
-        "appleTeamId": "LNHXKXTLV6"
+        "appleTeamId": "LNHXKXTLV6",
+        "ascApiKeyPath": "./AuthKey_NF29G69YXP.p8",
+        "ascApiKeyId": "NF29G69YXP",
+        "ascApiKeyIssuerId": "b2beb50b-e0d1-4750-8d91-d2b994ea09f7"
       }
     },
     "production": {
       "ios": {
-        "appleId": "mark.nztiger@gmail.com",
-        "appleTeamId": "LNHXKXTLV6"
+        "appleTeamId": "LNHXKXTLV6",
+        "ascApiKeyPath": "./AuthKey_NF29G69YXP.p8",
+        "ascApiKeyId": "NF29G69YXP",
+        "ascApiKeyIssuerId": "b2beb50b-e0d1-4750-8d91-d2b994ea09f7"
       }
     }
   },
