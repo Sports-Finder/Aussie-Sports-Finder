@@ -63,6 +63,16 @@ const PASSCODE_INVENTORY: Array<{ method: string; pattern: string }> = [
 ];
 
 // ---------------------------------------------------------------------------
+// Canonical inventory — routes using the combined isAdminCaller +
+// hasCloseChatsSession guard (admin-OR-moderator, outside requireAuth).
+// ── Keep this in sync with FLAGGED_ROUTES in admin-auth.test.ts ──
+// ---------------------------------------------------------------------------
+const FLAGGED_INVENTORY: Array<{ method: string; pattern: string }> = [
+  { method: "get", pattern: "/conversations/flagged" },
+  { method: "post", pattern: "/conversations/:publicId/flag-reviewed" },
+];
+
+// ---------------------------------------------------------------------------
 // Static scanners — read route source files and extract protected usages.
 // ---------------------------------------------------------------------------
 
@@ -129,6 +139,30 @@ function scanForPasscodeRoutes(dir: string): FoundRoute[] {
   // The requireAdminPasscode token must immediately follow the path argument.
   const re =
     /router\.(get|post|put|patch|delete)\(\s*["']([^"']+)["']\s*,\s*requireAdminPasscode\b/g;
+
+  for (const file of files) {
+    const content = readFileSync(join(dir, file), "utf-8");
+    let match: RegExpExecArray | null;
+    re.lastIndex = 0; // reset before each file
+    while ((match = re.exec(content)) !== null) {
+      found.push({ method: match[1], pattern: match[2], file });
+    }
+  }
+
+  return found;
+}
+
+function scanForFlaggedConversationRoutes(dir: string): FoundRoute[] {
+  const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
+  const found: FoundRoute[] = [];
+
+  // Matches routes whose handler body opens with the combined admin-OR-moderator
+  // pattern: `const <var> = isAdminCaller(` as the first statement after the
+  // opening brace.  This is distinct from pure-admin custom routes, which start
+  // with `if (!isAdminCaller(`, and allows the static scanner to enforce that
+  // the combined guard is never silently removed.
+  const re =
+    /router\.(get|post|put|patch|delete)\(\s*["']([^"']+)["'][^{]*\{\s*const \w+ = isAdminCaller\(/gs;
 
   for (const file of files) {
     const content = readFileSync(join(dir, file), "utf-8");
@@ -218,4 +252,12 @@ buildInventoryTests(
   scanForPasscodeRoutes(ROUTES_DIR),
   "requireAdminPasscode",
   "PASSCODE_ROUTES",
+);
+
+buildInventoryTests(
+  "flagged-conversation route inventory",
+  FLAGGED_INVENTORY,
+  scanForFlaggedConversationRoutes(ROUTES_DIR),
+  "isAdminCaller()+hasCloseChatsSession()",
+  "FLAGGED_ROUTES",
 );
