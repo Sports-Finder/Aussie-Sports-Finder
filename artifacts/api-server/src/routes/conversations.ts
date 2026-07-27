@@ -7,6 +7,7 @@ import { normalizeDates } from "../lib/normalizeDates";
 import { scanMessage } from "../lib/contentSafety";
 import { sendExpoPushNotifications } from "../lib/expoPush";
 import { getAuth } from "@clerk/express";
+import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
 
@@ -113,7 +114,7 @@ router.put("/conversations/:publicId", async (req, res) => {
   }
 });
 
-router.delete("/conversations/:publicId", async (req, res) => {
+router.delete("/conversations/:publicId", requireAdmin, async (req, res) => {
   try {
     const { publicId } = req.params;
     await db.delete(messagesTable).where(eq(messagesTable.conversationId, publicId));

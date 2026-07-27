@@ -177,6 +177,7 @@ const REQUIRE_ADMIN_ROUTES: RouteSpec[] = [
     path: "/api/admin/accounts/some-id/contact-us",
     body: { disabled: true },
   },
+  { method: "delete", path: "/api/conversations/some-conv-id" },
 ];
 
 /**
