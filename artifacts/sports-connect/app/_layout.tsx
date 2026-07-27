@@ -109,30 +109,40 @@ function RootLayoutNav() {
   );
 }
 
-// Registers the Clerk auth token getter synchronously during render — BEFORE
-// SportsConnectProvider mounts — so that its initial loadFromApi effect sends
-// authenticated requests instead of getting 401s.
+// Combines two jobs in one component:
 //
-// React renders parent components before children, so calling setAuthTokenGetter
-// here (during render, not in a useEffect) guarantees the module-level
-// _authTokenGetter is set by the time SportsConnectProvider's useEffect fires.
-function AuthTokenRegistrar({ children }: { children: React.ReactNode }) {
-  const { getToken } = useAuth();
+// 1. Registers the Clerk auth token getter synchronously during render so it is
+//    available before SportsConnectProvider's hydration effect ever fires.
+//
+// 2. Keys SportsConnectProvider on `isSignedIn` so the provider fully remounts
+//    the instant the user signs in or out:
+//    - Sign-in  → fresh mount → hydration fires WITH a valid Bearer token
+//                 → finds the existing server account → no false AccountSetupGate.
+//    - Sign-out → fresh mount → 401s → empty state → OnboardingGate shown.
+//
+// The old approach mounted SportsConnectProvider once on app open (before the
+// user signed in), hydrated with 401s, set isHydrated=true on empty data, and
+// never re-hydrated after sign-in — so returning users always hit AccountSetupGate.
+function AuthGatedProviders({ children }: { children: React.ReactNode }) {
+  const { isSignedIn, getToken } = useAuth();
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
-  // Synchronous side-effect during render: safe because it's idempotent, writes
-  // only a module-level function pointer, and does not affect reconciliation.
+  // Synchronous during render: idempotent, writes only a module-level function
+  // pointer — no reconciliation side-effects.
   setAuthTokenGetter(async () => {
     const token = await getTokenRef.current();
     if (token) return token;
-    // If Clerk's JWT isn't cached yet (first render after sign-in), wait briefly
-    // and retry with a forced cache-bust.
+    // JWT not yet cached on first render after sign-in — wait briefly and retry.
     await new Promise<void>((resolve) => setTimeout(resolve, 500));
     return getTokenRef.current({ skipCache: true });
   });
 
-  return <>{children}</>;
+  return (
+    <SportsConnectProvider key={String(isSignedIn)}>
+      {children}
+    </SportsConnectProvider>
+  );
 }
 
 const BANNED_EMAIL_MSG = "Your account has been banned by an administrator and access has been revoked.";
@@ -265,8 +275,7 @@ export default function RootLayout() {
         <ClerkLoaded>
           <ErrorBoundary>
             <QueryClientProvider client={queryClient}>
-              <AuthTokenRegistrar>
-              <SportsConnectProvider>
+              <AuthGatedProviders>
                 <SubscriptionProvider>
                   <SubscriptionSync />
                   <NotificationDeepLink />
@@ -276,8 +285,7 @@ export default function RootLayout() {
                     </KeyboardProvider>
                   </GestureHandlerRootView>
                 </SubscriptionProvider>
-              </SportsConnectProvider>
-              </AuthTokenRegistrar>
+              </AuthGatedProviders>
             </QueryClientProvider>
           </ErrorBoundary>
         </ClerkLoaded>
