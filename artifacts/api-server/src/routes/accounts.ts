@@ -159,6 +159,22 @@ router.put("/accounts/:publicId", async (req, res) => {
       res.status(404).json({ error: "Account not found" });
       return;
     }
+
+    // Audit-log destructive status changes so incidents can be investigated.
+    const newStatus = typeof body.status === "string" ? body.status : null;
+    if (newStatus === "banned" || newStatus === "closed" || newStatus === "active") {
+      const auth = getAuth(req);
+      const eventMap: Record<string, string> = {
+        banned: "account_banned",
+        closed: "account_closed",
+        active: "account_unbanned",
+      };
+      logger.info(
+        { event: eventMap[newStatus], adminUserId: auth.userId, targetAccountId: publicId, timestamp: new Date().toISOString() },
+        `Account status set to '${newStatus}' by admin`
+      );
+    }
+
     res.json(mapAccount(updated as unknown as Record<string, unknown>));
   } catch (err) {
     logger.error({ err }, "Failed to update account");

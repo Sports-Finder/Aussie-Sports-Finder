@@ -23,8 +23,9 @@ router.delete("/wipe", async (req: Request, res: Response) => {
     // reports/coach_affiliates depend on accounts). Order: dependents first, then
     // parents, then every remaining table. TRUNCATE ... RESTART IDENTITY CASCADE
     // is safer and atomic than a chain of DELETE statements.
+    const auth = getAuth(req);
     await db.execute(sql`TRUNCATE messages, conversations, coach_affiliates, reports, profile_images, sport_requests, banned_emails, adverts, accounts, moderator_sessions RESTART IDENTITY CASCADE;`);
-    logger.info("Database wiped via API");
+    logger.info({ event: "db_wipe", adminUserId: auth.userId, timestamp: new Date().toISOString() }, "Database wiped via API");
     res.json({ status: "ok", message: "All data wiped." });
   } catch (err) {
     logger.error({ err }, "Failed to wipe database");

@@ -99,6 +99,11 @@ router.delete("/conversations/:publicId", async (req, res) => {
       res.status(404).json({ error: "Conversation not found" });
       return;
     }
+    const auth = getAuth(req);
+    logger.info(
+      { event: "conversation_deleted", adminUserId: auth.userId, conversationId: publicId, timestamp: new Date().toISOString() },
+      "Conversation deleted by admin"
+    );
     res.status(204).send();
   } catch (err) {
     logger.error({ err }, "Failed to delete conversation");
