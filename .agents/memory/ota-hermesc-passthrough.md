@@ -8,6 +8,9 @@ description: How to push OTA updates (eas update) from Replit when the local lin
 ## The problem
 `eas update` runs `expo export` locally, which compiles the JS bundle to Hermes bytecode using the hermesc binary bundled with react-native. The linux64 hermesc binary in RN 0.81.5 is v0.12.0 and rejects private class fields (`this.#x`, etc.) used in RN's own source. Cloud EAS build servers have a newer hermesc and don't have this problem — but `eas update` always runs locally.
 
+## Critical: metro.config.js transform profile must be "default"
+`unstable_transformProfile: "hermes-stable"` tells Babel to leave private class fields (`#x`, `#y`, etc.) as-is, assuming the device Hermes handles them natively. EAS build workers using newer Xcode/iOS SDK (iOS 26+) bundle a Hermes version that does NOT support them → build fails with "private properties are not supported". **Always use `"default"`** so Babel transforms private fields before Hermes sees them. Do not change this back to `"hermes-stable"`.
+
 ## The fix
 Temporarily replace hermesc with a passthrough shell script that copies the JS bundle to the output file unchanged. Hermes on-device auto-detects that the file is raw JS (no magic header bytes) and interprets it — this is fully supported and is how Metro dev servers work.
 

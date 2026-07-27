@@ -15,9 +15,10 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, "node_modules"),
 ];
 
-// Force Babel to apply every transform that older Hermes versions require,
-// including private class fields (#x, #y, etc.) used by RN 0.81's own source.
-// Without this, the local linux hermesc (v0.12.0) rejects the bundle.
-config.transformer.unstable_transformProfile = "hermes-stable";
+// Use the "default" transform profile so Babel converts private class fields
+// (#x, #y, etc.) into Hermes-compatible syntax before the bundle is compiled.
+// "hermes-stable" leaves those fields as-is and breaks builds against newer
+// Xcode / hermes-engine versions (e.g. iOS 26 SDK) that don't support them.
+config.transformer.unstable_transformProfile = "default";
 
 module.exports = config;
