@@ -60,6 +60,30 @@ const advertTypeLabels: Record<Advert["type"], string> = {
   "club-friendly": "Club Friendly",
 };
 
+const AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"] as const;
+
+const ADVERT_ROLE_LABELS: Record<AccountRole, string> = {
+  player: "Player",
+  guardian: "Guardian / Parent",
+  coach: "Coach",
+  club: "Club / Academy",
+};
+
+const ADVERT_TYPE_SHORT: Record<Advert["type"], string> = {
+  "player-looking": "Player Looking",
+  "coach-looking": "Coach Looking",
+  "players-wanted": "Players Wanted",
+  "club-trials": "Club Trials",
+  "coach-wanted": "Coach Wanted",
+  "club-friendly": "Club Friendly",
+};
+
+function extractAuState(location: string): string {
+  const parts = (location ?? "").trim().split(/\s+/);
+  const last = parts[parts.length - 1]?.toUpperCase();
+  return (AU_STATES as readonly string[]).includes(last) ? last : "Other";
+}
+
 const statusBadgeColor = (status?: AccountStatus | "active" | "closed") => {
   if (status === "banned") return { bg: "#FEE2E2", fg: "#991B1B" };
   if (status === "closed") return { bg: "#E5E7EB", fg: "#4B5563" };
@@ -125,6 +149,7 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [section, setSection] = useState<Section>("overview");
+  const [advertsKey, setAdvertsKey] = useState(0);
   const [sportsPrefillName, setSportsPrefillName] = useState<string | undefined>();
   const [accountsInitialFilter, setAccountsInitialFilter] = useState<AccountRole | "banned" | undefined>();
   const { flaggedConversations, pendingAdminNavConversationId, clearPendingAdminNav } = useSportsConnect();
@@ -181,7 +206,7 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
           return (
             <Pressable
               key={s.key}
-              onPress={() => setSection(s.key)}
+              onPress={() => { if (s.key === "adverts") setAdvertsKey((k) => k + 1); setSection(s.key); }}
               style={({ pressed }) => [
                 styles.tab,
                 {
@@ -215,7 +240,7 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
               onBannedAccounts={() => { setAccountsInitialFilter("banned"); setSection("accounts"); }}
             />
           )}
-          {section === "adverts" && <AdvertsSection />}
+          {section === "adverts" && <AdvertsSection key={advertsKey} />}
           {section === "chats" && <ChatsSection />}
           {section === "accounts" && <AccountsSection initialFilter={accountsInitialFilter} />}
           {section === "moderation" && <ModerationSection onApproveSportRequest={handleApproveSportRequest} />}
@@ -456,60 +481,340 @@ function OverviewSection({ setSection, onBannedAccounts }: { setSection: (s: Sec
 function AdvertsSection() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { adverts, accounts, conversations, adminSetAdvertStatus, updateAdvert } = useSportsConnect();
+  const { adverts, accounts, conversations, adminSetAdvertStatus, updateAdvert, sportsRegistry } = useSportsConnect();
   const { isFullAdmin } = useDashboardPermissions();
-  const [filter, setFilter] = useState<"all" | "active" | "closed" | "duplicates">("all");
   const [editing, setEditing] = useState<Advert | null>(null);
 
-  const duplicatesCount = useMemo(() => adverts.filter((a) => a.possibleDuplicate).length, [adverts]);
+  // ── Drill-down selections ──────────────────────────────────────────
+  const [selSport, setSelSport] = useState<string | null>(null);
+  const [selState, setSelState] = useState<string | null>(null);
+  const [selRole, setSelRole] = useState<AccountRole | null>(null);
+  const [selType, setSelType] = useState<Advert["type"] | null>(null);
+  const [selAuthorId, setSelAuthorId] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    return adverts
-      .filter((a) => {
-        if (filter === "active") return a.status !== "closed";
-        if (filter === "closed") return a.status === "closed";
-        if (filter === "duplicates") return !!a.possibleDuplicate;
-        return true;
-      })
-      .sort((a, b) => {
-        // Flagged duplicates float to the top when showing all adverts
-        if (filter === "all") {
-          if (a.possibleDuplicate && !b.possibleDuplicate) return -1;
-          if (!a.possibleDuplicate && b.possibleDuplicate) return 1;
-        }
-        // Null-safe date comparison — fall back to empty string so missing
-        // createdAt values sort to the end rather than crashing.
-        const bDate = b.createdAt ?? "";
-        const aDate = a.createdAt ?? "";
-        return bDate > aDate ? 1 : -1;
-      });
-  }, [adverts, filter]);
+  // Breadcrumb path built from current selections
+  const breadcrumbs = useMemo(() => {
+    const b: string[] = [];
+    if (selSport) b.push(selSport);
+    if (selState) b.push(selState);
+    if (selRole) b.push(ADVERT_ROLE_LABELS[selRole]);
+    if (selType) b.push(ADVERT_TYPE_SHORT[selType]);
+    if (selAuthorId) {
+      const a = accounts.find((acc) => acc.id === selAuthorId);
+      b.push(a?.clubName || a?.fullName || a?.playerName || "Author");
+    }
+    return b;
+  }, [selSport, selState, selRole, selType, selAuthorId, accounts]);
+
+  const goBack = () => {
+    if (selAuthorId) { setSelAuthorId(null); return; }
+    if (selType) { setSelType(null); return; }
+    if (selRole) { setSelRole(null); return; }
+    if (selState) { setSelState(null); return; }
+    setSelSport(null);
+  };
+
+  // Adverts progressively filtered by each drill-down selection
+  const matchingAdverts = useMemo(() => {
+    return adverts.filter((a) => {
+      if (selSport && a.sport !== selSport) return false;
+      if (selState && extractAuState(a.location) !== selState) return false;
+      if (selRole) {
+        const owner = accounts.find((acc) => acc.id === a.ownerAccountId);
+        if ((owner?.role ?? a.postedByType) !== selRole) return false;
+      }
+      if (selType && a.type !== selType) return false;
+      if (selAuthorId && a.ownerAccountId !== selAuthorId) return false;
+      return true;
+    });
+  }, [adverts, accounts, selSport, selState, selRole, selType, selAuthorId]);
 
   const ownerName = (advert: Advert) => {
     const owner = accounts.find((a) => a.id === advert.ownerAccountId);
-    if (!owner) return advert.postedBy;
-    return owner.clubName || owner.fullName || owner.playerName || advert.postedBy;
+    return owner?.clubName || owner?.fullName || owner?.playerName || advert.postedBy;
   };
+
+  // Current level derived from what's been selected
+  const level = !selSport ? "sport"
+    : !selState ? "state"
+    : !selRole ? "role"
+    : !selType ? "type"
+    : !selAuthorId ? "author"
+    : "list";
+
+  // Back button + breadcrumb bar (shown on every level except Sport)
+  const NavBar = () => {
+    if (breadcrumbs.length === 0) return null;
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingBottom: 10 }}>
+        <Pressable onPress={goBack} hitSlop={10} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+          <Feather name="chevron-left" size={20} color={colors.primary} />
+        </Pressable>
+        <Text style={{ fontSize: 12, color: colors.mutedForeground, flex: 1 }} numberOfLines={1}>
+          {breadcrumbs.join("  ›  ")}
+        </Text>
+      </View>
+    );
+  };
+
+  // ── Level 1: Sport grid ────────────────────────────────────────────
+  if (level === "sport") {
+    return (
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+        <SectionTitle title="Adverts" action="Browse by sport" />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 16, paddingTop: 4 }}>
+          {sportsRegistry.map((sport) => {
+            const count = adverts.filter((a) => a.sport === sport.name).length;
+            return (
+              <Pressable
+                key={sport.name}
+                onPress={() => setSelSport(sport.name)}
+                style={({ pressed }) => ({
+                  backgroundColor: pressed ? colors.primary : colors.card,
+                  borderWidth: 1.5,
+                  borderColor: pressed ? colors.primary : colors.border,
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  minWidth: 110,
+                  alignItems: "center",
+                  opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, textAlign: "center" }}>{sport.name}</Text>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>{count} advert{count !== 1 ? "s" : ""}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {sportsRegistry.length === 0 && (
+          <EmptyState icon="clipboard" title="No sports" text="No sports in the registry yet." />
+        )}
+      </ScrollView>
+    );
+  }
+
+  // ── Level 2: State list ────────────────────────────────────────────
+  if (level === "state") {
+    const sportAdverts = adverts.filter((a) => a.sport === selSport);
+    const allStates = [...AU_STATES, "Other"] as string[];
+    const stateCounts = Object.fromEntries(
+      allStates.map((s) => [s, sportAdverts.filter((a) => extractAuState(a.location) === s).length])
+    );
+    return (
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+        <NavBar />
+        <SectionTitle title="Select state" action={`${sportAdverts.length} adverts`} />
+        <View style={{ gap: 8, paddingHorizontal: 16 }}>
+          {allStates.map((state) => {
+            const count = stateCounts[state] ?? 0;
+            const disabled = count === 0;
+            return (
+              <Pressable
+                key={state}
+                onPress={disabled ? undefined : () => setSelState(state)}
+                style={({ pressed }) => ({
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 10,
+                  paddingVertical: 13,
+                  paddingHorizontal: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  opacity: disabled ? 0.38 : pressed ? 0.75 : 1,
+                })}
+              >
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{state}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ backgroundColor: count > 0 ? "#DBEAFE" : colors.background, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: count > 0 ? "#1E40AF" : colors.mutedForeground }}>{count}</Text>
+                  </View>
+                  {!disabled && <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // ── Level 3: Account role ──────────────────────────────────────────
+  if (level === "role") {
+    const upstreamAdverts = adverts.filter((a) => a.sport === selSport && extractAuState(a.location) === selState);
+    const roleCounts = Object.fromEntries(
+      (["player", "guardian", "coach", "club"] as AccountRole[]).map((role) => [
+        role,
+        upstreamAdverts.filter((a) => {
+          const owner = accounts.find((acc) => acc.id === a.ownerAccountId);
+          return (owner?.role ?? a.postedByType) === role;
+        }).length,
+      ])
+    );
+    return (
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+        <NavBar />
+        <SectionTitle title="Account type" action={`${upstreamAdverts.length} adverts`} />
+        <View style={{ gap: 8, paddingHorizontal: 16 }}>
+          {(["player", "guardian", "coach", "club"] as AccountRole[]).map((role) => {
+            const count = roleCounts[role] ?? 0;
+            const disabled = count === 0;
+            return (
+              <Pressable
+                key={role}
+                onPress={disabled ? undefined : () => setSelRole(role)}
+                style={({ pressed }) => ({
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 10,
+                  paddingVertical: 13,
+                  paddingHorizontal: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  opacity: disabled ? 0.38 : pressed ? 0.75 : 1,
+                })}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Feather name={roleIcons[role]} size={18} color={disabled ? colors.mutedForeground : colors.primary} />
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{ADVERT_ROLE_LABELS[role]}</Text>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ backgroundColor: count > 0 ? "#DBEAFE" : colors.background, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: count > 0 ? "#1E40AF" : colors.mutedForeground }}>{count}</Text>
+                  </View>
+                  {!disabled && <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // ── Level 4: Advert type ───────────────────────────────────────────
+  if (level === "type") {
+    const upstreamAdverts = adverts.filter((a) => {
+      if (a.sport !== selSport || extractAuState(a.location) !== selState) return false;
+      const owner = accounts.find((acc) => acc.id === a.ownerAccountId);
+      return (owner?.role ?? a.postedByType) === selRole;
+    });
+    const typeCounts = Object.fromEntries(
+      (Object.keys(ADVERT_TYPE_SHORT) as Advert["type"][]).map((t) => [
+        t, upstreamAdverts.filter((a) => a.type === t).length,
+      ])
+    );
+    return (
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+        <NavBar />
+        <SectionTitle title="Advert type" action={`${upstreamAdverts.length} adverts`} />
+        <View style={{ gap: 8, paddingHorizontal: 16 }}>
+          {(Object.keys(ADVERT_TYPE_SHORT) as Advert["type"][]).map((type) => {
+            const count = typeCounts[type] ?? 0;
+            const disabled = count === 0;
+            return (
+              <Pressable
+                key={type}
+                onPress={disabled ? undefined : () => setSelType(type)}
+                style={({ pressed }) => ({
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 10,
+                  paddingVertical: 13,
+                  paddingHorizontal: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  opacity: disabled ? 0.38 : pressed ? 0.75 : 1,
+                })}
+              >
+                <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground }}>{ADVERT_TYPE_SHORT[type]}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ backgroundColor: count > 0 ? "#DBEAFE" : colors.background, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: count > 0 ? "#1E40AF" : colors.mutedForeground }}>{count}</Text>
+                  </View>
+                  {!disabled && <Feather name="chevron-right" size={16} color={colors.mutedForeground} />}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // ── Level 5: Author list ───────────────────────────────────────────
+  if (level === "author") {
+    const authorIds = [...new Set(matchingAdverts.map((a) => a.ownerAccountId).filter(Boolean))] as string[];
+    return (
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
+        <NavBar />
+        <SectionTitle title="Author" action={`${matchingAdverts.length} adverts`} />
+        {authorIds.length === 0 ? (
+          <EmptyState icon="clipboard" title="No adverts" text="No adverts match this selection." />
+        ) : (
+          <View style={{ gap: 8, paddingHorizontal: 16 }}>
+            {authorIds.map((authorId) => {
+              const author = accounts.find((a) => a.id === authorId);
+              const name = author?.clubName || author?.fullName || author?.playerName || "Unknown";
+              const count = matchingAdverts.filter((a) => a.ownerAccountId === authorId).length;
+              return (
+                <Pressable
+                  key={authorId}
+                  onPress={() => setSelAuthorId(authorId)}
+                  style={({ pressed }) => ({
+                    backgroundColor: colors.card,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 10,
+                    paddingVertical: 13,
+                    paddingHorizontal: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    opacity: pressed ? 0.75 : 1,
+                  })}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                    <Feather name="user" size={16} color={colors.primary} />
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: colors.foreground, flex: 1 }}>{name}</Text>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View style={{ backgroundColor: "#DBEAFE", borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 12, fontWeight: "700", color: "#1E40AF" }}>{count}</Text>
+                    </View>
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+    );
+  }
+
+  // ── Level 6: Advert cards ──────────────────────────────────────────
+  const listAdverts = [...matchingAdverts].sort((a, b) => {
+    const bDate = b.createdAt ?? "";
+    const aDate = a.createdAt ?? "";
+    return bDate > aDate ? 1 : -1;
+  });
 
   return (
     <>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}>
-        <SectionTitle title="All adverts" action={`${filtered.length} of ${adverts.length}`} />
-        <View style={styles.pillRow}>
-          <Pill label="All" active={filter === "all"} onPress={() => setFilter("all")} />
-          <Pill label="Active" active={filter === "active"} onPress={() => setFilter("active")} />
-          <Pill label="Closed" active={filter === "closed"} onPress={() => setFilter("closed")} />
-          <Pill
-            label={duplicatesCount > 0 ? `Duplicates (${duplicatesCount})` : "Duplicates"}
-            active={filter === "duplicates"}
-            onPress={() => setFilter("duplicates")}
-          />
-        </View>
-
-        {filtered.length === 0 ? (
-          <EmptyState icon="clipboard" title="No adverts" text="There are no adverts in this filter." />
+        <NavBar />
+        <SectionTitle title="Adverts" action={`${listAdverts.length}`} />
+        {listAdverts.length === 0 ? (
+          <EmptyState icon="clipboard" title="No adverts" text="No adverts match this selection." />
         ) : (
-          filtered.map((advert) => {
+          listAdverts.map((advert) => {
             const isClosed = advert.status === "closed";
             const badge = statusBadgeColor(isClosed ? "closed" : "active");
             return (
@@ -709,7 +1014,6 @@ function AdvertsSection() {
           })
         )}
       </ScrollView>
-
       {editing && (
         <AdvertEditModal
           advert={editing}
