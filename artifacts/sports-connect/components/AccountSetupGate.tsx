@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { LegalModal } from "@/components/LegalModal";
 import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { checkFields } from "@/utils/profanityFilter";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
@@ -131,6 +132,7 @@ export function AccountSetupGate() {
 
   const [step, setStep] = useState<SetupStep>("type");
   const [role, setRole] = useState<AccountRole>("player");
+  const [legalModal, setLegalModal] = useState<"terms" | "privacy" | null>(null);
   const [profileImageId, setProfileImageId] = useState<string | undefined>();
   const [showDobPicker, setShowDobPicker] = useState(false);
   const [draftDob, setDraftDob] = useState("");
@@ -980,7 +982,7 @@ export function AccountSetupGate() {
                 {role === "guardian"
                   ? "I confirm I am 18 years or older and I am the parent or legal guardian of the player. I understand that misrepresenting my age or guardianship is a breach of the Terms of Service and may result in account termination and reporting to relevant authorities."
                   : "I confirm I am 18 years or older. I understand that misrepresenting my age is a breach of the Terms of Service and may result in account termination and reporting to relevant authorities."}
-                <Text style={{ color: colors.primary, fontWeight: "700" }} onPress={() => router.push("/terms-of-service")}> Read our Terms of Service</Text>
+                <Text style={{ color: colors.primary, fontWeight: "700" }} onPress={() => setLegalModal("terms")}> Read our Terms of Service</Text>
               </Text>
             </CheckRow>
 
@@ -1006,6 +1008,11 @@ export function AccountSetupGate() {
           </View>
         )}
       </ScrollView>
+      <LegalModal
+        visible={legalModal !== null}
+        type={legalModal ?? "terms"}
+        onClose={() => setLegalModal(null)}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -15,6 +15,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field, PrimaryButton, ProfileAvatar, SectionTitle } from "@/components/SportsUI";
+import { LegalModal } from "@/components/LegalModal";
 import { getClubLabel } from "@/constants/clubLabel";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
@@ -122,6 +123,7 @@ export default function ProfileScreen() {
   const isPremium = useIsPremium();
 
   const [mode, setMode] = useState<Mode>("view");
+  const [legalModal, setLegalModal] = useState<"terms" | "privacy" | null>(null);
   const [showCoachAffiliates, setShowCoachAffiliates] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -453,8 +455,23 @@ export default function ProfileScreen() {
             </View>
             <PrimaryButton label="Sign out" icon="log-out" onPress={() => { void clerkSignOut(); }} />
             <PrimaryButton label={mode === "edit" ? "Cancel editing" : "Edit Profile"} icon={mode === "edit" ? "x" : "edit-3"} onPress={mode === "edit" ? () => setMode("view") : openEdit} />
+            {/* Legal links — always visible in the account header area */}
+            <View style={styles.legalRow}>
+              <Pressable onPress={() => setLegalModal("privacy")} hitSlop={8}>
+                <Text style={[styles.legalLink, { color: colors.mutedForeground }]}>Privacy Policy</Text>
+              </Pressable>
+              <Text style={[styles.legalDot, { color: colors.mutedForeground }]}>·</Text>
+              <Pressable onPress={() => setLegalModal("terms")} hitSlop={8}>
+                <Text style={[styles.legalLink, { color: colors.mutedForeground }]}>Terms of Service</Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
+        <LegalModal
+          visible={legalModal !== null}
+          type={legalModal ?? "terms"}
+          onClose={() => setLegalModal(null)}
+        />
 
         {/* ── Subscription card ── */}
         {currentAccount ? (
@@ -1135,4 +1152,7 @@ const styles = StyleSheet.create({
   adminLauncherCopy: { flex: 1 },
   adminLauncherTitle: { fontWeight: "800", fontSize: 17 },
   adminLauncherText: { fontWeight: "500", fontSize: 13, marginTop: 2, opacity: 0.9 },
+  legalRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 },
+  legalLink: { fontSize: 12, fontWeight: "500" },
+  legalDot: { fontSize: 12 },
 });
