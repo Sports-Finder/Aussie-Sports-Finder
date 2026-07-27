@@ -303,6 +303,17 @@ describe("custom isAdminCaller routes — regular user gets 403", () => {
   });
 });
 
+describe("custom isAdminCaller routes — admin caller passes auth (not 401/403)", () => {
+  CUSTOM_ADMIN_ROUTES.forEach((spec) => {
+    it(`${spec.method.toUpperCase()} ${spec.path}`, async () => {
+      asAdmin();
+      const res = await call(spec);
+      expect(res.status).not.toBe(401);
+      expect(res.status).not.toBe(403);
+    });
+  });
+});
+
 describe("requireAdminPasscode routes — missing header gets 401", () => {
   PASSCODE_ROUTES.forEach((spec) => {
     it(`${spec.method.toUpperCase()} ${spec.path}`, async () => {
