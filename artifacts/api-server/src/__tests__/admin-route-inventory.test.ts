@@ -1,20 +1,25 @@
 /**
- * requireAdmin route inventory — CI guard.
+ * Admin route inventory — CI guard.
  *
- * This file owns the CANONICAL list of every Express route that uses the
- * `requireAdmin` middleware.  Two checks run automatically:
+ * This file owns the CANONICAL lists of every Express route that uses one of
+ * three admin-protection patterns:
  *
- *   1. Every route found in the source files appears in REQUIRE_ADMIN_INVENTORY.
- *      → Adding a new requireAdmin route without updating this list fails CI.
+ *   1. requireAdmin middleware          → REQUIRE_ADMIN_INVENTORY
+ *   2. isAdminCaller() handler guard   → CUSTOM_ADMIN_INVENTORY
+ *   3. requireAdminPasscode middleware  → PASSCODE_INVENTORY
  *
- *   2. Every entry in REQUIRE_ADMIN_INVENTORY has a matching source route.
- *      → Removing a route without updating this list also fails CI.
+ * For each inventory two checks run automatically:
  *
- * WHEN YOU ADD A NEW requireAdmin ROUTE:
- *   • Add a matching entry here (method + Express path pattern).
- *   • Add the route to REQUIRE_ADMIN_ROUTES in admin-auth.test.ts so it is
- *     also covered by the positive "admin passes" and negative "non-admin blocked"
- *     integration tests.
+ *   A. Every route found in source appears in the inventory.
+ *      → Adding a protected route without updating the list fails CI.
+ *
+ *   B. Every inventory entry has a matching source route.
+ *      → Removing a route without updating the list also fails CI.
+ *
+ * WHEN YOU ADD A NEW PROTECTED ROUTE:
+ *   • Add a matching entry to the correct inventory below.
+ *   • Add the route to the corresponding array in admin-auth.test.ts so it
+ *     is also covered by positive "passes" and negative "blocked" tests.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "fs";
@@ -36,7 +41,29 @@ const REQUIRE_ADMIN_INVENTORY: Array<{ method: string; pattern: string }> = [
 ];
 
 // ---------------------------------------------------------------------------
-// Static scanner — reads route source files and extracts requireAdmin usages.
+// Canonical inventory — routes with an isAdminCaller() guard as the FIRST
+// statement of their handler body (i.e. custom per-handler admin check).
+// ── Keep this in sync with CUSTOM_ADMIN_ROUTES in admin-auth.test.ts ──
+// ---------------------------------------------------------------------------
+const CUSTOM_ADMIN_INVENTORY: Array<{ method: string; pattern: string }> = [
+  { method: "delete", pattern: "/wipe" },
+  { method: "post", pattern: "/moderator-sessions" },
+  { method: "delete", pattern: "/moderator-sessions/:token" },
+  { method: "get", pattern: "/reports" },
+  { method: "post", pattern: "/reports/:publicId/resolve" },
+];
+
+// ---------------------------------------------------------------------------
+// Canonical inventory — routes protected by requireAdminPasscode middleware.
+// ── Keep this in sync with PASSCODE_ROUTES in admin-auth.test.ts ──
+// ---------------------------------------------------------------------------
+const PASSCODE_INVENTORY: Array<{ method: string; pattern: string }> = [
+  { method: "post", pattern: "/admin/entitlements" },
+  { method: "delete", pattern: "/admin/entitlements" },
+];
+
+// ---------------------------------------------------------------------------
+// Static scanners — read route source files and extract protected usages.
 // ---------------------------------------------------------------------------
 
 const __filename = fileURLToPath(import.meta.url);
@@ -70,24 +97,68 @@ function scanForRequireAdminRoutes(dir: string): FoundRoute[] {
   return found;
 }
 
+function scanForCustomAdminRoutes(dir: string): FoundRoute[] {
+  const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
+  const found: FoundRoute[] = [];
+
+  // Matches routes whose handler body starts immediately with:
+  //   if (!isAdminCaller(req)) {
+  // The [^{]* skips the arrow-function parameters (which contain no `{`).
+  // This intentionally excludes routes where isAdminCaller is used for
+  // field-level access control mid-handler rather than as a primary gate.
+  const re =
+    /router\.(get|post|put|patch|delete)\(\s*["']([^"']+)["'][^{]*\{\s*if\s*\(!isAdminCaller\(/gs;
+
+  for (const file of files) {
+    const content = readFileSync(join(dir, file), "utf-8");
+    let match: RegExpExecArray | null;
+    re.lastIndex = 0; // reset before each file
+    while ((match = re.exec(content)) !== null) {
+      found.push({ method: match[1], pattern: match[2], file });
+    }
+  }
+
+  return found;
+}
+
+function scanForPasscodeRoutes(dir: string): FoundRoute[] {
+  const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
+  const found: FoundRoute[] = [];
+
+  // Matches: router.METHOD("path", requireAdminPasscode, ...)
+  // The requireAdminPasscode token must immediately follow the path argument.
+  const re =
+    /router\.(get|post|put|patch|delete)\(\s*["']([^"']+)["']\s*,\s*requireAdminPasscode\b/g;
+
+  for (const file of files) {
+    const content = readFileSync(join(dir, file), "utf-8");
+    let match: RegExpExecArray | null;
+    re.lastIndex = 0; // reset before each file
+    while ((match = re.exec(content)) !== null) {
+      found.push({ method: match[1], pattern: match[2], file });
+    }
+  }
+
+  return found;
+}
+
 // ---------------------------------------------------------------------------
-// Tests
+// Generic helper — builds the two-way check describe block for any inventory.
 // ---------------------------------------------------------------------------
 
-describe("requireAdmin route inventory", () => {
-  const sourceRoutes = scanForRequireAdminRoutes(ROUTES_DIR);
+function buildInventoryTests(
+  label: string,
+  inventory: Array<{ method: string; pattern: string }>,
+  sourceRoutes: FoundRoute[],
+  guardName: string,
+  authTestArrayName: string,
+) {
+  const inventorySet = new Set(inventory.map((r) => `${r.method}:${r.pattern}`));
+  const sourceSet = new Set(sourceRoutes.map((r) => `${r.method}:${r.pattern}`));
 
-  const inventorySet = new Set(
-    REQUIRE_ADMIN_INVENTORY.map((r) => `${r.method}:${r.pattern}`),
-  );
-  const sourceSet = new Set(
-    sourceRoutes.map((r) => `${r.method}:${r.pattern}`),
-  );
-
-  // ── Check 1: every route found in source is listed in the inventory ──────
-  describe("every requireAdmin route in source is listed in the inventory", () => {
+  describe(`${label} — every route in source is listed in the inventory`, () => {
     if (sourceRoutes.length === 0) {
-      it("found at least one requireAdmin route in source", () => {
+      it(`found at least one ${guardName} route in source`, () => {
         // If this fails, the scanner regex may be broken or the routes dir moved.
         expect(sourceRoutes.length).toBeGreaterThan(0);
       });
@@ -98,28 +169,53 @@ describe("requireAdmin route inventory", () => {
         expect(
           inventorySet.has(`${method}:${pattern}`),
           [
-            `Route ${method.toUpperCase()} ${pattern} in ${file} uses requireAdmin but`,
-            `is NOT listed in REQUIRE_ADMIN_INVENTORY in admin-route-inventory.test.ts.`,
-            `Add it to the inventory AND to REQUIRE_ADMIN_ROUTES in admin-auth.test.ts`,
-            `so it is covered by positive "admin passes" and negative "blocked" tests.`,
+            `Route ${method.toUpperCase()} ${pattern} in ${file} uses ${guardName} but`,
+            `is NOT listed in the ${label} inventory in admin-route-inventory.test.ts.`,
+            `Add it to the inventory AND to ${authTestArrayName} in admin-auth.test.ts`,
+            `so it is covered by positive "passes" and negative "blocked" tests.`,
           ].join(" "),
         ).toBe(true);
       });
     }
   });
 
-  // ── Check 2: every inventory entry has a matching source route ───────────
-  it("inventory has no phantom entries (every listed route exists in source)", () => {
-    const phantoms = REQUIRE_ADMIN_INVENTORY.filter(
-      (r) => !sourceSet.has(`${r.method}:${r.pattern}`),
-    );
+  it(`${label} — inventory has no phantom entries (every listed route exists in source)`, () => {
+    const phantoms = inventory.filter((r) => !sourceSet.has(`${r.method}:${r.pattern}`));
     expect(
       phantoms,
       [
-        `These REQUIRE_ADMIN_INVENTORY entries have no matching requireAdmin route`,
+        `These ${label} inventory entries have no matching ${guardName} route`,
         `in the source files — they are stale and should be removed:`,
         phantoms.map((r) => `  ${r.method.toUpperCase()} ${r.pattern}`).join("\n"),
       ].join(" "),
     ).toHaveLength(0);
   });
-});
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+buildInventoryTests(
+  "requireAdmin route inventory",
+  REQUIRE_ADMIN_INVENTORY,
+  scanForRequireAdminRoutes(ROUTES_DIR),
+  "requireAdmin",
+  "REQUIRE_ADMIN_ROUTES",
+);
+
+buildInventoryTests(
+  "isAdminCaller route inventory",
+  CUSTOM_ADMIN_INVENTORY,
+  scanForCustomAdminRoutes(ROUTES_DIR),
+  "isAdminCaller()",
+  "CUSTOM_ADMIN_ROUTES",
+);
+
+buildInventoryTests(
+  "requireAdminPasscode route inventory",
+  PASSCODE_INVENTORY,
+  scanForPasscodeRoutes(ROUTES_DIR),
+  "requireAdminPasscode",
+  "PASSCODE_ROUTES",
+);
