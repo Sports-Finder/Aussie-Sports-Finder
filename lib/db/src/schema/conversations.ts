@@ -23,6 +23,7 @@ export const conversationsTable = pgTable("conversations", {
   flagTriggerMessage: text("flag_trigger_message"),
   flaggedAt: timestamp("flagged_at", { withTimezone: true }),
   flagReviewedAt: timestamp("flag_reviewed_at", { withTimezone: true }),
+  initiatorSeenResponse: boolean("initiator_seen_response").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   check(

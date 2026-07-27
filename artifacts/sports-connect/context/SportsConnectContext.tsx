@@ -251,6 +251,7 @@ export type Conversation = {
   affiliatedClubParticipants?: string[];
   closedByName?: string;
   hiddenForAccountIds?: string[];
+  initiatorSeenResponse?: boolean;
   flagged?: boolean;
   flagSeverity?: "high" | "medium";
   flagCategory?: string;
@@ -400,6 +401,8 @@ type SportsConnectState = {
   updateAdvert: (id: string, patch: Partial<DraftAdvert>) => Promise<void>;
   deleteAdvert: (id: string) => Promise<void>;
   repostCooldownUntil: string | null;
+  initiatorUnseenResponses: Conversation[];
+  markConnectionResponseSeen: (conversationId: string) => void;
   connectOnAdvert: (advert: Advert) => Promise<string>;
   acceptConnection: (conversationId: string) => void;
   denyConnection: (conversationId: string) => void;
@@ -1940,9 +1943,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       createdAt: now(),
     };
     setConversations((current) =>
-      current.map((c) => c.id === conversationId ? { ...c, status: "connected", hasUnread: true, messages: [activeMsg] } : c)
+      current.map((c) => c.id === conversationId ? { ...c, status: "connected", hasUnread: true, initiatorSeenResponse: false, messages: [activeMsg] } : c)
     );
-    api.updateConversation(conversationId, { status: "connected" }).catch(() => undefined);
+    api.updateConversation(conversationId, { status: "connected", initiatorSeenResponse: false }).catch(() => undefined);
     api.createMessage(conversationId, { sender: "them", isSystem: true, body: activeMsg.body }).catch(() => undefined);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
@@ -1998,12 +2001,19 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       createdAt: now(),
     };
     setConversations((current) =>
-      current.map((c) => c.id === conversationId ? { ...c, status: "denied", hasUnread: false, messages: [denyMsg] } : c)
+      current.map((c) => c.id === conversationId ? { ...c, status: "denied", hasUnread: false, initiatorSeenResponse: false, messages: [denyMsg] } : c)
     );
-    api.updateConversation(conversationId, { status: "denied" }).catch(() => undefined);
+    api.updateConversation(conversationId, { status: "denied", initiatorSeenResponse: false }).catch(() => undefined);
     api.createMessage(conversationId, { sender: "them", isAdmin: true, body: denyMsg.body }).catch(() => undefined);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
+  const markConnectionResponseSeen = (conversationId: string) => {
+    setConversations((current) =>
+      current.map((c) => c.id === conversationId ? { ...c, initiatorSeenResponse: true } : c)
+    );
+    api.markConnectionResponseSeen(conversationId).catch(() => undefined);
+  };
+
   const sendMessage = async (conversationId: string, body: string) => {
     const trimmed = body.trim();
     if (!trimmed) return;
@@ -2581,6 +2591,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       const end = new Date(new Date(currentAccount.lastAdvertClosedAt).getTime() + 72 * 60 * 60 * 1000);
       return end > new Date() ? end.toISOString() : null;
     })(),
+    initiatorUnseenResponses: conversations.filter(
+      (c) => c.initiatorAccountId === currentAccount?.id &&
+             (c.status === "connected" || c.status === "denied") &&
+             c.initiatorSeenResponse === false
+    ),
+    markConnectionResponseSeen,
     connectOnAdvert,
     acceptConnection,
     denyConnection,

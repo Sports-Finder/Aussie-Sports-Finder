@@ -201,6 +201,7 @@ export function mapConversation(row: Record<string, unknown>) {
     flagTriggerMessage: row.flagTriggerMessage as string | undefined,
     flaggedAt: row.flaggedAt ? new Date(row.flaggedAt as string).toISOString() : undefined,
     flagReviewedAt: row.flagReviewedAt ? new Date(row.flagReviewedAt as string).toISOString() : undefined,
+    initiatorSeenResponse: (row.initiatorSeenResponse as boolean) ?? true,
     createdAt: new Date(row.createdAt as string).toISOString(),
     messages: [] as unknown[],
   };

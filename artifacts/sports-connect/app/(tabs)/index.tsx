@@ -706,6 +706,9 @@ type NotificationPanelProps = {
   nearCount: number;
   pendingConvs: Conversation[];
   unreadConvCount: number;
+  unseenResponses: Conversation[];
+  onDismissResponse: (conversationId: string) => void;
+  onOpenChat: (conversationId: string) => void;
   notificationSettings: { enabled: boolean; radiusKm: number; locationLabel: string };
   onToggleNotifications: () => Promise<void>;
   onSetRadius: (km: number) => void;
@@ -716,13 +719,14 @@ type NotificationPanelProps = {
 
 function NotificationPanel({
   open, onClose, nearCount, pendingConvs, unreadConvCount,
+  unseenResponses, onDismissResponse, onOpenChat,
   notificationSettings, onToggleNotifications, onSetRadius,
   onGoToMessages, onGoToDiscover, onSelectAdvert,
 }: NotificationPanelProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { accounts } = useSportsConnect();
-  const isEmpty = nearCount === 0 && pendingConvs.length === 0 && unreadConvCount === 0;
+  const isEmpty = nearCount === 0 && pendingConvs.length === 0 && unreadConvCount === 0 && unseenResponses.length === 0;
 
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
@@ -767,6 +771,49 @@ function NotificationPanel({
                     <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                   </Pressable>
                 ) : null}
+
+                {/* Your Requests — accepted / denied responses for the current user as initiator */}
+                {unseenResponses.map((conv) => {
+                  const accepted = conv.status === "connected";
+                  const rawTitle = conv.advertTitle ?? "an advert";
+                  const title = rawTitle.length > 36 ? rawTitle.slice(0, 36) + "…" : rawTitle;
+                  return (
+                    <Pressable
+                      key={conv.id}
+                      onPress={() => accepted ? onOpenChat(conv.id) : onDismissResponse(conv.id)}
+                      style={({ pressed }) => ({
+                        backgroundColor: accepted ? "#F0FDF4" : "#F9FAFB",
+                        borderRadius: 16,
+                        padding: 14,
+                        flexDirection: "row" as const,
+                        alignItems: "center" as const,
+                        gap: 12,
+                        opacity: pressed ? 0.8 : 1,
+                        borderWidth: 1,
+                        borderColor: accepted ? "#BBF7D0" : "#E5E7EB",
+                      })}
+                    >
+                      <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: accepted ? "#DCFCE7" : "#F3F4F6", alignItems: "center", justifyContent: "center" }}>
+                        <Feather name={accepted ? "check-circle" : "x-circle"} size={17} color={accepted ? "#16A34A" : "#6B7280"} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: "700", fontSize: 14, color: accepted ? "#15803D" : "#374151" }}>
+                          {accepted ? "Request accepted ✓" : "Request declined"}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: accepted ? "#16A34A" : "#6B7280", marginTop: 2 }} numberOfLines={1}>
+                          {title}
+                        </Text>
+                      </View>
+                      {accepted ? (
+                        <Feather name="chevron-right" size={16} color="#16A34A" />
+                      ) : (
+                        <Pressable onPress={() => onDismissResponse(conv.id)} hitSlop={10}>
+                          <Feather name="x" size={16} color="#9CA3AF" />
+                        </Pressable>
+                      )}
+                    </Pressable>
+                  );
+                })}
 
                 {/* One row per pending connection request */}
                 {pendingConvs.map((conv) => {
@@ -851,7 +898,7 @@ export default function DiscoverScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { adverts, conversations, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport, currentAccount, isAdmin, accounts, showMemberStats, showSportRequestField } = useSportsConnect();
+  const { adverts, conversations, notificationSettings, toggleNotifications, setNotificationRadius, approvedSports, selectedSport, setSelectedSport, requestSport, currentAccount, isAdmin, accounts, showMemberStats, showSportRequestField, initiatorUnseenResponses, markConnectionResponseSeen } = useSportsConnect();
   const [filter, setFilter] = useState<Filter>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [stateFilter, setStateFilter] = useState<AustralianStateFilter>("All");
@@ -874,7 +921,7 @@ export default function DiscoverScreen() {
     [conversations, currentAccount]
   );
 
-  const totalBadgeCount = pendingConvs.length + unreadConvCount;
+  const totalBadgeCount = pendingConvs.length + unreadConvCount + initiatorUnseenResponses.length;
 
   const profileSports = currentAccount?.sports ?? [];
   const visibleSportChips = approvedSports.filter(
@@ -1080,6 +1127,13 @@ export default function DiscoverScreen() {
         nearCount={nearCount}
         pendingConvs={pendingConvs}
         unreadConvCount={unreadConvCount}
+        unseenResponses={initiatorUnseenResponses}
+        onDismissResponse={(convId) => markConnectionResponseSeen(convId)}
+        onOpenChat={(convId) => {
+          markConnectionResponseSeen(convId);
+          setNotifPanelOpen(false);
+          router.push("/(tabs)/messages");
+        }}
         notificationSettings={notificationSettings}
         onToggleNotifications={toggleNotifications}
         onSetRadius={setNotificationRadius}
