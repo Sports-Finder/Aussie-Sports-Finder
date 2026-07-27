@@ -16,9 +16,10 @@ config.resolver.nodeModulesPaths = [
 ];
 
 // Use the "default" transform profile so Babel converts private class fields
-// (#x, #y, etc.) into Hermes-compatible syntax before the bundle is compiled.
-// "hermes-stable" leaves those fields as-is and breaks builds against newer
-// Xcode / hermes-engine versions (e.g. iOS 26 SDK) that don't support them.
+// into Hermes-compatible syntax where possible.
+// Note: DOMRectReadOnly.js (react-native 0.81.5) uses private class fields
+// that hermesc on iOS 26 SDK rejects. It is patched directly via the
+// postinstall script (scripts/patch-react-native.js).
 config.transformer.unstable_transformProfile = "default";
 
 module.exports = config;
