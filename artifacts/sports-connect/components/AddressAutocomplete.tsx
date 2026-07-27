@@ -43,6 +43,16 @@ function toAddressString(r: NominatimResult): string {
   return formatPrimary(r);
 }
 
+/** Extracts suburb, postcode, and state from a Nominatim result for auto-fill. */
+function extractMeta(r: NominatimResult): { suburb: string; postcode: string; state: string } {
+  const { suburb, city_district, town, city, municipality, postcode, state } = r.address;
+  return {
+    suburb: suburb ?? city_district ?? town ?? city ?? municipality ?? "",
+    postcode: postcode ?? "",
+    state: state ?? "",
+  };
+}
+
 async function queryNominatim(query: string): Promise<NominatimResult[]> {
   const url =
     `https://nominatim.openstreetmap.org/search` +
@@ -74,8 +84,13 @@ export function AddressAutocomplete({
   value: string;
   /** Called on every keystroke so parent state stays in sync even without a suggestion pick. */
   onChangeText: (text: string) => void;
-  /** Called with the formatted address string when the user taps a suggestion. */
-  onSelect: (address: string) => void;
+  /**
+   * Called when the user taps a suggestion or clears the field.
+   * `address` is the formatted street string (empty string on clear).
+   * `meta` contains suburb, postcode, and state extracted from the Nominatim result
+   * — all empty strings on clear — so callers can auto-fill dependent fields.
+   */
+  onSelect: (address: string, meta: { suburb: string; postcode: string; state: string }) => void;
   placeholder?: string;
 }) {
   const colors = useColors();
@@ -135,7 +150,7 @@ export function AddressAutocomplete({
     (result: NominatimResult) => {
       const addr = toAddressString(result);
       onChangeText(addr);
-      onSelect(addr);
+      onSelect(addr, extractMeta(result));
       setSuggestions([]);
       setLoading(false);
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -145,7 +160,7 @@ export function AddressAutocomplete({
 
   const handleClear = useCallback(() => {
     onChangeText("");
-    onSelect("");
+    onSelect("", { suburb: "", postcode: "", state: "" });
     setSuggestions([]);
     setLoading(false);
     if (timerRef.current) clearTimeout(timerRef.current);

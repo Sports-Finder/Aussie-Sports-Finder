@@ -174,6 +174,10 @@ export function AccountSetupGate() {
 
   const isClub = role === "club";
   const [clubType, setClubType] = useState<"club" | "academy">("club");
+  // True while a Nominatim address suggestion is selected — suburb/postcode/state
+  // are auto-populated from the result and the suburb field is locked read-only.
+  // Cleared when the address field is cleared so the user can type a suburb manually.
+  const [clubSuburbAutoFilled, setClubSuburbAutoFilled] = useState(false);
   const clubTypeLabel = clubType === "academy" ? "Academy" : "Club";
   const age = calculateAge(form.dateOfBirth);
 
@@ -617,13 +621,31 @@ export function AccountSetupGate() {
                   label={`${clubTypeLabel} Street Number & Street Address (required)`}
                   value={form.clubAddress}
                   onChangeText={(v) => update("clubAddress", v)}
-                  onSelect={(v) => update("clubAddress", v)}
+                  onSelect={(addr, meta) => {
+                    update("clubAddress", addr);
+                    if (addr) {
+                      // A suggestion was picked — auto-populate suburb/postcode/state
+                      // and lock the suburb field so the user doesn't need to search it.
+                      update("clubSuburb", meta.suburb);
+                      update("clubPostcode", meta.postcode);
+                      update("state", meta.state);
+                      setClubSuburbAutoFilled(true);
+                    } else {
+                      // Address was cleared — reset dependent fields so the user
+                      // can manually choose a suburb again.
+                      update("clubSuburb", "");
+                      update("clubPostcode", "");
+                      update("state", "");
+                      setClubSuburbAutoFilled(false);
+                    }
+                  }}
                   placeholder="Start typing a street address…"
                 />
                 <SuburbAutocomplete
                   label="Suburb (required)"
                   required
                   value={form.clubSuburb}
+                  editable={!clubSuburbAutoFilled}
                   onSelect={({ suburb, postcode, state }) => {
                     update("clubSuburb", suburb);
                     update("clubPostcode", postcode);
@@ -633,6 +655,7 @@ export function AccountSetupGate() {
                 {form.clubSuburb ? (
                   <Text style={[styles.infoNote, { color: colors.mutedForeground, marginTop: -6, marginBottom: 12 }]}>
                     {form.state}{form.clubPostcode ? ` · ${form.clubPostcode}` : ""}
+                    {clubSuburbAutoFilled ? " · Auto-filled from address" : ""}
                   </Text>
                 ) : null}
                 <Input label={`${clubTypeLabel} Website Address (optional)`} value={form.clubWebsite} onChangeText={(v) => update("clubWebsite", v)} />
