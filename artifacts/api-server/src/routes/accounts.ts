@@ -139,6 +139,27 @@ router.post("/accounts", async (req, res) => {
 router.put("/accounts/:publicId", async (req, res) => {
   try {
     const publicId = req.params.publicId;
+
+    // Ownership + admin guard: the caller must own this account or be an admin.
+    // This prevents any authenticated user from updating — or banning — another
+    // user's account.  requireAuth (applied globally) already guarantees userId
+    // is non-null here, so getAuth is safe to call without a null-check.
+    const auth = getAuth(req);
+    const callerClerkId = auth.userId as string;
+    const adminList = (process.env.ADMIN_USER_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    const isAdmin = adminList.length > 0 && adminList.includes(callerClerkId);
+    if (!isAdmin) {
+      const [target] = await db
+        .select({ clerkUserId: accountsTable.clerkUserId })
+        .from(accountsTable)
+        .where(eq(accountsTable.publicId, publicId))
+        .limit(1);
+      if (!target || target.clerkUserId !== callerClerkId) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
+
     // Strip read-only / registration-only fields that must never be overwritten
     // via a profile update — id, password (set once at registration), coachAffiliates
     // (managed by its own endpoints), and clerkUserId (server-owned identity binding).
@@ -163,14 +184,13 @@ router.put("/accounts/:publicId", async (req, res) => {
     // Audit-log destructive status changes so incidents can be investigated.
     const newStatus = typeof body.status === "string" ? body.status : null;
     if (newStatus === "banned" || newStatus === "closed" || newStatus === "active") {
-      const auth = getAuth(req);
       const eventMap: Record<string, string> = {
         banned: "account_banned",
         closed: "account_closed",
         active: "account_unbanned",
       };
       logger.info(
-        { event: eventMap[newStatus], adminUserId: auth.userId, targetAccountId: publicId, timestamp: new Date().toISOString() },
+        { event: eventMap[newStatus], adminUserId: callerClerkId, targetAccountId: publicId, timestamp: new Date().toISOString() },
         `Account status set to '${newStatus}' by admin`
       );
     }

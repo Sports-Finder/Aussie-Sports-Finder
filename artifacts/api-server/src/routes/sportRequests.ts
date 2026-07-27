@@ -4,6 +4,7 @@ import { db, sportRequestsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapSportRequest } from "../lib/mapDbToApi";
 import { normalizeDates } from "../lib/normalizeDates";
+import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
 
@@ -27,7 +28,8 @@ router.post("/sport-requests", async (req, res) => {
   }
 });
 
-router.put("/sport-requests/:publicId", async (req, res) => {
+// Admin-only: approving/rejecting sport requests is a moderation action.
+router.put("/sport-requests/:publicId", requireAdmin, async (req, res) => {
   try {
     const publicId = req.params.publicId;
     const body = normalizeDates(req.body, ["requestedAt"]);

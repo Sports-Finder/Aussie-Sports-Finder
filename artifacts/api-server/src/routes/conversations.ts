@@ -26,8 +26,18 @@ function stripFlagFields(conv: ReturnType<typeof mapConversation>) {
   return rest;
 }
 
+/**
+ * Moderation-only fields that only admins are allowed to write via PUT.
+ * Non-admin callers that include these fields have them silently stripped so
+ * the rest of the update (e.g. accepted/closed status) still proceeds.
+ */
+const MODERATION_FIELDS = ["flagged", "flagSeverity", "flagCategory", "flagTriggerMessage", "flaggedAt", "flagReviewedAt"] as const;
+
 router.get("/conversations", async (req, res) => {
   try {
+    // isAdminCaller is used for field-level access control:
+    // admins receive the full moderation payload; regular users have flag
+    // metadata stripped so they cannot observe moderation evidence.
     const privileged = isAdminCaller(req);
     const convs = await db.select().from(conversationsTable);
     const msgs = await db.select().from(messagesTable);
@@ -73,10 +83,23 @@ router.post("/conversations", async (req, res) => {
 router.put("/conversations/:publicId", async (req, res) => {
   try {
     const { publicId } = req.params;
-    const body = normalizeDates(req.body, ["createdAt"]);
+    let rawBody = normalizeDates(req.body, ["createdAt"]);
+
+    // Field-level authorization: only admins may write moderation fields.
+    // Non-admin callers (e.g. accepting/closing a connection) have these fields
+    // stripped so their legitimate update still succeeds while moderation state
+    // cannot be tampered with by regular users.
+    if (!isAdminCaller(req)) {
+      const attempted = MODERATION_FIELDS.filter((f) => f in rawBody);
+      if (attempted.length > 0) {
+        req.log.warn({ userId: getAuth(req).userId, fields: attempted, conversationId: publicId }, "Non-admin attempted to write moderation fields — fields stripped");
+        rawBody = Object.fromEntries(Object.entries(rawBody).filter(([k]) => !MODERATION_FIELDS.includes(k as typeof MODERATION_FIELDS[number])));
+      }
+    }
+
     const [updated] = await db
       .update(conversationsTable)
-      .set(body)
+      .set(rawBody)
       .where(eq(conversationsTable.publicId, publicId))
       .returning();
     if (!updated) {
