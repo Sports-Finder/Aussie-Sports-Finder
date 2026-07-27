@@ -5,6 +5,7 @@ import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text,
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChatRoom } from "@/app/(tabs)/messages";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { EmptyState, Field, Pill, PrimaryButton, SectionTitle } from "@/components/SportsUI";
 import {
   AccountRole,
@@ -207,24 +208,26 @@ function AdminContent({ onExit }: { onExit?: () => void }) {
       <HighFlagAlertBanner onGoToChats={() => setSection("chats")} />
 
       <View style={styles.body}>
-        {section === "overview" && (
-          <OverviewSection
-            setSection={(s) => { setSection(s); if (s !== "accounts") setAccountsInitialFilter(undefined); }}
-            onBannedAccounts={() => { setAccountsInitialFilter("banned"); setSection("accounts"); }}
-          />
-        )}
-        {section === "adverts" && <AdvertsSection />}
-        {section === "chats" && <ChatsSection />}
-        {section === "accounts" && <AccountsSection initialFilter={accountsInitialFilter} />}
-        {section === "moderation" && <ModerationSection onApproveSportRequest={handleApproveSportRequest} />}
-        {section === "clubapprovals" && <ClubApprovalsSection />}
-        {section === "sports" && (
-          <SportsSection
-            prefillName={sportsPrefillName}
-            onPrefillConsumed={() => setSportsPrefillName(undefined)}
-          />
-        )}
-        {section === "settings" && <SettingsSection onClose={onExit} />}
+        <ErrorBoundary FallbackComponent={AdminSectionErrorFallback}>
+          {section === "overview" && (
+            <OverviewSection
+              setSection={(s) => { setSection(s); if (s !== "accounts") setAccountsInitialFilter(undefined); }}
+              onBannedAccounts={() => { setAccountsInitialFilter("banned"); setSection("accounts"); }}
+            />
+          )}
+          {section === "adverts" && <AdvertsSection />}
+          {section === "chats" && <ChatsSection />}
+          {section === "accounts" && <AccountsSection initialFilter={accountsInitialFilter} />}
+          {section === "moderation" && <ModerationSection onApproveSportRequest={handleApproveSportRequest} />}
+          {section === "clubapprovals" && <ClubApprovalsSection />}
+          {section === "sports" && (
+            <SportsSection
+              prefillName={sportsPrefillName}
+              onPrefillConsumed={() => setSportsPrefillName(undefined)}
+            />
+          )}
+          {section === "settings" && <SettingsSection onClose={onExit} />}
+        </ErrorBoundary>
       </View>
     </View>
     </DashboardPermissionsContext.Provider>
@@ -342,17 +345,44 @@ export function ModeratorPage({ onExit }: { onExit: () => void }) {
         )}
 
         <View style={styles.body}>
-          {activeSection === "overview" && (
-            <OverviewSection setSection={(s) => { if (visibleSections.some((vs) => vs.key === s)) setSection(s); }} />
-          )}
-          {activeSection === "adverts" && <AdvertsSection />}
-          {activeSection === "chats" && <ChatsSection />}
-          {activeSection === "accounts" && <AccountsSection />}
-          {activeSection === "moderation" && <ModerationSection />}
-          {activeSection === "clubapprovals" && <ClubApprovalsSection />}
+          <ErrorBoundary FallbackComponent={AdminSectionErrorFallback}>
+            {activeSection === "overview" && (
+              <OverviewSection setSection={(s) => { if (visibleSections.some((vs) => vs.key === s)) setSection(s); }} />
+            )}
+            {activeSection === "adverts" && <AdvertsSection />}
+            {activeSection === "chats" && <ChatsSection />}
+            {activeSection === "accounts" && <AccountsSection />}
+            {activeSection === "moderation" && <ModerationSection />}
+            {activeSection === "clubapprovals" && <ClubApprovalsSection />}
+          </ErrorBoundary>
         </View>
       </View>
     </DashboardPermissionsContext.Provider>
+  );
+}
+
+// Inline error fallback shown inside the dashboard when a section crashes.
+// Keeps the crash contained so the rest of the app (Clerk, navigation, data)
+// is unaffected and the user can tap back to the Overview rather than being
+// pushed out to the login screen.
+function AdminSectionErrorFallback({ error, resetError }: { error: Error; resetError: () => void }) {
+  const colors = useColors();
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 16 }}>
+      <Feather name="alert-triangle" size={36} color="#EF4444" />
+      <Text style={{ fontWeight: "700", fontSize: 17, color: colors.foreground, textAlign: "center" }}>
+        Something went wrong in this section
+      </Text>
+      <Text style={{ fontWeight: "500", fontSize: 13, color: colors.mutedForeground, textAlign: "center" }}>
+        {error.message || "An unexpected error occurred."}
+      </Text>
+      <Pressable
+        onPress={resetError}
+        style={({ pressed }) => ({ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, opacity: pressed ? 0.8 : 1 })}
+      >
+        <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 14 }}>Try again</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -447,7 +477,11 @@ function AdvertsSection() {
           if (a.possibleDuplicate && !b.possibleDuplicate) return -1;
           if (!a.possibleDuplicate && b.possibleDuplicate) return 1;
         }
-        return b.createdAt > a.createdAt ? 1 : -1;
+        // Null-safe date comparison — fall back to empty string so missing
+        // createdAt values sort to the end rather than crashing.
+        const bDate = b.createdAt ?? "";
+        const aDate = a.createdAt ?? "";
+        return bDate > aDate ? 1 : -1;
       });
   }, [adverts, filter]);
 
@@ -646,7 +680,7 @@ function AdvertsSection() {
                 ) : null}
                 <View style={styles.metaRow}>
                   <Feather name="clock" size={12} color={colors.mutedForeground} />
-                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Posted: {advert.createdAt.slice(0, 10)} · Distance: {advert.distanceKm} km</Text>
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Posted: {advert.createdAt ? advert.createdAt.slice(0, 10) : "—"} · Distance: {advert.distanceKm} km</Text>
                 </View>
                 <View style={styles.actionRow}>
                   {isFullAdmin && <ActionButton icon="edit-2" label="Edit" color={colors.primary} onPress={() => setEditing(advert)} />}
@@ -1068,9 +1102,9 @@ function AccountsSection({ initialFilter }: { initialFilter?: AccountRole | "ban
     if (filter === "banned") {
       return accounts
         .filter((a) => a.status === "banned" || a.status === "closed")
-        .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+        .sort((a, b) => ((b.createdAt ?? "") > (a.createdAt ?? "") ? 1 : -1));
     }
-    return accounts.filter((a) => a.role === filter).sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+    return accounts.filter((a) => a.role === filter).sort((a, b) => ((b.createdAt ?? "") > (a.createdAt ?? "") ? 1 : -1));
   }, [accounts, filter]);
   const foundingClubCount = useMemo(() => accounts.filter((a) => a.role === "club" && a.promotionalPremium).length, [accounts]);
 
@@ -1801,7 +1835,7 @@ function ClubApprovalsSection() {
       const sa = order[a.clubApprovalStatus ?? "pending"] ?? 0;
       const sb = order[b.clubApprovalStatus ?? "pending"] ?? 0;
       if (sa !== sb) return sa - sb;
-      return b.createdAt > a.createdAt ? 1 : -1;
+      return (b.createdAt ?? "") > (a.createdAt ?? "") ? 1 : -1;
     });
 
   const confirmApprove = (acc: UserAccount) => {
@@ -1865,7 +1899,7 @@ function ClubApprovalsSection() {
               </View>
               <View style={styles.metaRow}>
                 <Feather name="clock" size={12} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Registered: {acc.createdAt.slice(0, 10)}</Text>
+                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Registered: {acc.createdAt ? acc.createdAt.slice(0, 10) : "—"}</Text>
               </View>
               <View style={styles.actionRow}>
                 <ActionButton icon="check" label="Approve" color="#10B981" onPress={() => confirmApprove(acc)} />
@@ -2126,6 +2160,8 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
   const [modName, setModName] = useState("");
   const [modPasscode, setModPasscode] = useState("");
   const [modPerms, setModPerms] = useState<ModeratorPermissions>(EMPTY_MOD_PERMS);
+  const [showWipeConfirm, setShowWipeConfirm] = useState(false);
+  const [wipeText, setWipeText] = useState("");
 
   const resetModForm = () => {
     setShowAddMod(false);
@@ -2263,16 +2299,38 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
       </View>
 
       <SectionTitle title="Danger zone" />
-      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
+      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: "#EF4444", borderWidth: 2 }]}>
         <Text style={[styles.helperText, { color: colors.mutedForeground }]}>Wipe all database data and clear local storage. This cannot be undone.</Text>
-        <View style={styles.actionRow}>
-          <ActionButton icon="trash-2" label="Wipe all data" color="#EF4444" onPress={() => {
-            Alert.alert("Wipe everything?", "This deletes all database records, local cache, and resets the app to a clean state. It cannot be undone.", [
-              { text: "Cancel", style: "cancel" },
-              { text: "Wipe all data", style: "destructive", onPress: async () => { try { await clearAllData(); onClose?.(); } catch { /* clearAllData already shows the error alert */ } } },
-            ]);
-          }} />
-        </View>
+        {showWipeConfirm ? (
+          <>
+            <Text style={[styles.helperText, { color: "#EF4444", fontWeight: "700", marginTop: 8 }]}>
+              Type WIPE to confirm — this deletes everything and cannot be reversed.
+            </Text>
+            <TextInput
+              value={wipeText}
+              onChangeText={setWipeText}
+              placeholder="Type WIPE here"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              style={[styles.wipeInput, { backgroundColor: colors.background, borderColor: wipeText === "WIPE" ? "#EF4444" : colors.border, color: colors.foreground }]}
+            />
+            <View style={styles.actionRow}>
+              <ActionButton icon="x" label="Cancel" color={colors.mutedForeground} onPress={() => { setShowWipeConfirm(false); setWipeText(""); }} />
+              <ActionButton
+                icon="trash-2"
+                label="Wipe all data"
+                color="#EF4444"
+                disabled={wipeText !== "WIPE"}
+                onPress={async () => {
+                  try { await clearAllData(); onClose?.(); } catch { /* clearAllData already shows the error alert */ }
+                }}
+              />
+            </View>
+          </>
+        ) : (
+          <ActionButton icon="trash-2" label="Wipe all data" color="#EF4444" onPress={() => { setShowWipeConfirm(true); setWipeText(""); }} />
+        )}
       </View>
 
       <SectionTitle title="Admin session" />
@@ -2298,9 +2356,9 @@ function PermToggle({ label, value, onToggle }: { label: string; value: boolean;
   );
 }
 
-function ActionButton({ icon, label, color, onPress }: { icon: keyof typeof Feather.glyphMap; label: string; color: string; onPress: () => void }) {
+function ActionButton({ icon, label, color, onPress, disabled }: { icon: keyof typeof Feather.glyphMap; label: string; color: string; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.actionBtn, { backgroundColor: color, opacity: pressed ? 0.8 : 1 }]}>
+    <Pressable disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.actionBtn, { backgroundColor: color, opacity: disabled ? 0.4 : pressed ? 0.8 : 1 }]}>
       <Feather name={icon} size={15} color="#FFF" />
       <Text style={styles.actionBtnText}>{label}</Text>
     </Pressable>
@@ -2398,4 +2456,5 @@ const styles = StyleSheet.create({
   permToggle: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   tabBadge: { position: "absolute", top: -5, right: -7, backgroundColor: "#EF4444", borderRadius: 999, minWidth: 14, height: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 2 },
   tabBadgeText: { color: "#FFF", fontSize: 8, fontWeight: "800" },
+  wipeInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, fontWeight: "700", letterSpacing: 1, marginTop: 4 },
 });
