@@ -652,7 +652,7 @@ function AdvertsSection() {
                 ) : advert.coachSalary !== undefined ? (
                   <View style={styles.metaRow}>
                     <Feather name="dollar-sign" size={12} color={colors.mutedForeground} />
-                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Salary: AUD ${advert.coachSalary.toFixed(2)}</Text>
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Salary: AUD ${Number(advert.coachSalary).toFixed(2)}</Text>
                   </View>
                 ) : null}
                 {advert.feesFree ? (
@@ -663,7 +663,7 @@ function AdvertsSection() {
                 ) : advert.seasonFees !== undefined ? (
                   <View style={styles.metaRow}>
                     <Feather name="dollar-sign" size={12} color={colors.mutedForeground} />
-                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Season fees: AUD ${advert.seasonFees.toFixed(2)}{advert.feesNegotiable ? " (negotiable)" : ""}</Text>
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>Season fees: AUD ${Number(advert.seasonFees).toFixed(2)}{advert.feesNegotiable ? " (negotiable)" : ""}</Text>
                   </View>
                 ) : null}
                 {advert.description ? (
