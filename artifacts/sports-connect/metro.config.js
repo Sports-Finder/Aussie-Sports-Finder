@@ -15,11 +15,13 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, "node_modules"),
 ];
 
-// Use the "default" transform profile so Babel converts private class fields
-// into Hermes-compatible syntax where possible.
-// Note: DOMRectReadOnly.js (react-native 0.81.5) uses private class fields
-// that hermesc on iOS 26 SDK rejects. It is patched directly via the
-// postinstall script (scripts/patch-react-native.js).
-config.transformer.unstable_transformProfile = "default";
+// NOTE: Do NOT set unstable_transformProfile here. The default ("hermes-stable")
+// is correct for RN 0.81 — it lets Metro output class syntax which hermesc
+// compiles natively. Setting it to "default" changes the bundle format in a
+// way that causes hermesc on the iOS 26 SDK to reject ALL class declarations.
+//
+// Private class fields (#x etc.) in react-native 0.81.x are handled by the
+// postinstall script (scripts/patch-react-native.js) which rewrites them to
+// underscore-prefixed properties before the build runs.
 
 module.exports = config;
