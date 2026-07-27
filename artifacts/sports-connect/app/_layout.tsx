@@ -135,7 +135,7 @@ function NotificationDeepLink() {
 function AppContent() {
   const { isSignedIn, isLoaded, getToken, signOut } = useAuth();
   const { user } = useUser();
-  const { currentAccount, isHydrated, bannedEmails, signOut: localSignOut, restoreAccountByClerkId } = useSportsConnect();
+  const { currentAccount, isHydrated, accounts, bannedEmails, signOut: localSignOut, restoreAccountByClerkId } = useSportsConnect();
 
   // Keep a ref to the latest getToken to avoid stale closures across renders,
   // hot-reloads, and sign-in state transitions. Updating a ref during render
@@ -180,13 +180,20 @@ function AppContent() {
   // already signed in but no account has been matched yet, find the account
   // by Clerk user ID (authoritative) or email (fallback) and restore it
   // silently so the user never sees AccountSetupGate on relaunch.
+  //
+  // accounts.length is included as a dependency so that if isHydrated fires
+  // while accounts is still empty (API failed / slow start), the effect
+  // automatically retries once accounts are populated — preventing a network
+  // hiccup from locking a returning user out with AccountSetupGate.
   useEffect(() => {
     if (!isHydrated || !isSignedIn || currentAccount || !user) return;
+    if (accounts.length === 0) return; // accounts not yet loaded — wait for retry
     const email = user.emailAddresses[0]?.emailAddress;
     restoreAccountByClerkId(user.id, email);
-  // restoreAccountByClerkId is stable. Run whenever hydration or sign-in state changes.
+  // restoreAccountByClerkId is stable. Run whenever hydration, sign-in state,
+  // or accounts population changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHydrated, isSignedIn, currentAccount, user?.id]);
+  }, [isHydrated, isSignedIn, currentAccount, user?.id, accounts.length]);
 
   // Detect returning users whose email was banned after account creation
   useEffect(() => {

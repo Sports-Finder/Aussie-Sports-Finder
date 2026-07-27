@@ -1454,8 +1454,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const adminUpdateAccount = async (accountId: string, patch: Partial<UserAccount>) => {
     setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, ...patch } : acc));
     setCurrentAccount((current) => (current && current.id === accountId ? { ...current, ...patch } : current));
-    try { await api.updateAccount(accountId, patch); } catch (_) { /* silent */ }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    try {
+      await api.updateAccount(accountId, patch);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } catch (_) {
+      Alert.alert("Update failed", "Could not save changes to the server. Please try again.");
+    }
   };
 
   const adminSetAccountStatus = async (accountId: string, status: AccountStatus, reason?: string) => {
@@ -1483,7 +1487,11 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         setSignOutResetToken((c) => c + 1);
       }
     }
-    try { await api.updateAccount(accountId, { status, statusChangedAt: now(), statusReason: reason, ...(needsRejection ? { clubApprovalStatus: "rejected" } : {}) }); } catch (_) { /* silent */ }
+    try {
+      await api.updateAccount(accountId, { status, statusChangedAt: now(), statusReason: reason, ...(needsRejection ? { clubApprovalStatus: "rejected" } : {}) });
+    } catch (_) {
+      Alert.alert("Status update failed", "Could not save account status to the server. Please try again.");
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
   };
 
@@ -1511,17 +1519,31 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const adminApproveClub = async (accountId: string) => {
+    // Capture previous status so we can revert if the server call fails.
+    const previous = accounts.find((a) => a.id === accountId)?.clubApprovalStatus;
     setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, clubApprovalStatus: "approved" as ClubApprovalStatus } : acc));
     setCurrentAccount((current) => (current && current.id === accountId ? { ...current, clubApprovalStatus: "approved" as ClubApprovalStatus } : current));
-    try { await api.updateAccount(accountId, { clubApprovalStatus: "approved" }); } catch (_) { /* silent */ }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    try {
+      await api.updateAccount(accountId, { clubApprovalStatus: "approved" });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } catch (_) {
+      // Revert optimistic update so the UI reflects the real server state.
+      setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, clubApprovalStatus: (previous ?? "pending") as ClubApprovalStatus } : acc));
+      Alert.alert("Approval failed", "Could not save to server. Please check your connection and try again.");
+    }
   };
 
   const adminRejectClub = async (accountId: string) => {
+    const previous = accounts.find((a) => a.id === accountId)?.clubApprovalStatus;
     setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, clubApprovalStatus: "rejected" as ClubApprovalStatus } : acc));
     setCurrentAccount((current) => (current && current.id === accountId ? { ...current, clubApprovalStatus: "rejected" as ClubApprovalStatus } : current));
-    try { await api.updateAccount(accountId, { clubApprovalStatus: "rejected" }); } catch (_) { /* silent */ }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+    try {
+      await api.updateAccount(accountId, { clubApprovalStatus: "rejected" });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
+    } catch (_) {
+      setAccounts((current) => current.map((acc) => acc.id === accountId ? { ...acc, clubApprovalStatus: (previous ?? "pending") as ClubApprovalStatus } : acc));
+      Alert.alert("Rejection failed", "Could not save to server. Please check your connection and try again.");
+    }
   };
 
   const adminGrantPremium = async (accountId: string, grant: boolean) => {

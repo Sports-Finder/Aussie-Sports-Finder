@@ -162,14 +162,18 @@ router.put("/accounts/:publicId", async (req, res) => {
 
     // Strip read-only / registration-only fields that must never be overwritten
     // via a profile update — id, password (set once at registration), coachAffiliates
-    // (managed by its own endpoints), and clerkUserId (server-owned identity binding).
-    const { id: _id, password: _pw, coachAffiliates: _ca, clerkUserId: _cuid, ...rawBody } = req.body as Record<string, unknown>;
+    // (managed by its own endpoints), clerkUserId (server-owned identity binding),
+    // createdAt (immutable once set), and updatedAt (always overwritten below with
+    // new Date() so any client-supplied string would crash Drizzle's toISOString call).
+    const { id: _id, password: _pw, coachAffiliates: _ca, clerkUserId: _cuid, createdAt: _cat, updatedAt: _uat, ...rawBody } = req.body as Record<string, unknown>;
     const body = normalizeDates(rawBody, [
       "statusChangedAt",
       "trialStartedAt",
       "trialExpiresAt",
       "subscriptionExpiresAt",
       "lastAdvertClosedAt",
+      "ageAttestedAt",
+      "contactLastSentAt",
     ]);
     const [updated] = await db
       .update(accountsTable)
