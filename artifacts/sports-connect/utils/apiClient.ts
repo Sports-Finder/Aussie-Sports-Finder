@@ -22,6 +22,18 @@ export function setModeratorToken(token: string | null): void {
   _moderatorToken = token;
 }
 
+/**
+ * Admin passcode for entitlement grant/revoke endpoints.
+ * Set by the context whenever the admin passcode changes or admin signs in,
+ * cleared on admin sign-out. Sent as X-Admin-Passcode — verified server-side
+ * against the ADMIN_PASSCODE env var (constant-time compare).
+ */
+let _adminPasscode: string | null = null;
+
+export function setAdminPasscode(passcode: string | null): void {
+  _adminPasscode = passcode;
+}
+
 async function apiFetch(path: string, options?: RequestInit): Promise<any> {
   return customFetch<any>(`/api${path}`, options);
 }
@@ -30,6 +42,16 @@ async function apiFetch(path: string, options?: RequestInit): Promise<any> {
 async function apiFetchWithModToken(path: string, options?: RequestInit): Promise<any> {
   const extraHeaders: Record<string, string> = {};
   if (_moderatorToken) extraHeaders["X-Moderator-Token"] = _moderatorToken;
+  return customFetch<any>(`/api${path}`, {
+    ...options,
+    headers: { ...extraHeaders, ...((options?.headers as Record<string, string>) ?? {}) },
+  });
+}
+
+/** Like apiFetch but includes the admin passcode header for entitlement routes. */
+async function apiFetchWithAdminPasscode(path: string, options?: RequestInit): Promise<any> {
+  const extraHeaders: Record<string, string> = {};
+  if (_adminPasscode) extraHeaders["X-Admin-Passcode"] = _adminPasscode;
   return customFetch<any>(`/api${path}`, {
     ...options,
     headers: { ...extraHeaders, ...((options?.headers as Record<string, string>) ?? {}) },
@@ -81,9 +103,9 @@ export const api = {
   deleteCoachAffiliate: (publicId: string) => apiFetch(`/coach-affiliates/${publicId}`, { method: "DELETE" }),
 
   grantEntitlement: (accountPublicId: string, entitlementIdentifier: string) =>
-    apiFetch("/admin/entitlements", { method: "POST", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
+    apiFetchWithAdminPasscode("/admin/entitlements", { method: "POST", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
   revokeEntitlement: (accountPublicId: string, entitlementIdentifier: string) =>
-    apiFetch("/admin/entitlements", { method: "DELETE", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
+    apiFetchWithAdminPasscode("/admin/entitlements", { method: "DELETE", body: JSON.stringify({ accountPublicId, entitlementIdentifier }) }),
 
   /** Admin-only: create a server-side session granting moderator permissions. */
   createModeratorSession: (permissions: { closeChats: boolean }) =>

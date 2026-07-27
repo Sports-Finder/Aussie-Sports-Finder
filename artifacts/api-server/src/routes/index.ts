@@ -27,6 +27,11 @@ router.use(healthRouter);
 router.use(flaggedConversationsRouter);
 router.use(adminPushTokensRouter);
 
+// Entitlement grant/revoke is authenticated via X-Admin-Passcode header
+// (requireAdminPasscode inside the router), so it lives outside the global
+// requireAuth fence — the admin panel has no Clerk session.
+router.use(adminEntitlementsRouter);
+
 // All routes below this point require a valid Clerk session
 router.use(requireAuth);
 
@@ -38,7 +43,6 @@ router.use(sportRequestsRouter);
 router.use(bannedEmailsRouter);
 router.use(wipeRouter);
 router.use(coachAffiliatesRouter);
-router.use(adminEntitlementsRouter);
 router.use(moderatorSessionsRouter);
 router.use(reportsRouter);
 router.use(contactRouter);

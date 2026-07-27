@@ -8,7 +8,7 @@ import { Alert, Platform } from "react-native";
 import { getAgeBlockReason } from "../utils/ageEligibility";
 
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
-import { api, ApiError, setModeratorToken } from "@/utils/apiClient";
+import { api, ApiError, setModeratorToken, setAdminPasscode as setApiAdminPasscode } from "@/utils/apiClient";
 
 type AdvertType = "player-looking" | "coach-looking" | "players-wanted" | "club-trials" | "coach-wanted" | "club-friendly";
 type ProfileType = "player" | "club";
@@ -885,6 +885,12 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     };
   }, [isAdmin, isModerator, currentModerator]);
 
+  // Keep the API client's admin passcode in sync so entitlement grant/revoke
+  // requests include X-Admin-Passcode. Only active while the admin is logged in.
+  useEffect(() => {
+    setApiAdminPasscode(isAdmin ? adminPasscode : null);
+  }, [isAdmin, adminPasscode]);
+
   // When admin logs in, re-fetch account data with the admin endpoint so
   // guardianDateOfBirth is visible for account review.
   useEffect(() => {
@@ -1375,6 +1381,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
 
   const adminSignOut = () => {
     setIsAdmin(false);
+    setApiAdminPasscode(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
   };
 

@@ -4,7 +4,7 @@ import { ReplitConnectors } from "@replit/connectors-sdk";
 import { db, accountsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 import { mapAccountAdmin } from "../lib/mapDbToApi";
-import { requireAdmin } from "../middlewares/requireAdmin";
+import { requireAdminPasscode } from "../middlewares/requireAdminPasscode";
 
 const router: IRouter = Router();
 
@@ -24,7 +24,7 @@ async function callRevenueCatEntitlement(
   }
 }
 
-router.post("/admin/entitlements", requireAdmin, async (req, res) => {
+router.post("/admin/entitlements", requireAdminPasscode, async (req, res) => {
   try {
     const { accountPublicId, entitlementIdentifier } = req.body as {
       accountPublicId?: string;
@@ -55,7 +55,7 @@ router.post("/admin/entitlements", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/admin/entitlements", requireAdmin, async (req, res) => {
+router.delete("/admin/entitlements", requireAdminPasscode, async (req, res) => {
   try {
     const { accountPublicId, entitlementIdentifier } = req.body as {
       accountPublicId?: string;

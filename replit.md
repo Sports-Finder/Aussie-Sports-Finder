@@ -27,6 +27,7 @@ Account onboarding is local-first in the Expo app. `components/OnboardingGate.ts
 
 - `CONTACT_EMAIL_USER` — Gmail address used as the sender for Contact Us emails (e.g. `aussiesportsclubfinder@gmail.com`)
 - `CONTACT_EMAIL_PASS` — Gmail App Password for that account (not the account password). If absent, the `/api/contact` endpoint returns 500 and logs a clear error; no emails are sent.
+- `ADMIN_PASSCODE` — Server-side admin passcode used to authenticate entitlement grant/revoke requests (`POST /admin/entitlements`, `DELETE /admin/entitlements`). Must match the passcode stored in the app (AsyncStorage `admin-passcode`). Sent from the app as `X-Admin-Passcode` header; compared constant-time on the server. If absent, the endpoint returns 401.
 
 ## Key Commands
 
