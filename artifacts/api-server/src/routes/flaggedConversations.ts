@@ -39,7 +39,9 @@ async function hasCloseChatsSession(req: Parameters<typeof getAuth>[0]): Promise
         eq(moderatorSessionsTable.revoked, false)
       )
     );
-  return !!session;
+  // Defence in depth: even if the DB layer returns a row, explicitly verify the
+  // required fields so a future query change cannot accidentally grant access.
+  return !!session && session.closeChats === true && session.revoked === false;
 }
 
 /**

@@ -122,6 +122,7 @@ vi.mock("http-proxy-middleware", () => ({
 // ---------------------------------------------------------------------------
 import app from "../app.js";
 import { getAuth } from "@clerk/express";
+import { db } from "@workspace/db";
 
 // ---------------------------------------------------------------------------
 // Constants — must match the env values set in vitest.config.ts.
@@ -248,6 +249,15 @@ function callWithPasscode(spec: RouteSpec, passcode: string) {
   return req as Promise<{ status: number }>;
 }
 
+function callWithModeratorToken(spec: RouteSpec, token: string) {
+  const req = (request(app) as unknown as Record<string, (path: string) => any>)
+    [spec.method](spec.path)
+    .set("Content-Type", "application/json")
+    .set("X-Moderator-Token", token);
+  if (spec.body) req.send(spec.body);
+  return req as Promise<{ status: number }>;
+}
+
 // ---------------------------------------------------------------------------
 // Test suites
 // ---------------------------------------------------------------------------
@@ -359,6 +369,86 @@ describe("flagged-conversation routes — admin Clerk user passes auth (not 401/
       const res = await call(spec);
       expect(res.status).not.toBe(401);
       expect(res.status).not.toBe(403);
+    });
+  });
+});
+
+describe("flagged-conversation routes — moderator token with closeChats=false gets 403", () => {
+  // db.select is mocked to return a session row where closeChats=false.
+  // This proves the guard rejects the request even when the DB returns a matching token row —
+  // i.e. an implementation that drops the closeChats filter would grant access and break this test.
+  FLAGGED_ROUTES.forEach((spec) => {
+    it(`${spec.method.toUpperCase()} ${spec.path}`, async () => {
+      asUnauthenticated();
+
+      const selectSpy = vi.spyOn(db, "select").mockReturnValue({
+        from: () => ({
+          where: () =>
+            Promise.resolve([
+              { token: "no-close-chats-token", closeChats: false, revoked: false },
+            ]),
+        }),
+      } as any);
+
+      try {
+        const res = await callWithModeratorToken(spec, "no-close-chats-token");
+        expect(res.status).toBe(403);
+      } finally {
+        selectSpy.mockRestore();
+      }
+    });
+  });
+});
+
+describe("flagged-conversation routes — moderator token with closeChats=true passes auth (not 401/403)", () => {
+  // db.select is mocked to return a valid session row (closeChats=true, revoked=false).
+  // Subsequent selects (route body logic) fall back to the default empty-array chain.
+  FLAGGED_ROUTES.forEach((spec) => {
+    it(`${spec.method.toUpperCase()} ${spec.path}`, async () => {
+      asUnauthenticated();
+
+      let callCount = 0;
+      const selectSpy = vi.spyOn(db, "select").mockImplementation(() => {
+        callCount += 1;
+        if (callCount === 1) {
+          // First select: the auth check — return a valid session.
+          return {
+            from: () => ({
+              where: () =>
+                Promise.resolve([
+                  { token: "valid-close-chats-token", closeChats: true, revoked: false },
+                ]),
+            }),
+          } as any;
+        }
+        // Subsequent selects (route body): return empty array via a thenable proxy.
+        function makeChain(): unknown {
+          const handler: ProxyHandler<object> = {
+            get(_target, prop: string | symbol) {
+              if (prop === "then")
+                return (resolve: (v: unknown) => unknown) =>
+                  Promise.resolve([]).then(resolve);
+              if (prop === "catch")
+                return (onRejected: (r: unknown) => unknown) =>
+                  Promise.resolve([]).catch(onRejected);
+              if (prop === "finally")
+                return (onFinally: () => void) =>
+                  Promise.resolve([]).finally(onFinally);
+              return () => new Proxy({}, handler);
+            },
+          };
+          return new Proxy({}, handler);
+        }
+        return makeChain() as any;
+      });
+
+      try {
+        const res = await callWithModeratorToken(spec, "valid-close-chats-token");
+        expect(res.status).not.toBe(401);
+        expect(res.status).not.toBe(403);
+      } finally {
+        selectSpy.mockRestore();
+      }
     });
   });
 });
