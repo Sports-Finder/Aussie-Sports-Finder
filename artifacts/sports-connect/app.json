@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.aussiesportsfinder",
-      "buildNumber": "8",
+      "buildNumber": "9",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Aussie Sports Club Finder uses your location to alert you when nearby Australian clubs or players post adverts.",
@@ -56,11 +56,19 @@
       "expo-web-browser",
       "expo-image-picker",
       "expo-location",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d7b2936a-7694-49c9-b641-d6a6b6a648e5",
+      "fallbackToCacheTimeout": 0
     },
     "extra": {
       "eas": {

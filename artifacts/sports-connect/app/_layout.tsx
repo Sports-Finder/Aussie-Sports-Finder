@@ -109,6 +109,32 @@ function RootLayoutNav() {
   );
 }
 
+// Registers the Clerk auth token getter synchronously during render — BEFORE
+// SportsConnectProvider mounts — so that its initial loadFromApi effect sends
+// authenticated requests instead of getting 401s.
+//
+// React renders parent components before children, so calling setAuthTokenGetter
+// here (during render, not in a useEffect) guarantees the module-level
+// _authTokenGetter is set by the time SportsConnectProvider's useEffect fires.
+function AuthTokenRegistrar({ children }: { children: React.ReactNode }) {
+  const { getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+
+  // Synchronous side-effect during render: safe because it's idempotent, writes
+  // only a module-level function pointer, and does not affect reconciliation.
+  setAuthTokenGetter(async () => {
+    const token = await getTokenRef.current();
+    if (token) return token;
+    // If Clerk's JWT isn't cached yet (first render after sign-in), wait briefly
+    // and retry with a forced cache-bust.
+    await new Promise<void>((resolve) => setTimeout(resolve, 500));
+    return getTokenRef.current({ skipCache: true });
+  });
+
+  return <>{children}</>;
+}
+
 const BANNED_EMAIL_MSG = "Your account has been banned by an administrator and access has been revoked.";
 
 // Listens for notification taps and routes admin/moderator to the Chats section.
@@ -133,27 +159,9 @@ function NotificationDeepLink() {
 }
 
 function AppContent() {
-  const { isSignedIn, isLoaded, getToken, signOut } = useAuth();
+  const { isSignedIn, isLoaded, signOut } = useAuth();
   const { user } = useUser();
   const { currentAccount, isHydrated, accounts, bannedEmails, signOut: localSignOut, restoreAccountByClerkId } = useSportsConnect();
-
-  // Keep a ref to the latest getToken to avoid stale closures across renders,
-  // hot-reloads, and sign-in state transitions. Updating a ref during render
-  // is safe — React explicitly allows it for this pattern.
-  const getTokenRef = useRef(getToken);
-  getTokenRef.current = getToken;
-
-  useEffect(() => {
-    // Register once on mount. Always calls the freshest getToken via ref.
-    // If the first attempt returns null (Clerk JWT not yet established or
-    // mid-refresh), wait 500 ms then force a cache-busting refresh.
-    setAuthTokenGetter(async () => {
-      const token = await getTokenRef.current();
-      if (token) return token;
-      await new Promise<void>((resolve) => setTimeout(resolve, 500));
-      return getTokenRef.current({ skipCache: true });
-    });
-  }, []);
 
   // Identify the RevenueCat user with the stable Clerk user ID so entitlements
   // are never fragmented across anonymous / local account identities.
@@ -257,6 +265,7 @@ export default function RootLayout() {
         <ClerkLoaded>
           <ErrorBoundary>
             <QueryClientProvider client={queryClient}>
+              <AuthTokenRegistrar>
               <SportsConnectProvider>
                 <SubscriptionProvider>
                   <SubscriptionSync />
@@ -268,6 +277,7 @@ export default function RootLayout() {
                   </GestureHandlerRootView>
                 </SubscriptionProvider>
               </SportsConnectProvider>
+              </AuthTokenRegistrar>
             </QueryClientProvider>
           </ErrorBoundary>
         </ClerkLoaded>

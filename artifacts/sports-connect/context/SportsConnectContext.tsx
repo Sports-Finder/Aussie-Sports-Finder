@@ -371,7 +371,7 @@ type SportsConnectState = {
   loginWithSocial: (authMethod: AuthMethod, socialId: string) => boolean;
   autoRestoreSession: (email: string, authMethod: AuthMethod, socialId?: string) => boolean;
   restoreAccountByClerkId: (clerkUserId: string, fallbackEmail?: string) => boolean;
-  createAccount: (draft: DraftAccount) => boolean;
+  createAccount: (draft: DraftAccount) => Promise<boolean>;
   signOut: () => void;
   signOutResetToken: number;
   clearAllData: () => Promise<void>;
@@ -1010,7 +1010,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
   };
 
-  const createAccount = (draft: DraftAccount): boolean => {
+  const createAccount = async (draft: DraftAccount): Promise<boolean> => {
     const normalizedEmail = draft.email.toLowerCase().trim();
     if (bannedEmails.map((e) => e.toLowerCase()).includes(normalizedEmail)) {
       Alert.alert("Account blocked", "This email address has been banned by an administrator and cannot be used to create a new account.");
@@ -1046,31 +1046,6 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       status: "active",
       ...(draft.role === "club" ? { clubApprovalStatus: "pending" as ClubApprovalStatus } : {}),
     };
-    setAccounts((current) => [...current, account]);
-    setCurrentAccount(account);
-    setSelectedSport(account.defaultSport);
-    if (account.role === "club") {
-      setActiveProfile("club");
-      setClubProfile((current) => ({
-        ...current,
-        name: account.clubName || current.name,
-        sport: account.defaultSport,
-        location: account.location || current.location,
-        mapAddress: [account.clubAddress, [account.clubSuburb, account.clubPostcode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || current.mapAddress,
-        imageId: account.profileImageId,
-        bio: account.bio || current.bio,
-      }));
-    } else {
-      setActiveProfile("player");
-      setPlayerProfile((current) => ({
-        ...current,
-        name: account.role === "guardian" ? account.playerName || current.name : account.fullName || account.playerName || current.name,
-        sports: account.sports.join(", "),
-        location: account.location || current.location,
-        imageId: account.profileImageId,
-        bio: account.bio || current.bio,
-      }));
-    }
     if (account.highlightReelUrl) {
       const url: string = account.highlightReelUrl;
       setPendingHighlightLinks((current) => [{
@@ -1081,17 +1056,44 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         submittedAt: now(),
       }, ...current]);
     }
-    // Background sync to API
-    api.createAccount({ ...account, publicId }).catch((e: unknown) => {
+    // Await server confirmation before setting currentAccount.
+    // This guarantees the account lands in the database before the UI advances past
+    // AccountSetupGate — no more local-only ghost accounts that vanish on reinstall.
+    try {
+      await api.createAccount({ ...account, publicId });
+      // Server confirmed — commit all state atomically.
+      setAccounts((current) => [...current, account]);
+      setCurrentAccount(account);
+      setSelectedSport(account.defaultSport);
+      if (account.role === "club") {
+        setActiveProfile("club");
+        setClubProfile((current) => ({
+          ...current,
+          name: account.clubName || current.name,
+          sport: account.defaultSport,
+          location: account.location || current.location,
+          mapAddress: [account.clubAddress, [account.clubSuburb, account.clubPostcode].filter(Boolean).join(" ")].filter(Boolean).join(", ") || current.mapAddress,
+          imageId: account.profileImageId,
+          bio: account.bio || current.bio,
+        }));
+      } else {
+        setActiveProfile("player");
+        setPlayerProfile((current) => ({
+          ...current,
+          name: account.role === "guardian" ? account.playerName || current.name : account.fullName || account.playerName || current.name,
+          sports: account.sports.join(", "),
+          location: account.location || current.location,
+          imageId: account.profileImageId,
+          bio: account.bio || current.bio,
+        }));
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      return true;
+    } catch (e: unknown) {
       const err = e as { status?: number; body?: Record<string, unknown> } | null;
       const status = err?.status;
       if (status === 409) {
-        // Server already has an account for this Clerk user or email — roll back the
-        // locally-created ghost and restore the canonical server account atomically so
-        // there is no intermediate flash of AccountSetupGate.
-        //
-        // The .catch() closure captures `accounts` from the pre-ghost render snapshot.
-        // The canonical account is already in that list (fetched during hydration).
+        // Server already has an account for this Clerk user or email — restore it.
         const existingPublicId = typeof err?.body?.publicId === "string" ? err.body.publicId : undefined;
         const existingStatus = typeof err?.body?.status === "string" ? err.body.status : undefined;
         const canonical = existingPublicId
@@ -1099,21 +1101,16 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
           : accounts.find((a) => a.email.toLowerCase() === normalizedEmail);
 
         if (canonical?.status === "banned" || canonical?.status === "closed" || existingStatus === "banned" || existingStatus === "closed") {
-          // The existing account is closed or banned — do not restore it silently.
-          // Remove the ghost and alert the user so they know what happened.
-          setAccounts((prev) => prev.filter((a) => a.id !== publicId));
-          setCurrentAccount(undefined);
           Alert.alert(
             "Account already exists",
             "This email address is linked to a closed or banned account. Please contact support if you believe this is an error.",
           );
-          console.info("[createAccount] 409 — ghost rolled back, existing account is closed/banned");
-          return;
+          console.info("[createAccount] 409 — existing account is closed/banned");
+          return false;
         }
 
         if (canonical) {
-          // Atomic swap: remove the ghost and set the canonical account in one render.
-          setAccounts((prev) => [...prev.filter((a) => a.id !== publicId)]);
+          setAccounts((prev) => (prev.some((a) => a.id === canonical.id) ? prev : [...prev, canonical]));
           setCurrentAccount(canonical);
           setSelectedSport(canonical.defaultSport);
           setActiveProfile(canonical.role === "club" ? "club" : "player");
@@ -1137,24 +1134,39 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
               imageId: canonical.profileImageId,
             }));
           }
-          console.info("[createAccount] 409 — ghost swapped for canonical account atomically");
-        } else {
-          // Canonical not in local list (rare: hydration may have failed).
-          // Remove the ghost and trigger a background re-fetch so AccountSetupGate
-          // will find the account on the next render.
-          setAccounts((prev) => prev.filter((a) => a.id !== publicId));
-          setCurrentAccount(undefined);
-          api.getAccounts().then((fetched: UserAccount[]) => {
-            setAccounts(fetched.map(migrateAccountAffiliates));
-          }).catch(() => undefined);
-          console.info("[createAccount] 409 — ghost rolled back, triggered re-fetch for canonical account");
+          console.info("[createAccount] 409 — restored canonical account");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+          return true;
         }
-        return;
+        // Canonical not in local list — fetch fresh from server and restore.
+        const fetched = await api.getAccounts().catch(() => null) as UserAccount[] | null;
+        if (fetched) {
+          const freshCanonical = fetched.find(
+            (a) => a.email.toLowerCase() === normalizedEmail || (existingPublicId && a.id === existingPublicId),
+          );
+          setAccounts(fetched.map(migrateAccountAffiliates));
+          if (freshCanonical) {
+            setCurrentAccount(freshCanonical);
+            setSelectedSport(freshCanonical.defaultSport);
+            console.info("[createAccount] 409 — canonical restored after re-fetch");
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+            return true;
+          }
+        }
+        Alert.alert(
+          "Account already exists",
+          "An account with this email already exists. Please sign in to access it.",
+        );
+        return false;
       }
-      console.warn("[createAccount] API sync failed — status:", status ?? e);
-    });
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    return true;
+      // Non-409 error: alert user and do not advance past AccountSetupGate.
+      Alert.alert(
+        "Account creation failed",
+        "We couldn't save your account. Please check your connection and try again.",
+      );
+      console.warn("[createAccount] server error — status:", status ?? e);
+      return false;
+    }
   };
 
   const signOut = () => {

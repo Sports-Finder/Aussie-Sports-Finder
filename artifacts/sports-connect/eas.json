@@ -25,6 +25,7 @@
   },
   "build": {
     "preview": {
+      "channel": "preview",
       "distribution": "store",
       "ios": {
         "simulator": false
@@ -39,6 +40,7 @@
       }
     },
     "production": {
+      "channel": "production",
       "distribution": "store",
       "ios": {
         "simulator": false

@@ -63,6 +63,7 @@
     "aus-postcode-suburbs": "^1.3.2",
     "expo-build-properties": "^57.0.7",
     "expo-notifications": "^0.32.17",
+    "expo-updates": "~29.0.19",
     "leo-profanity": "^1.9.0",
     "react-native-purchases": "^10.2.0"
   }

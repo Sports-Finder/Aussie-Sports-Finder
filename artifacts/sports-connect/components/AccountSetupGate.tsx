@@ -176,6 +176,7 @@ export function AccountSetupGate() {
 
   const isClub = role === "club";
   const [clubType, setClubType] = useState<"club" | "academy">("club");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // True while a Nominatim address suggestion is selected — suburb/postcode/state
   // are auto-populated from the result and the suburb field is locked read-only.
   // Cleared when the address field is cleared so the user can type a suburb manually.
@@ -284,7 +285,7 @@ export function AccountSetupGate() {
     }
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!socialLinksValid) {
       Alert.alert("Social link error", "Only Instagram, Facebook, X/Twitter and TikTok profile links are accepted.");
       return;
@@ -324,50 +325,56 @@ export function AccountSetupGate() {
       Alert.alert("Inappropriate language", `Please remove inappropriate language from the ${badField} field.`);
       return;
     }
-    const created = createAccount({
-      role,
-      authMethod,
-      email: email.toLowerCase(),
-      fullName: form.fullName,
-      parentGuardianName: form.parentGuardianName,
-      playerName: form.playerName,
-      clubName: form.clubName,
-      clubType: isClub ? clubType : undefined,
-      gender: form.gender,
-      dateOfBirth: form.dateOfBirth,
-      guardianDateOfBirth: role === "guardian" ? form.guardianDateOfBirth : undefined,
-      location: isClub ? `${form.clubSuburb} ${form.state}`.trim() : `${form.suburb} ${form.state}`.trim(),
-      mobile: isClub ? form.clubContactMobile : form.mobile,
-      sports: isClub ? [defaultSport] : selectedSports,
-      defaultSport,
-      profileImageId,
-      socialLinks: {
-        instagram: form.instagram,
-        facebook: form.facebook,
-        x: form.x,
-        tiktok: form.tiktok,
-      },
-      playerPositions: form.playerPositions,
-      playerCurrentLevel: form.playerCurrentLevel || undefined,
-      playerCurrentAgeGroup: form.playerCurrentAgeGroup || undefined,
-      playerCurrentClub: form.playerCurrentClub || undefined,
-      coachSubRole: form.coachSubRole || undefined,
-      coachCurrentLevel: form.coachCurrentLevel || undefined,
-      coachCurrentClub: form.coachCurrentClub || undefined,
-      highlightReelUrl: form.highlightReelUrl,
-      highlightReelStatus: form.highlightReelUrl ? "pending" : undefined,
-      clubWebsite: form.clubWebsite,
-      clubAddress: form.clubAddress,
-      clubSuburb: form.clubSuburb,
-      clubPostcode: form.clubPostcode,
-      clubContactEmail: form.clubContactEmail,
-      clubContactMobile: form.clubContactMobile,
-      bio: form.bio || undefined,
-      socialId,
-      clerkUserId: user?.id,
-      ageAttested: true,
-      ageAttestedAt: new Date().toISOString(),
-    });
+    setIsSubmitting(true);
+    let created = false;
+    try {
+      created = await createAccount({
+        role,
+        authMethod,
+        email: email.toLowerCase(),
+        fullName: form.fullName,
+        parentGuardianName: form.parentGuardianName,
+        playerName: form.playerName,
+        clubName: form.clubName,
+        clubType: isClub ? clubType : undefined,
+        gender: form.gender,
+        dateOfBirth: form.dateOfBirth,
+        guardianDateOfBirth: role === "guardian" ? form.guardianDateOfBirth : undefined,
+        location: isClub ? `${form.clubSuburb} ${form.state}`.trim() : `${form.suburb} ${form.state}`.trim(),
+        mobile: isClub ? form.clubContactMobile : form.mobile,
+        sports: isClub ? [defaultSport] : selectedSports,
+        defaultSport,
+        profileImageId,
+        socialLinks: {
+          instagram: form.instagram,
+          facebook: form.facebook,
+          x: form.x,
+          tiktok: form.tiktok,
+        },
+        playerPositions: form.playerPositions,
+        playerCurrentLevel: form.playerCurrentLevel || undefined,
+        playerCurrentAgeGroup: form.playerCurrentAgeGroup || undefined,
+        playerCurrentClub: form.playerCurrentClub || undefined,
+        coachSubRole: form.coachSubRole || undefined,
+        coachCurrentLevel: form.coachCurrentLevel || undefined,
+        coachCurrentClub: form.coachCurrentClub || undefined,
+        highlightReelUrl: form.highlightReelUrl,
+        highlightReelStatus: form.highlightReelUrl ? "pending" : undefined,
+        clubWebsite: form.clubWebsite,
+        clubAddress: form.clubAddress,
+        clubSuburb: form.clubSuburb,
+        clubPostcode: form.clubPostcode,
+        clubContactEmail: form.clubContactEmail,
+        clubContactMobile: form.clubContactMobile,
+        bio: form.bio || undefined,
+        socialId,
+        clerkUserId: user?.id,
+        ageAttested: true,
+        ageAttestedAt: new Date().toISOString(),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
     if (!created) return;
 
     const roleLabel =
@@ -1000,10 +1007,10 @@ export function AccountSetupGate() {
             />
 
             <PrimaryButton
-              label="Create account"
+              label={isSubmitting ? "Creating account…" : "Create account"}
               icon="user-check"
               onPress={submit}
-              disabled={!requiredDetailsValid || !socialLinksValid || (isClub && !form.agreed) || !!detectContactInfo(form.bio)}
+              disabled={isSubmitting || !requiredDetailsValid || !socialLinksValid || (isClub && !form.agreed) || !!detectContactInfo(form.bio)}
             />
           </View>
         )}
