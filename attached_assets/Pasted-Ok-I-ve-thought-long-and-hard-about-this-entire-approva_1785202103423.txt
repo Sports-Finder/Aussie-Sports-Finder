@@ -1,0 +1,50 @@
+Ok I've thought long and hard about this entire approval process and how it's essentially breaking sign ups and account creations. 
+
+Currently on the lastest app accepting approval at backend is broken (tells me it can't connect to server or something) when I try. So not only have I lost money trying to inplement this safe guard, I've gone backwards with it. 
+
+I think we need to remove the approval process for Club or Academy accounts altogether and go down a badge system of sorts. Player and Coach accounts don't need to be approved so I guess anyone can create fake accounts regardless. The aim then is to be vigilant and transparent with accounts that aren't verified or paid subscriptions.
+
+To start off when you create ANY account, that account is marked as 'NEW' but this isn't displayed as NEW, it is represented simply as a yellow warning icon ⚠️ in top corner of profile name.
+Any adverts created by clubs that are new (& unverified) will also contain this icon as a warning for players or coaches, because a new club account without subscribing can create one advert at a time.
+If any connection is requested from a NEW club account advert a dismissible pop up says "This club hasn't been verified as an official club on our platform yet.
+You can still connect with them, but we recommend taking normal precautions before sharing personal information or making any payments.” [CONTINUE] or [CANCEL]
+Cancel simply takes user back to the advert in its pre-connection request state.
+
+If a NEW player or coach account requests to connect to a club account, when the club accepts the request, a dismissible pop up should say “This account is new to our platform and has not yet earned a Trusted status. Would you like to continue?” [CONTINUE] or [CANCEL]
+Cancel simply takes user back to the advert in its pre-connection request state.
+
+If a player or coach account that has 5 or more negative reports requests to connect to a club account, when the club accepts the request, a dismissible pop up should say “This account has had an alarming number of negative reports against their name and has not yet earned a Trusted status. Would you like to continue?” [CONTINUE] or [CANCEL]
+Cancel simply takes user back to the advert in its pre-connection request state.
+
+All players, parents of players and coaches can build trust which is viewable to all Clubs or affiliated coaches after connection above their profile view.
+
+These are; for example;
+
+John Smith
+* ✅ Email Verified
+* ⭐ Subscriber or 🚫 Not Subscribed
+* 📅 Account created on [date of creation]
+* 👍 No negative reports or ⚠️ [number] negative reports (if they get 1 or more).
+
+Trusted is a hidden commodity. To be verified as trusted they must be subscribed, have an account that is older than 14 days & have no or less than 5 negative reports against their account. This stops the pop up dismissible warnings.
+
+Negative reports can be wiped after 1 year if;
+
+- The account is still active (based on last login)
+- The account is still subscribed.
+
+Club accounts don’t get a trusted rating. They simply have to get verified. On their profile screen, below the sign out, edit profile buttons there will be a “⚠️ Your club is currently unverified. Verify now” link.
+This opens a pop up saying “To be verified your club account information will be sent to our admins to verification. If your club cannot be verified, it will be closed and your email will be banned. Do you wish to continue with the submission?” [YES] or [NO]
+
+Like the contact us form, the account information with a verification request title with club or academy name in subject line gets sent to email as a notification.
+Like before the admin can go into backend and manually change the account to verified or unverified at any time. This simply flags the account and removes the unverified flags for pop up warnings to other accounts, removes the unverified link under their profile and unlocks the Subscription button.
+It also adds a 🛡️ verified icon and VERIFIED CLUB or VERIFIED ACADEMY on their profile at the top for every account to see.
+
+A club cannot purchase a subscription until they are confirmed verified too. Lock the subscription button with a ⚠️ You Need to be Verified before you can purchase a Subscription.
+
+Player or coach account can send a negative report to clubs but these behave differently to the negative report process for players & coaches. Instead, like it currently is, a negative report is sent via chat or via contact us, which is a case by case basis for admin. Admin decides what action to take, email the user or ban the account.
+Can we make sure than any banning of accounts that are subscribed, ends the subscription? Is that possible? If not what are our options?
+
+Is there anything else I’ve missed?
+
+
