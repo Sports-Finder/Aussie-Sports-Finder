@@ -3,3 +3,4 @@
 - [Expo auth token getter — ref pattern](expo-auth-token-getter-pattern.md) — useRef pattern for setAuthTokenGetter avoids stale closures and Fast Refresh resets; never use useEffect([getToken]).
 - [OTA hermesc passthrough](ota-hermesc-passthrough.md) — local linux hermesc v0.12.0 rejects private class fields; replace with passthrough script for eas update, then restore.
 - [Mobile admin identity](mobile-admin-identity.md) — admin data and actions need a verified Clerk allowlist; a local passcode cannot authorize sensitive API access.
+- [Expo Launch runtime version](expo-launch-runtime-version.md) — Replit's iOS build resolves as bare workflow, so use a literal runtime version, not an Expo policy.
