@@ -4,3 +4,4 @@
 - [OTA hermesc passthrough](ota-hermesc-passthrough.md) — local linux hermesc v0.12.0 rejects private class fields; replace with passthrough script for eas update, then restore.
 - [Mobile admin identity](mobile-admin-identity.md) — admin data and actions need a verified Clerk allowlist; a local passcode cannot authorize sensitive API access.
 - [Expo Launch runtime version](expo-launch-runtime-version.md) — Replit's iOS build resolves as bare workflow, so use a literal runtime version, not an Expo policy.
+- [Expo Hermes release bundles](expo-hermes-release-bundles.md) — RN 0.81's hermesc rejects ordinary class declarations; Metro's default transform profile produces compilable bytecode.
