@@ -111,6 +111,8 @@ export default function ProfileScreen() {
     approvedSports,
     accounts,
     currentAccount,
+    adminAuthorized,
+    enterAdmin,
     updateAccount,
     resetClubApprovalAfterEdit,
     respondToAffiliationRequest,
@@ -454,6 +456,17 @@ export default function ProfileScreen() {
               </View>
             </View>
             <PrimaryButton label="Sign out" icon="log-out" onPress={() => { void clerkSignOut(); }} />
+            {adminAuthorized && (
+              <PrimaryButton
+                label="Admin access"
+                icon="shield"
+                onPress={() => {
+                  void enterAdmin().catch(() => {
+                    Alert.alert("Admin access unavailable", "Could not verify access or load accounts. Please check your connection and retry.");
+                  });
+                }}
+              />
+            )}
             <PrimaryButton label={mode === "edit" ? "Cancel editing" : "Edit Profile"} icon={mode === "edit" ? "x" : "edit-3"} onPress={mode === "edit" ? () => setMode("view") : openEdit} />
             {/* Legal links — always visible in the account header area */}
             <View style={styles.legalRow}>

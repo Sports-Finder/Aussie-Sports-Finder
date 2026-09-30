@@ -2,12 +2,10 @@
  * Admin route inventory — CI guard.
  *
  * This file owns the CANONICAL lists of every Express route that uses one of
- * three admin-protection patterns:
+ * two admin-protection patterns:
  *
  *   1. requireAdmin middleware          → REQUIRE_ADMIN_INVENTORY
  *   2. isAdminCaller() handler guard   → CUSTOM_ADMIN_INVENTORY
- *   3. requireAdminPasscode middleware  → PASSCODE_INVENTORY
- *
  * For each inventory two checks run automatically:
  *
  *   A. Every route found in source appears in the inventory.
@@ -38,6 +36,8 @@ const REQUIRE_ADMIN_INVENTORY: Array<{ method: string; pattern: string }> = [
   { method: "put", pattern: "/sport-requests/:publicId" },
   { method: "patch", pattern: "/admin/accounts/:accountPublicId/contact-us" },
   { method: "delete", pattern: "/conversations/:publicId" },
+  { method: "post", pattern: "/admin/entitlements" },
+  { method: "delete", pattern: "/admin/entitlements" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -51,15 +51,6 @@ const CUSTOM_ADMIN_INVENTORY: Array<{ method: string; pattern: string }> = [
   { method: "delete", pattern: "/moderator-sessions/:token" },
   { method: "get", pattern: "/reports" },
   { method: "post", pattern: "/reports/:publicId/resolve" },
-];
-
-// ---------------------------------------------------------------------------
-// Canonical inventory — routes protected by requireAdminPasscode middleware.
-// ── Keep this in sync with PASSCODE_ROUTES in admin-auth.test.ts ──
-// ---------------------------------------------------------------------------
-const PASSCODE_INVENTORY: Array<{ method: string; pattern: string }> = [
-  { method: "post", pattern: "/admin/entitlements" },
-  { method: "delete", pattern: "/admin/entitlements" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -118,27 +109,6 @@ function scanForCustomAdminRoutes(dir: string): FoundRoute[] {
   // field-level access control mid-handler rather than as a primary gate.
   const re =
     /router\.(get|post|put|patch|delete)\(\s*["']([^"']+)["'][^{]*\{\s*if\s*\(!isAdminCaller\(/gs;
-
-  for (const file of files) {
-    const content = readFileSync(join(dir, file), "utf-8");
-    let match: RegExpExecArray | null;
-    re.lastIndex = 0; // reset before each file
-    while ((match = re.exec(content)) !== null) {
-      found.push({ method: match[1], pattern: match[2], file });
-    }
-  }
-
-  return found;
-}
-
-function scanForPasscodeRoutes(dir: string): FoundRoute[] {
-  const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
-  const found: FoundRoute[] = [];
-
-  // Matches: router.METHOD("path", requireAdminPasscode, ...)
-  // The requireAdminPasscode token must immediately follow the path argument.
-  const re =
-    /router\.(get|post|put|patch|delete)\(\s*["']([^"']+)["']\s*,\s*requireAdminPasscode\b/g;
 
   for (const file of files) {
     const content = readFileSync(join(dir, file), "utf-8");
@@ -244,14 +214,6 @@ buildInventoryTests(
   scanForCustomAdminRoutes(ROUTES_DIR),
   "isAdminCaller()",
   "CUSTOM_ADMIN_ROUTES",
-);
-
-buildInventoryTests(
-  "requireAdminPasscode route inventory",
-  PASSCODE_INVENTORY,
-  scanForPasscodeRoutes(ROUTES_DIR),
-  "requireAdminPasscode",
-  "PASSCODE_ROUTES",
 );
 
 buildInventoryTests(

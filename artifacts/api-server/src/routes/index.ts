@@ -27,14 +27,11 @@ router.use(healthRouter);
 router.use(flaggedConversationsRouter);
 router.use(adminPushTokensRouter);
 
-// Entitlement grant/revoke is authenticated via X-Admin-Passcode header
-// (requireAdminPasscode inside the router), so it lives outside the global
-// requireAuth fence — the admin panel has no Clerk session.
-router.use(adminEntitlementsRouter);
-
 // All routes below this point require a valid Clerk session
 router.use(requireAuth);
 
+// Entitlement grant/revoke also verifies the authenticated Clerk user is an admin.
+router.use(adminEntitlementsRouter);
 router.use(accountsRouter);
 router.use(advertsRouter);
 router.use(conversationsRouter);

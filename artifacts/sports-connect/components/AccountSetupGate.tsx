@@ -19,7 +19,7 @@ import { PrimaryButton, ProfileAvatar } from "@/components/SportsUI";
 import { SuburbAutocomplete } from "@/components/SuburbAutocomplete";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { LegalModal } from "@/components/LegalModal";
-import { AccountRole, AuthMethod, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
+import { AccountRole, AuthMethod, findAccountForClerkUser, SocialLinks, useSportsConnect } from "@/context/SportsConnectContext";
 import { checkFields } from "@/utils/profanityFilter";
 import { getDefaultAvatar } from "@/constants/defaultAvatars";
 import { getClubLabel } from "@/constants/clubLabel";
@@ -100,7 +100,13 @@ function isValidSocialLink(platform: keyof SocialLinks, value: string) {
   }
 }
 
-export function AccountSetupGate() {
+export function AccountSetupGate({
+  onAdminAccess,
+  adminAuthorized = false,
+}: {
+  onAdminAccess?: () => Promise<void>;
+  adminAuthorized?: boolean;
+}) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -173,6 +179,15 @@ export function AccountSetupGate() {
   });
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [defaultSport, setDefaultSport] = useState("");
+
+  const handleAdminAccess = async () => {
+    if (!onAdminAccess) return;
+    try {
+      await onAdminAccess();
+    } catch {
+      Alert.alert("Admin access unavailable", "Could not verify access or load accounts. Please check your connection and retry.");
+    }
+  };
 
   const isClub = role === "club";
   const [clubType, setClubType] = useState<"club" | "academy">("club");
@@ -406,16 +421,13 @@ export function AccountSetupGate() {
   // clerkUserId is the authoritative match — it survives password resets and email
   // casing differences. Email is the fallback for legacy accounts that pre-date the
   // clerkUserId binding.
-  const existingAccount = isHydrated && (email || user?.id)
-    ? accounts.find(
-        (a) =>
-          (
-            (user?.id && a.clerkUserId === user.id) ||
-            (email && a.email.toLowerCase() === email.toLowerCase())
-          ) &&
-          a.status !== "banned" &&
-          a.status !== "closed",
-      )
+  const matchedAccount = isHydrated && (email || user?.id)
+    ? findAccountForClerkUser(accounts, user?.id, email)
+    : undefined;
+  const existingAccount = matchedAccount &&
+    matchedAccount.status !== "banned" &&
+    matchedAccount.status !== "closed"
+    ? matchedAccount
     : undefined;
 
   if (existingAccount) {
@@ -470,7 +482,7 @@ export function AccountSetupGate() {
               </View>
             )}
             <Pressable
-              onPress={() => autoRestoreSession(email, authMethod, socialId)}
+              onPress={() => autoRestoreSession(email, authMethod, socialId, user?.id)}
               style={({ pressed }) => [
                 styles.roleCard,
                 {
@@ -504,6 +516,15 @@ export function AccountSetupGate() {
             <Feather name="log-out" size={13} color={colors.mutedForeground} />
             <Text style={[styles.signOutText, { color: colors.mutedForeground }]}>Sign out</Text>
           </Pressable>
+          {adminAuthorized && (
+            <Pressable
+              onPress={() => { void handleAdminAccess(); }}
+              style={({ pressed }) => [styles.signOutLink, { opacity: pressed ? 0.6 : 1, marginTop: 8 }]}
+            >
+              <Feather name="shield" size={13} color={colors.primary} />
+              <Text style={[styles.signOutText, { color: colors.primary }]}>Re-enter Admin</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -546,6 +567,15 @@ export function AccountSetupGate() {
             <Feather name="log-out" size={13} color={colors.mutedForeground} />
             <Text style={[styles.signOutText, { color: colors.mutedForeground }]}>Sign out</Text>
           </Pressable>
+          {adminAuthorized && (
+            <Pressable
+              onPress={() => { void handleAdminAccess(); }}
+              style={({ pressed }) => [styles.signOutLink, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Feather name="shield" size={13} color={colors.primary} />
+              <Text style={[styles.signOutText, { color: colors.primary }]}>Admin access</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* ── Role selection step ── */}

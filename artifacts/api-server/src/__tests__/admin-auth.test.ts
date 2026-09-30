@@ -9,11 +9,6 @@
  *     • unauthenticated caller → 401  (from requireAuth)
  *     • authenticated non-admin → 403  (from requireAdmin middleware)
  *
- *   requireAdminPasscode routes (outside requireAuth):
- *     • no X-Admin-Passcode header → 401
- *     • wrong passcode → 403
- *     • correct passcode → NOT 401/403  (auth accepted; handler may 4xx for other reasons)
- *
  *   customAdminCaller routes (custom isAdminCaller() check, behind requireAuth):
  *     • unauthenticated → 401  (from requireAuth)
  *     • authenticated non-admin → 403  (from handler guard)
@@ -129,7 +124,6 @@ import { db } from "@workspace/db";
 // ---------------------------------------------------------------------------
 const ADMIN_ID = "admin-clerk-id"; // listed in ADMIN_USER_IDS
 const REGULAR_ID = "regular-user-id"; // NOT in ADMIN_USER_IDS
-const ADMIN_PASSCODE = "test-passcode-secret"; // matches ADMIN_PASSCODE
 
 // ---------------------------------------------------------------------------
 // Auth helpers
@@ -179,6 +173,16 @@ const REQUIRE_ADMIN_ROUTES: RouteSpec[] = [
     body: { disabled: true },
   },
   { method: "delete", path: "/api/conversations/some-conv-id" },
+  {
+    method: "post",
+    path: "/api/admin/entitlements",
+    body: { accountPublicId: "some-id", entitlementIdentifier: "premium" },
+  },
+  {
+    method: "delete",
+    path: "/api/admin/entitlements",
+    body: { accountPublicId: "some-id", entitlementIdentifier: "premium" },
+  },
 ];
 
 /**
@@ -195,25 +199,6 @@ const CUSTOM_ADMIN_ROUTES: RouteSpec[] = [
     method: "post",
     path: "/api/reports/some-report-id/resolve",
     body: { resolution: "ok" },
-  },
-];
-
-/**
- * Routes protected by requireAdminPasscode (outside the requireAuth fence).
- * • no X-Admin-Passcode header → 401
- * • wrong passcode             → 403
- * • correct passcode           → not 401 or 403
- */
-const PASSCODE_ROUTES: RouteSpec[] = [
-  {
-    method: "post",
-    path: "/api/admin/entitlements",
-    body: { accountPublicId: "some-id", entitlementIdentifier: "premium" },
-  },
-  {
-    method: "delete",
-    path: "/api/admin/entitlements",
-    body: { accountPublicId: "some-id", entitlementIdentifier: "premium" },
   },
 ];
 
@@ -324,30 +309,12 @@ describe("custom isAdminCaller routes — admin caller passes auth (not 401/403)
   });
 });
 
-describe("requireAdminPasscode routes — missing header gets 401", () => {
-  PASSCODE_ROUTES.forEach((spec) => {
+describe("entitlement routes — passcode alone cannot access", () => {
+  REQUIRE_ADMIN_ROUTES.filter((spec) => spec.path === "/api/admin/entitlements").forEach((spec) => {
     it(`${spec.method.toUpperCase()} ${spec.path}`, async () => {
-      const res = await call(spec);
+      asUnauthenticated();
+      const res = await callWithPasscode(spec, "test-passcode-secret");
       expect(res.status).toBe(401);
-    });
-  });
-});
-
-describe("requireAdminPasscode routes — wrong passcode gets 403", () => {
-  PASSCODE_ROUTES.forEach((spec) => {
-    it(`${spec.method.toUpperCase()} ${spec.path}`, async () => {
-      const res = await callWithPasscode(spec, "definitely-wrong");
-      expect(res.status).toBe(403);
-    });
-  });
-});
-
-describe("requireAdminPasscode routes — correct passcode passes auth (not 401/403)", () => {
-  PASSCODE_ROUTES.forEach((spec) => {
-    it(`${spec.method.toUpperCase()} ${spec.path}`, async () => {
-      const res = await callWithPasscode(spec, ADMIN_PASSCODE);
-      expect(res.status).not.toBe(401);
-      expect(res.status).not.toBe(403);
     });
   });
 });

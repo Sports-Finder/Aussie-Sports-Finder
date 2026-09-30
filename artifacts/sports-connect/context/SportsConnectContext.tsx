@@ -3,12 +3,12 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
 import { getAgeBlockReason } from "../utils/ageEligibility";
 
 import { SportTheme, defaultSportThemes } from "@/constants/sports";
-import { api, ApiError, setModeratorToken, setAdminPasscode as setApiAdminPasscode } from "@/utils/apiClient";
+import { api, ApiError, setModeratorToken } from "@/utils/apiClient";
 
 type AdvertType = "player-looking" | "coach-looking" | "players-wanted" | "club-trials" | "coach-wanted" | "club-friendly";
 type ProfileType = "player" | "club";
@@ -328,6 +328,23 @@ function migrateAccountAffiliates(acc: any): any {
   };
 }
 
+/** Prefer the Clerk user binding; only adopt email-matched legacy records that are still unbound. */
+export function findAccountForClerkUser(
+  accountList: UserAccount[],
+  clerkUserId?: string,
+  email?: string,
+): UserAccount | undefined {
+  if (clerkUserId) {
+    const linkedAccount = accountList.find((account) => account.clerkUserId === clerkUserId);
+    if (linkedAccount) return linkedAccount;
+  }
+  if (!email) return undefined;
+  const normalizedEmail = email.toLowerCase().trim();
+  return accountList.find(
+    (account) => !account.clerkUserId && account.email.toLowerCase().trim() === normalizedEmail,
+  );
+}
+
 type SportsConnectState = {
   adverts: Advert[];
   conversations: Conversation[];
@@ -343,6 +360,9 @@ type SportsConnectState = {
   selectedSport: string;
   activeProfile: ProfileType;
   isAdmin: boolean;
+  adminAuthorized: boolean;
+  activateAdmin: (accounts: UserAccount[]) => void;
+  enterAdmin: () => Promise<void>;
   isModerator: boolean;
   currentModerator: ModeratorAccount | null;
   moderators: ModeratorAccount[];
@@ -351,6 +371,8 @@ type SportsConnectState = {
   addModerator: (mod: Omit<ModeratorAccount, "id">) => boolean;
   deleteModerator: (modId: string) => void;
   isHydrated: boolean;
+  accountDataStatus: "loading" | "loaded" | "error";
+  retryAccountsLoad: () => Promise<void>;
   showMemberStats: boolean;
   toggleShowMemberStats: () => void;
   devBypassSubscription: boolean;
@@ -369,15 +391,13 @@ type SportsConnectState = {
   bannedEmails: string[];
   loginWithEmail: (email: string, password: string) => boolean;
   loginWithSocial: (authMethod: AuthMethod, socialId: string) => boolean;
-  autoRestoreSession: (email: string, authMethod: AuthMethod, socialId?: string) => boolean;
+  autoRestoreSession: (email: string, authMethod: AuthMethod, socialId?: string, clerkUserId?: string) => boolean;
   restoreAccountByClerkId: (clerkUserId: string, fallbackEmail?: string) => boolean;
   createAccount: (draft: DraftAccount) => Promise<boolean>;
   signOut: () => void;
   signOutResetToken: number;
   clearAllData: () => Promise<void>;
-  adminLogin: (passcode: string) => boolean;
   adminSignOut: () => void;
-  changeAdminPasscode: (current: string, next: string) => boolean;
   adminUpdateAccount: (accountId: string, patch: Partial<UserAccount>) => Promise<void>;
   adminSetAccountStatus: (accountId: string, status: AccountStatus, reason?: string) => Promise<void>;
   adminUnbanEmail: (email: string) => Promise<void>;
@@ -438,8 +458,6 @@ type SportsConnectState = {
 const storageKey = "sports-connect-state-v12";
 const adminStorageKey = "sports-connect-admin-v1";
 const sportsRegistryKey = "sports-connect-registry-v1";
-const defaultAdminPasscode = "admin6969";
-
 const now = () => new Date().toISOString();
 const makeId = () => Date.now().toString() + Math.random().toString(36).slice(2, 9);
 
@@ -654,6 +672,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [profileImages, setProfileImages] = useState<ProfileImage[]>(defaultState.profileImages);
   const [pendingHighlightLinks, setPendingHighlightLinks] = useState<HighlightLink[]>(defaultState.pendingHighlightLinks);
   const [accounts, setAccounts] = useState<UserAccount[]>(defaultState.accounts);
+  // Ignore stale public account requests once a verified admin projection arrives.
+  const accountsRequestSequence = useRef(0);
+  const adminAccountsProjectionActive = useRef(false);
   const [currentAccount, setCurrentAccount] = useState<UserAccount | undefined>(defaultState.currentAccount);
   const [clubProfile, setClubProfile] = useState<ClubProfile>(defaultState.clubProfile);
   const [playerProfile, setPlayerProfile] = useState<PlayerProfile>(defaultState.playerProfile);
@@ -663,6 +684,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [selectedSport, setSelectedSport] = useState(defaultState.selectedSport);
   const [activeProfile, setActiveProfile] = useState<ProfileType>(defaultState.activeProfile);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminAuthorized, setAdminAuthorized] = useState(false);
+  const [accountDataStatus, setAccountDataStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [isModerator, setIsModerator] = useState(false);
   const [currentModerator, setCurrentModerator] = useState<ModeratorAccount | null>(null);
   const [flaggedConversations, setFlaggedConversations] = useState<Conversation[]>([]);
@@ -673,7 +696,6 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   const [pendingAdminNavConversationId, setPendingAdminNavConversationId] = useState<string | null>(null);
   const adminPushTokenRef = useRef<string | null>(null);
   const [moderators, setModerators] = useState<ModeratorAccount[]>([]);
-  const [adminPasscode, setAdminPasscode] = useState(defaultAdminPasscode);
   const [bannedEmails, setBannedEmails] = useState<string[]>([]);
   const [forbiddenConnections, setForbiddenConnections] = useState<ForbiddenConnection[]>([]);
   const [showMemberStats, setShowMemberStats] = useState(false);
@@ -707,8 +729,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     AsyncStorage.getItem(adminStorageKey).then((stored) => {
       if (!stored) return;
-      const parsed = JSON.parse(stored) as { adminPasscode?: string; bannedEmails?: string[]; moderators?: ModeratorAccount[]; showMemberStats?: boolean; showSportRequestField?: boolean; forbiddenConnections?: ForbiddenConnection[]; devBypassSubscription?: boolean };
-      if (parsed.adminPasscode) setAdminPasscode(parsed.adminPasscode);
+      const parsed = JSON.parse(stored) as { bannedEmails?: string[]; moderators?: ModeratorAccount[]; showMemberStats?: boolean; showSportRequestField?: boolean; forbiddenConnections?: ForbiddenConnection[]; devBypassSubscription?: boolean };
       if (Array.isArray(parsed.bannedEmails)) setBannedEmails(parsed.bannedEmails);
       if (Array.isArray(parsed.moderators)) setModerators(parsed.moderators);
       if (typeof parsed.showMemberStats === "boolean") setShowMemberStats(parsed.showMemberStats);
@@ -719,17 +740,31 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription })).catch(() => undefined);
-  }, [adminPasscode, bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription]);
+    AsyncStorage.setItem(adminStorageKey, JSON.stringify({ bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription })).catch(() => undefined);
+  }, [bannedEmails, moderators, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription]);
 
   useEffect(() => {
     let cancelled = false;
     async function loadFromApi() {
       let apiOk = false;
+      let accountsLoaded = false;
+      const accountsRequestId = ++accountsRequestSequence.current;
       try {
+        const fetchedAccountsPromise = api.getAccounts().then((fetched) => {
+          accountsLoaded = true;
+          if (
+            !cancelled &&
+            !adminAccountsProjectionActive.current &&
+            accountsRequestId === accountsRequestSequence.current
+          ) {
+            setAccounts(fetched.map(migrateAccountAffiliates));
+            setAccountDataStatus("loaded");
+          }
+          return fetched;
+        });
         const [fetchedAdverts, fetchedAccounts, fetchedConversations, fetchedProfileImages, fetchedSportRequests, fetchedBannedEmails, fetchedReports] = await Promise.all([
           api.getAdverts(),
-          api.getAccounts(),
+          fetchedAccountsPromise,
           api.getConversations(),
           api.getProfileImages(),
           api.getSportRequests(),
@@ -743,7 +778,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         setProfileImages(fetchedProfileImages);
         setPendingSportRequests(fetchedSportRequests);
         setBannedEmails(fetchedBannedEmails);
-        setAccounts(fetchedAccounts.map(migrateAccountAffiliates));
+        if (
+          !adminAccountsProjectionActive.current &&
+          accountsRequestId === accountsRequestSequence.current
+        ) {
+          setAccounts(fetchedAccounts.map(migrateAccountAffiliates));
+          setAccountDataStatus("loaded");
+        }
         setReports(fetchedReports);
         // Restore lightweight local-only preferences from AsyncStorage
         try {
@@ -768,6 +809,13 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
       } catch (_e) {
         // API unreachable, will fall back to AsyncStorage below
         if (cancelled) return;
+        if (
+          !accountsLoaded &&
+          !adminAccountsProjectionActive.current &&
+          accountsRequestId === accountsRequestSequence.current
+        ) {
+          setAccountDataStatus("error");
+        }
       }
       if (!apiOk) {
         try {
@@ -888,25 +936,6 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     };
   }, [isAdmin, isModerator, currentModerator]);
 
-  // Keep the API client's admin passcode in sync so entitlement grant/revoke
-  // requests include X-Admin-Passcode. Only active while the admin is logged in.
-  useEffect(() => {
-    setApiAdminPasscode(isAdmin ? adminPasscode : null);
-  }, [isAdmin, adminPasscode]);
-
-  // When admin logs in, re-fetch account data with the admin endpoint so
-  // guardianDateOfBirth is visible for account review.
-  useEffect(() => {
-    if (!isAdmin) return;
-    let cancelled = false;
-    api.getAdminAccounts()
-      .then((data) => {
-        if (!cancelled) setAccounts(data);
-      })
-      .catch(() => undefined);
-    return () => { cancelled = true; };
-  }, [isAdmin]);
-
   // Register this device's Expo push token with the server whenever admin or
   // a closeChats moderator is active. The server uses the stored token to push
   // an immediate notification the moment a HIGH-severity flag fires — without
@@ -1021,17 +1050,14 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     // it instead of creating a duplicate. clerkUserId is the authoritative match —
     // it survives password resets and email casing differences. Email is the fallback
     // for legacy accounts that pre-date the clerkUserId binding.
-    const existingLocal = accounts.find(
-      (a) =>
-        (
-          (draft.clerkUserId && a.clerkUserId === draft.clerkUserId) ||
-          a.email.toLowerCase() === normalizedEmail
-        ) &&
-        a.status !== "banned" &&
-        a.status !== "closed",
-    );
+    const localMatch = findAccountForClerkUser(accounts, draft.clerkUserId, normalizedEmail);
+    const existingLocal = localMatch &&
+      localMatch.status !== "banned" &&
+      localMatch.status !== "closed"
+      ? localMatch
+      : undefined;
     if (existingLocal) {
-      autoRestoreSession(normalizedEmail, draft.authMethod ?? "email", draft.socialId);
+      autoRestoreSession(normalizedEmail, draft.authMethod ?? "email", draft.socialId, draft.clerkUserId);
       return true;
     }
     const publicId = makeId();
@@ -1096,9 +1122,15 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
         // Server already has an account for this Clerk user or email — restore it.
         const existingPublicId = typeof err?.body?.publicId === "string" ? err.body.publicId : undefined;
         const existingStatus = typeof err?.body?.status === "string" ? err.body.status : undefined;
-        const canonical = existingPublicId
-          ? accounts.find((a) => a.id === existingPublicId)
-          : accounts.find((a) => a.email.toLowerCase() === normalizedEmail);
+        const publicIdMatch = existingPublicId
+          ? accounts.find((account) => account.id === existingPublicId)
+          : undefined;
+        const canonical = publicIdMatch
+          ? (
+            (draft.clerkUserId && publicIdMatch.clerkUserId === draft.clerkUserId) ||
+            (!publicIdMatch.clerkUserId && publicIdMatch.email.toLowerCase() === normalizedEmail)
+          ) ? publicIdMatch : undefined
+          : findAccountForClerkUser(accounts, draft.clerkUserId, normalizedEmail);
 
         if (canonical?.status === "banned" || canonical?.status === "closed" || existingStatus === "banned" || existingStatus === "closed") {
           Alert.alert(
@@ -1139,12 +1171,21 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
           return true;
         }
         // Canonical not in local list — fetch fresh from server and restore.
+        const fetchRequestId = ++accountsRequestSequence.current;
         const fetched = await api.getAccounts().catch(() => null) as UserAccount[] | null;
         if (fetched) {
-          const freshCanonical = fetched.find(
-            (a) => a.email.toLowerCase() === normalizedEmail || (existingPublicId && a.id === existingPublicId),
-          );
-          setAccounts(fetched.map(migrateAccountAffiliates));
+          const freshPublicIdMatch = existingPublicId
+            ? fetched.find((account) => account.id === existingPublicId)
+            : undefined;
+          const freshCanonical = freshPublicIdMatch
+            ? (
+              (draft.clerkUserId && freshPublicIdMatch.clerkUserId === draft.clerkUserId) ||
+              (!freshPublicIdMatch.clerkUserId && freshPublicIdMatch.email.toLowerCase() === normalizedEmail)
+            ) ? freshPublicIdMatch : undefined
+            : findAccountForClerkUser(fetched, draft.clerkUserId, normalizedEmail);
+          if (!adminAccountsProjectionActive.current && fetchRequestId === accountsRequestSequence.current) {
+            setAccounts(fetched.map(migrateAccountAffiliates));
+          }
           if (freshCanonical) {
             setCurrentAccount(freshCanonical);
             setSelectedSport(freshCanonical.defaultSport);
@@ -1186,6 +1227,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     await AsyncStorage.removeItem(adminStorageKey);
     setAdverts(defaultState.adverts);
     setAccounts(defaultState.accounts);
+    adminAccountsProjectionActive.current = false;
+    accountsRequestSequence.current += 1;
+    setAccountDataStatus("loaded");
     setConversations(defaultState.conversations);
     setProfileImages(defaultState.profileImages);
     setPendingHighlightLinks(defaultState.pendingHighlightLinks);
@@ -1202,6 +1246,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     setShowMemberStats(false);
     setShowSportRequestField(true);
     setIsAdmin(false);
+    setAdminAuthorized(false);
     setModerators([]);
     setForbiddenConnections([]);
     setSignOutResetToken((t) => t + 1);
@@ -1307,9 +1352,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     return true;
   };
 
-  const autoRestoreSession = (emailInput: string, authMethod: AuthMethod, socialId?: string): boolean => {
+  const autoRestoreSession = (emailInput: string, authMethod: AuthMethod, socialId?: string, clerkUserId?: string): boolean => {
     const normalizedEmail = emailInput.toLowerCase().trim();
-    const match = accounts.find((acc) => acc.email.toLowerCase() === normalizedEmail);
+    const match = findAccountForClerkUser(accounts, clerkUserId, normalizedEmail);
     if (!match) return false;
     if (match.status === "banned" || match.status === "closed") return false;
     setCurrentAccount(match);
@@ -1337,14 +1382,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
   };
 
   const restoreAccountByClerkId = (clerkUserId: string, fallbackEmail?: string): boolean => {
-    const match = accounts.find(
-      (a) =>
-        (a.clerkUserId === clerkUserId ||
-          (fallbackEmail && a.email.toLowerCase() === fallbackEmail.toLowerCase())) &&
-        a.status !== "banned" &&
-        a.status !== "closed",
-    );
-    if (!match) return false;
+    const match = findAccountForClerkUser(accounts, clerkUserId, fallbackEmail);
+    if (!match || match.status === "banned" || match.status === "closed") return false;
     setCurrentAccount(match);
     setSelectedSport(match.defaultSport);
     setActiveProfile(match.role === "club" ? "club" : "player");
@@ -1384,28 +1423,50 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     }
   };
 
-  const adminLogin = (passcode: string): boolean => {
-    if (passcode.trim() === adminPasscode) {
-      setIsAdmin(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      return true;
+  const activateAdmin = useCallback((adminAccounts: UserAccount[]) => {
+    adminAccountsProjectionActive.current = true;
+    accountsRequestSequence.current += 1;
+    setAccounts(adminAccounts.map(migrateAccountAffiliates));
+    setAccountDataStatus("loaded");
+    setAdminAuthorized(true);
+    setIsAdmin(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  }, []);
+
+  const enterAdmin = useCallback(async () => {
+    // The server response is the authorization decision. Never activate admin
+    // state from a local passcode or cached account list.
+    const adminAccounts = await api.getAdminAccounts();
+    activateAdmin(adminAccounts);
+  }, [activateAdmin]);
+
+  const retryAccountsLoad = useCallback(async () => {
+    if (adminAccountsProjectionActive.current) return;
+    const requestId = ++accountsRequestSequence.current;
+    setAccountDataStatus("loading");
+    try {
+      const fetchedAccounts = await api.getAccounts();
+      if (
+        !adminAccountsProjectionActive.current &&
+        requestId === accountsRequestSequence.current
+      ) {
+        setAccounts(fetchedAccounts.map(migrateAccountAffiliates));
+        setAccountDataStatus("loaded");
+      }
+    } catch (error) {
+      if (
+        !adminAccountsProjectionActive.current &&
+        requestId === accountsRequestSequence.current
+      ) {
+        setAccountDataStatus("error");
+      }
+      throw error;
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
-    return false;
-  };
+  }, []);
 
   const adminSignOut = () => {
     setIsAdmin(false);
-    setApiAdminPasscode(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
-  };
-
-  const changeAdminPasscode = (current: string, next: string): boolean => {
-    if (current.trim() !== adminPasscode) return false;
-    if (!next.trim()) return false;
-    setAdminPasscode(next.trim());
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    return true;
   };
 
   const moderatorLogin = (passcode: string): boolean => {
@@ -1431,7 +1492,6 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
 
   const addModerator = (mod: Omit<ModeratorAccount, "id">): boolean => {
     if (!mod.passcode.trim() || !mod.name.trim()) return false;
-    if (mod.passcode.trim() === adminPasscode) return false;
     if (moderators.some((m) => m.passcode === mod.passcode.trim())) return false;
     const newMod: ModeratorAccount = { ...mod, passcode: mod.passcode.trim(), name: mod.name.trim(), id: makeId() };
     setModerators((current) => [...current, newMod]);
@@ -2561,6 +2621,9 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     selectedSport,
     activeProfile,
     isAdmin,
+    adminAuthorized,
+    activateAdmin,
+    enterAdmin,
     isModerator,
     currentModerator,
     moderators,
@@ -2569,6 +2632,8 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     addModerator,
     deleteModerator,
     isHydrated,
+    accountDataStatus,
+    retryAccountsLoad,
     showMemberStats,
     toggleShowMemberStats,
     devBypassSubscription,
@@ -2593,9 +2658,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     signOut,
     signOutResetToken,
     clearAllData,
-    adminLogin,
     adminSignOut,
-    changeAdminPasscode,
     adminUpdateAccount,
     adminSetAccountStatus,
     adminUnbanEmail,
@@ -2662,7 +2725,7 @@ export function SportsConnectProvider({ children }: { children: React.ReactNode 
     reportedAdvertIds,
     hasReportedAdvert,
     };
-  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, isModerator, currentModerator, moderators, adminPasscode, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription, toggleDevBypassSubscription, reports, pendingHighFlagAlerts, reportedAdvertIds]);
+  }, [adverts, conversations, profileImages, pendingHighlightLinks, accounts, bannedEmails, currentAccount, clubProfile, playerProfile, notificationSettings, sportsRegistry, pendingSportRequests, selectedSport, activeProfile, isAdmin, adminAuthorized, activateAdmin, enterAdmin, isModerator, currentModerator, moderators, showMemberStats, showSportRequestField, forbiddenConnections, devBypassSubscription, toggleDevBypassSubscription, reports, pendingHighFlagAlerts, reportedAdvertIds, accountDataStatus, retryAccountsLoad]);
 
   return <SportsConnectContext.Provider value={value}>{children}</SportsConnectContext.Provider>;
 }

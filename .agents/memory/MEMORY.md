@@ -2,3 +2,4 @@
 - [Clerk Expo v3 hooks isolation](clerk-expo-v3-hooks-isolation.md) — useSSO() uses legacy hooks internally; mixing with v3 useSignIn/useSignUp in one component causes variable hook count crash.
 - [Expo auth token getter — ref pattern](expo-auth-token-getter-pattern.md) — useRef pattern for setAuthTokenGetter avoids stale closures and Fast Refresh resets; never use useEffect([getToken]).
 - [OTA hermesc passthrough](ota-hermesc-passthrough.md) — local linux hermesc v0.12.0 rejects private class fields; replace with passthrough script for eas update, then restore.
+- [Mobile admin identity](mobile-admin-identity.md) — admin data and actions need a verified Clerk allowlist; a local passcode cannot authorize sensitive API access.

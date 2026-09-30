@@ -28,7 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { G, Path } from "react-native-svg";
 import { useSignIn, useSignUp, useSSO } from "@clerk/expo";
 
-import { AdminPage, ModeratorPage } from "@/components/AdminDashboard";
+import { ModeratorPage } from "@/components/AdminDashboard";
 import { useSportsConnect } from "@/context/SportsConnectContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -121,14 +121,15 @@ function OAuthButtons({ bannedEmails, colors }: OAuthButtonsProps) {
   );
 }
 
-export function OnboardingGate() {
+export function OnboardingGate({
+  onAdminAccessIntent,
+}: {
+  onAdminAccessIntent?: () => void;
+}) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const {
-    isAdmin,
     isModerator,
-    adminLogin,
-    adminSignOut,
     moderatorLogin,
     moderatorSignOut,
     bannedEmails,
@@ -147,7 +148,7 @@ export function OnboardingGate() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMismatch, setPasswordMismatch] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
-  const [adminPasscodeInput, setAdminPasscodeInput] = useState("");
+  const [moderatorPasscodeInput, setModeratorPasscodeInput] = useState("");
   const [bannedEmailError, setBannedEmailError] = useState(false);
   const [existingAccountRole, setExistingAccountRole] = useState<string | null | undefined>(undefined);
   const [showSignInPwd, setShowSignInPwd] = useState(false);
@@ -155,8 +156,8 @@ export function OnboardingGate() {
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [showResetConfirmPwd, setShowResetConfirmPwd] = useState(false);
 
-  // Admin/moderator bypass — passcode-based, independent of Clerk auth
-  if (isAdmin) return <AdminPage onExit={() => adminSignOut()} />;
+  // Moderator access remains passcode-based. Admin access is authenticated
+  // through Clerk and authorized by the server in the signed-in app gate.
   if (isModerator) return <ModeratorPage onExit={() => moderatorSignOut()} />;
 
   const needsMFAVerify = signIn.status === "needs_client_trust";
@@ -639,13 +640,14 @@ export function OnboardingGate() {
           {/* Admin access link */}
           <Pressable
             onPress={() => {
-              setAdminPasscodeInput("");
+              setMode("signin");
+              setModeratorPasscodeInput("");
               setShowAdminModal(true);
             }}
             style={styles.adminLink}
           >
             <Text style={[styles.adminLinkText, { color: colors.mutedForeground }]}>
-              Admin access
+              Admin / moderator access
             </Text>
           </Pressable>
         </View>
@@ -660,37 +662,39 @@ export function OnboardingGate() {
       >
         <View style={styles.modalScrim}>
           <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Admin login</Text>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Admin / moderator access</Text>
             <Text style={[styles.smallPrint, { color: colors.mutedForeground }]}>
-              Enter your admin passcode to access moderation tools.
+              Administrators must sign in with their Clerk account. Moderators can enter their issued passcode below.
             </Text>
             <TextInput
-              value={adminPasscodeInput}
-              onChangeText={setAdminPasscodeInput}
-              placeholder="Admin passcode"
+              value={moderatorPasscodeInput}
+              onChangeText={setModeratorPasscodeInput}
+              placeholder="Moderator passcode"
               placeholderTextColor={colors.mutedForeground}
               secureTextEntry
               style={[styles.input, { backgroundColor: colors.background, borderColor: colors.foreground, borderWidth: 2, color: colors.foreground }]}
             />
             <View style={styles.modalActions}>
               <Pressable
-                onPress={() => setShowAdminModal(false)}
+                onPress={() => {
+                  setShowAdminModal(false);
+                  setMode("signin");
+                  onAdminAccessIntent?.();
+                }}
                 style={({ pressed }) => [
                   styles.modalButton,
                   { backgroundColor: colors.secondary, opacity: pressed ? 0.8 : 1 },
                 ]}
               >
                 <Text style={[styles.modalButtonText, { color: colors.secondaryForeground }]}>
-                  Cancel
+                  Clerk sign-in
                 </Text>
               </Pressable>
               <Pressable
                 onPress={() => {
-                  const adminOk = adminLogin(adminPasscodeInput);
-                  if (adminOk) { setShowAdminModal(false); return; }
-                  const modOk = moderatorLogin(adminPasscodeInput);
+                  const modOk = moderatorLogin(moderatorPasscodeInput);
                   if (modOk) { setShowAdminModal(false); return; }
-                  Alert.alert("Incorrect passcode", "The passcode you entered is incorrect. Please try again.");
+                  Alert.alert("Moderator passcode not recognized", "Administrators should close this dialog and sign in with their Clerk account.");
                 }}
                 style={({ pressed }) => [
                   styles.modalButton,

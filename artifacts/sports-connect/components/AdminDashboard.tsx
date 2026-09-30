@@ -2456,10 +2456,7 @@ function SportsSection({ prefillName, onPrefillConsumed }: { prefillName?: strin
 function SettingsSection({ onClose }: { onClose?: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { changeAdminPasscode, adminSignOut, bannedEmails, adminUnbanEmail, clearAllData, moderators, addModerator, deleteModerator, showMemberStats, toggleShowMemberStats, showSportRequestField, toggleShowSportRequestField, devBypassSubscription, toggleDevBypassSubscription } = useSportsConnect();
-  const [showPass, setShowPass] = useState(false);
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
+  const { adminSignOut, bannedEmails, adminUnbanEmail, clearAllData, moderators, addModerator, deleteModerator, showMemberStats, toggleShowMemberStats, showSportRequestField, toggleShowSportRequestField, devBypassSubscription, toggleDevBypassSubscription } = useSportsConnect();
   const [showAddMod, setShowAddMod] = useState(false);
   const [modName, setModName] = useState("");
   const [modPasscode, setModPasscode] = useState("");
@@ -2485,18 +2482,6 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
       return;
     }
     resetModForm();
-  };
-
-  const save = () => {
-    const ok = changeAdminPasscode(current, next);
-    if (ok) {
-      Alert.alert("Passcode updated", "Your new admin passcode has been saved.");
-      setShowPass(false);
-      setCurrent("");
-      setNext("");
-    } else {
-      Alert.alert("Incorrect passcode", "Please check your current passcode and try again.");
-    }
   };
 
   return (
@@ -2585,22 +2570,6 @@ function SettingsSection({ onClose }: { onClose?: () => void }) {
           </View>
         </View>
       ))}
-
-      <SectionTitle title="Admin passcode" />
-      <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: colors.foreground, borderWidth: 2 }]}>
-        {showPass ? (
-          <>
-            <Field label="Current passcode" value={current} onChangeText={setCurrent} secureTextEntry />
-            <Field label="New passcode" value={next} onChangeText={setNext} secureTextEntry />
-            <View style={styles.actionRow}>
-              <ActionButton icon="x" label="Cancel" color={colors.mutedForeground} onPress={() => { setShowPass(false); setCurrent(""); setNext(""); }} />
-              <ActionButton icon="check" label="Save passcode" color={colors.primary} onPress={save} />
-            </View>
-          </>
-        ) : (
-          <ActionButton icon="key" label="Change passcode" color={colors.primary} onPress={() => setShowPass(true)} />
-        )}
-      </View>
 
       <SectionTitle title="Danger zone" />
       <View style={[styles.itemCard, { backgroundColor: colors.card, borderColor: "#EF4444", borderWidth: 2 }]}>

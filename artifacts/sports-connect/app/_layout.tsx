@@ -11,8 +11,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useRef } from "react";
-import { Alert, ActivityIndicator, LogBox, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, ActivityIndicator, LogBox, Pressable, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -24,7 +24,9 @@ import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AccountSetupGate } from "@/components/AccountSetupGate";
 import { OnboardingGate } from "@/components/OnboardingGate";
-import { SportsConnectProvider, useSportsConnect } from "@/context/SportsConnectContext";
+import { AdminPage } from "@/components/AdminDashboard";
+import { findAccountForClerkUser, SportsConnectProvider, useSportsConnect } from "@/context/SportsConnectContext";
+import { api } from "@/utils/apiClient";
 import { router } from "expo-router";
 import {
   initializeRevenueCat,
@@ -123,10 +125,22 @@ function RootLayoutNav() {
 // The old approach mounted SportsConnectProvider once on app open (before the
 // user signed in), hydrated with 401s, set isHydrated=true on empty data, and
 // never re-hydrated after sign-in — so returning users always hit AccountSetupGate.
-function AuthGatedProviders({ children }: { children: React.ReactNode }) {
+function AuthGatedProviders({
+  children,
+  clearAdminAccessIntent,
+}: {
+  children: React.ReactNode;
+  clearAdminAccessIntent: () => void;
+}) {
   const { isSignedIn, getToken } = useAuth();
   const getTokenRef = useRef(getToken);
+  const previousSignedIn = useRef(!!isSignedIn);
   getTokenRef.current = getToken;
+
+  useEffect(() => {
+    if (previousSignedIn.current && !isSignedIn) clearAdminAccessIntent();
+    previousSignedIn.current = !!isSignedIn;
+  }, [isSignedIn, clearAdminAccessIntent]);
 
   // Synchronous during render: idempotent, writes only a module-level function
   // pointer — no reconciliation side-effects.
@@ -168,10 +182,89 @@ function NotificationDeepLink() {
   return null;
 }
 
-function AppContent() {
-  const { isSignedIn, isLoaded, signOut } = useAuth();
+function AppContent({
+  adminAccessIntent,
+  markAdminAccessIntent,
+  clearAdminAccessIntent,
+}: {
+  adminAccessIntent: boolean;
+  markAdminAccessIntent: () => void;
+  clearAdminAccessIntent: () => void;
+}) {
+  const { isSignedIn, isLoaded, signOut, getToken } = useAuth();
   const { user } = useUser();
-  const { currentAccount, isHydrated, accounts, bannedEmails, signOut: localSignOut, restoreAccountByClerkId } = useSportsConnect();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+  const {
+    currentAccount,
+    isHydrated,
+    accounts,
+    accountDataStatus,
+    retryAccountsLoad,
+    bannedEmails,
+    isAdmin,
+    activateAdmin,
+    adminSignOut,
+    adminAuthorized,
+    enterAdmin,
+    signOut: localSignOut,
+    restoreAccountByClerkId,
+  } = useSportsConnect();
+  const [adminCheck, setAdminCheck] = React.useState<"checking" | "authorized" | "not-admin" | "error">("checking");
+  const [adminCheckAttempt, setAdminCheckAttempt] = React.useState(0);
+  const signedInEmail = user?.primaryEmailAddress?.emailAddress;
+  const matchingMemberAccount =
+    findAccountForClerkUser(currentAccount ? [currentAccount] : [], user?.id, signedInEmail) ??
+    findAccountForClerkUser(accounts, user?.id, signedInEmail);
+  const hasMemberAccount = Boolean(
+    matchingMemberAccount &&
+      matchingMemberAccount.status !== "banned" &&
+      matchingMemberAccount.status !== "closed",
+  );
+
+  const retryAdminAndAccountData = () => {
+    if (accountDataStatus !== "loaded") {
+      void retryAccountsLoad().catch(() => undefined);
+    }
+    setAdminCheckAttempt((attempt) => attempt + 1);
+  };
+  const signOutFromRecovery = () => {
+    clearAdminAccessIntent();
+    void signOut();
+  };
+
+  // The protected response both proves ADMIN_USER_IDS membership and provides
+  // the admin-only account projection. Never request it until Clerk has a
+  // signed-in user and an available session token.
+  useEffect(() => {
+    if (!isLoaded || !isHydrated) return;
+    if (!isSignedIn || !user?.id) {
+      setAdminCheck("not-admin");
+      return;
+    }
+
+    let cancelled = false;
+    setAdminCheck("checking");
+    void (async () => {
+      try {
+        const token = await getTokenRef.current({ skipCache: true });
+        if (!token) throw new Error("Clerk session token is not available yet.");
+        const adminAccounts = await api.getAdminAccounts();
+        if (cancelled) return;
+        activateAdmin(adminAccounts);
+        clearAdminAccessIntent();
+        setAdminCheck("authorized");
+      } catch (error) {
+        if (cancelled) return;
+        const status = error && typeof error === "object" && "status" in error
+          ? Number((error as { status?: unknown }).status)
+          : undefined;
+        setAdminCheck(status === 403 ? "not-admin" : "error");
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isLoaded, isHydrated, isSignedIn, user?.id, activateAdmin, adminCheckAttempt, clearAdminAccessIntent]);
 
   // Identify the RevenueCat user with the stable Clerk user ID so entitlements
   // are never fragmented across anonymous / local account identities.
@@ -238,17 +331,129 @@ function AppContent() {
   }
 
   if (!isSignedIn) {
-    return <OnboardingGate />;
+    return <OnboardingGate onAdminAccessIntent={markAdminAccessIntent} />;
+  }
+
+  // A failed or pending admin probe must not interrupt a known member session.
+  if (!adminAccessIntent && currentAccount && adminCheck !== "authorized") {
+    return <RootLayoutNav />;
+  }
+
+  if (adminCheck === "checking") {
+    return (
+      <View style={[styles.loadingScreen, { backgroundColor: colors.light.pitch }]}>
+        <ActivityIndicator color={colors.light.accent} size="large" />
+        <Text style={[styles.loadingText, { color: colors.light.primaryForeground }]}>
+          Verifying access…
+        </Text>
+      </View>
+    );
+  }
+
+  if (adminCheck === "error") {
+    if (!adminAccessIntent) {
+      if (currentAccount) return <RootLayoutNav />;
+      if (accountDataStatus === "loaded") {
+        return <AccountSetupGate onAdminAccess={enterAdmin} adminAuthorized={adminAuthorized} />;
+      }
+    }
+    return (
+      <View style={[styles.loadingScreen, { backgroundColor: colors.light.pitch }]}>
+        <Text style={[styles.loadingText, { color: colors.light.primaryForeground }]}>
+          {adminAccessIntent
+            ? "Could not verify admin access or load admin accounts. Check your connection and retry."
+            : "Could not load account data. Check your connection and retry before creating an account."}
+        </Text>
+        <Pressable
+          onPress={retryAdminAndAccountData}
+          style={{ backgroundColor: colors.light.accent, paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14 }}
+        >
+          <Text style={{ color: colors.light.primaryForeground, fontWeight: "700" }}>Retry</Text>
+        </Pressable>
+        {adminAccessIntent && hasMemberAccount && (
+          <Pressable
+            onPress={clearAdminAccessIntent}
+            style={{ paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: colors.light.primaryForeground }}
+          >
+            <Text style={{ color: colors.light.primaryForeground, fontWeight: "700" }}>Continue as member</Text>
+          </Pressable>
+        )}
+        <Pressable
+          onPress={signOutFromRecovery}
+          style={{ paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: colors.light.primaryForeground }}
+        >
+          <Text style={{ color: colors.light.primaryForeground, fontWeight: "700" }}>Sign out</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (adminCheck === "not-admin" && adminAccessIntent) {
+    return (
+      <View style={[styles.loadingScreen, { backgroundColor: colors.light.pitch }]}>
+        <Text style={[styles.loadingText, { color: colors.light.primaryForeground }]}>
+          This account is not authorized for admin access.
+        </Text>
+        <Pressable
+          onPress={retryAdminAndAccountData}
+          style={{ backgroundColor: colors.light.accent, paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14 }}
+        >
+          <Text style={{ color: colors.light.primaryForeground, fontWeight: "700" }}>Retry admin access</Text>
+        </Pressable>
+        {hasMemberAccount && (
+          <Pressable
+            onPress={clearAdminAccessIntent}
+            style={{ paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: colors.light.primaryForeground }}
+          >
+            <Text style={{ color: colors.light.primaryForeground, fontWeight: "700" }}>Continue as member</Text>
+          </Pressable>
+        )}
+        <Pressable
+          onPress={signOutFromRecovery}
+          style={{ paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: colors.light.primaryForeground }}
+        >
+          <Text style={{ color: colors.light.primaryForeground, fontWeight: "700" }}>Sign out</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (adminCheck === "authorized" && isAdmin) {
+    return <AdminPage onExit={() => adminSignOut()} />;
   }
 
   if (!currentAccount) {
-    return <AccountSetupGate />;
+    if (accountDataStatus !== "loaded") {
+      return (
+        <View style={[styles.loadingScreen, { backgroundColor: colors.light.pitch }]}>
+          <Text style={[styles.loadingText, { color: colors.light.primaryForeground }]}>
+            Could not confirm whether you already have an account. Retry or sign out before creating one.
+          </Text>
+          <Pressable
+            onPress={retryAdminAndAccountData}
+            style={{ backgroundColor: colors.light.accent, paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14 }}
+          >
+            <Text style={{ color: colors.light.primaryForeground, fontWeight: "700" }}>Retry</Text>
+          </Pressable>
+          <Pressable
+            onPress={signOutFromRecovery}
+            style={{ paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14, borderWidth: 1, borderColor: colors.light.primaryForeground }}
+          >
+            <Text style={{ color: colors.light.primaryForeground, fontWeight: "700" }}>Sign out</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return <AccountSetupGate onAdminAccess={enterAdmin} adminAuthorized={adminAuthorized} />;
   }
 
   return <RootLayoutNav />;
 }
 
 export default function RootLayout() {
+  const [adminAccessIntent, setAdminAccessIntent] = useState(false);
+  const markAdminAccessIntent = useCallback(() => setAdminAccessIntent(true), []);
+  const clearAdminAccessIntent = useCallback(() => setAdminAccessIntent(false), []);
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -275,13 +480,17 @@ export default function RootLayout() {
         <ClerkLoaded>
           <ErrorBoundary>
             <QueryClientProvider client={queryClient}>
-              <AuthGatedProviders>
+                    <AuthGatedProviders clearAdminAccessIntent={clearAdminAccessIntent}>
                 <SubscriptionProvider>
                   <SubscriptionSync />
                   <NotificationDeepLink />
                   <GestureHandlerRootView style={{ flex: 1 }}>
                     <KeyboardProvider>
-                      <AppContent />
+                        <AppContent
+                          adminAccessIntent={adminAccessIntent}
+                          markAdminAccessIntent={markAdminAccessIntent}
+                          clearAdminAccessIntent={clearAdminAccessIntent}
+                        />
                     </KeyboardProvider>
                   </GestureHandlerRootView>
                 </SubscriptionProvider>
