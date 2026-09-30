@@ -471,16 +471,16 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
-        <ClerkLoading>
-          <View style={[styles.loadingScreen, { backgroundColor: colors.light.pitch }]}>
-            <ActivityIndicator color={colors.light.accent} size="large" />
-          </View>
-        </ClerkLoading>
-        <ClerkLoaded>
-          <ErrorBoundary>
+      <ErrorBoundary>
+        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} proxyUrl={proxyUrl}>
+          <ClerkLoading>
+            <View style={[styles.loadingScreen, { backgroundColor: colors.light.pitch }]}>
+              <ActivityIndicator color={colors.light.accent} size="large" />
+            </View>
+          </ClerkLoading>
+          <ClerkLoaded>
             <QueryClientProvider client={queryClient}>
-                    <AuthGatedProviders clearAdminAccessIntent={clearAdminAccessIntent}>
+              <AuthGatedProviders clearAdminAccessIntent={clearAdminAccessIntent}>
                 <SubscriptionProvider>
                   <SubscriptionSync />
                   <NotificationDeepLink />
@@ -496,9 +496,9 @@ export default function RootLayout() {
                 </SubscriptionProvider>
               </AuthGatedProviders>
             </QueryClientProvider>
-          </ErrorBoundary>
-        </ClerkLoaded>
-      </ClerkProvider>
+          </ClerkLoaded>
+        </ClerkProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

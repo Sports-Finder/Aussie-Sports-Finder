@@ -6,8 +6,8 @@ const monorepoRoot = path.resolve(projectRoot, "../..");
 
 const config = getDefaultConfig(projectRoot);
 
-// Watch the full monorepo so Metro can resolve packages from the pnpm store.
-config.watchFolders = [monorepoRoot];
+// Keep Expo's default watch folders and add the monorepo for pnpm packages.
+config.watchFolders = [...new Set([...(config.watchFolders || []), monorepoRoot])];
 
 // Resolve from both the artifact's own node_modules and the monorepo root.
 config.resolver.nodeModulesPaths = [
